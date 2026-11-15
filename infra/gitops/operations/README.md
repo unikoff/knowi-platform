@@ -1,7 +1,10 @@
 # Одноразовый переход c503 → c504
 
-Статус: **REHEARSED LOCALLY, NOT APPLIED**. Локальные репетиции завершены15.11.2026.
-Фактический baseline 15.11.2026: VPS `knowi01`, K3s context `default`, Application
+Статус: **APPLIED AND VERIFIED 15.11.2026**. Выпуск с c504 работает в production;
+maintenance снят, Argo Synced/Healthy. [Фактический отчёт](../../../docs/maintenance/PRODUCTION_RELEASE_20261115.md).
+Далее сохранена одноразовая инструкция с исходными условиями; повторно выполнять её на c504 нельзя.
+
+Baseline до выкладки 15.11.2026: VPS `knowi01`, K3s context `default`, Application
 `argocd-preview/pymentor-preview`, UID `69a2f746-52ef-4965-a581-4b9d3f6dba1e`.
 Argo CD 3.6.1 читает `Release:deploy/gitops/preview`, автоматическая синхронизация и
 self-heal включены. Новая структура использует `infra/gitops/preview`.
