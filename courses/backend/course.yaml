@@ -3,7 +3,7 @@
   "course_id": "backend",
   "slug": "backend",
   "title": "Python Backend",
-  "content_version": "2d06c9c390064278f3290177f516328e0c3c35aa966ec0e312d5c75f071dab66",
+  "content_version": "8e4c42bae3aa4a741dbe13cb8e7f5d5508a5a6706adc7fe4cbfe54c6c758030c",
   "layout": {
     "plans": "backend/plans",
     "practice": "backend/practice",

@@ -236,3 +236,29 @@ def test_creator_validator_supports_an_independent_program_and_root_guidance(cou
     result = validator.validate_courses(course_root)
     assert result["tracks"] == result["isolation_fixture_tracks"] == 1
     assert "backend_tracks" not in result and "backend_copy_tracks" not in result
+
+
+def test_content_version_canonical_text_paths_and_binary(course_root, monkeypatch):
+    package = course_root / COURSE
+    plans = package / "backend/plans/program"
+    upper, lower = plans / "Alpha.md", plans / "beta.md"
+    upper.write_bytes("Текст\nстрока\n".encode("utf-8"))
+    lower.write_bytes(b"first\nsecond\n")
+    helper = course_root / "shared/backend/canonical.py"
+    helper.write_bytes(b"first = 1\nsecond = 2\n")
+    binary = package / "backend/asset.bin"
+    binary.write_bytes(b"\x00\r\n\xff")
+    manifest = load_course_manifest(package)
+    baseline = content_version(package, manifest)
+    original_rglob = Path.rglob
+    def reversed_rglob(path, pattern):
+        return iter(reversed(list(original_rglob(path, pattern))))
+    monkeypatch.setattr(Path, "rglob", reversed_rglob)
+    for path in (upper, lower, helper):
+        path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+    assert content_version(package, manifest) == baseline
+    lower.write_bytes(b"first\r\nchanged\r\n")
+    assert content_version(package, manifest) != baseline
+    lower.write_bytes(b"first\nsecond\n")
+    binary.write_bytes(b"\x00\n\xff")
+    assert content_version(package, manifest) != baseline

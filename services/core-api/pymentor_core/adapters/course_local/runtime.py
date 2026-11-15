@@ -43,6 +43,17 @@ def _inside(root: Path, relative: str, *, directory: bool = False) -> Path:
     return resolved
 
 
+def _content_bytes(path: Path) -> bytes:
+    data = path.read_bytes()
+    if path.suffix.lower() in {".md", ".json", ".py"}:
+        try:
+            data.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise CoursePackageError("course text resource must be UTF-8") from exc
+        return data.replace(b"\r\n", b"\n")
+    return data
+
+
 def content_version(root: Path, manifest: CourseManifest) -> str:
     """Digest authoring resources and trusted catalog code as canonical JSON."""
     rows = []
@@ -54,7 +65,7 @@ def content_version(root: Path, manifest: CourseManifest) -> str:
     ).hexdigest()})
     for relative in (manifest.layout["plans"], manifest.layout["practice"]):
         directory = _inside(root, relative, directory=True)
-        for path in sorted(directory.rglob("*")):
+        for path in directory.rglob("*"):
             if path.is_symlink() or os.path.isjunction(path):
                 raise CoursePackageError("course authoring links are not permitted")
             if "__pycache__" in path.parts or path.suffix == ".pyc" or not path.is_file():
@@ -64,9 +75,9 @@ def content_version(root: Path, manifest: CourseManifest) -> str:
             resolved = path.resolve(strict=True)
             if root not in resolved.parents:
                 raise CoursePackageError("course authoring file escapes its package")
-            rows.append({"path": path.relative_to(root).as_posix(), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
+            rows.append({"path": path.relative_to(root).as_posix(), "sha256": hashlib.sha256(_content_bytes(path)).hexdigest()})
     backend = _inside(root, "backend", directory=True)
-    for path in sorted(backend.rglob("*")):
+    for path in backend.rglob("*"):
         relative_backend = path.relative_to(backend)
         if relative_backend.parts[0] in {"plans", "practice", "archive"} or "__pycache__" in relative_backend.parts or path.suffix == ".pyc":
             continue
@@ -77,12 +88,12 @@ def content_version(root: Path, manifest: CourseManifest) -> str:
         resolved = path.resolve(strict=True)
         if root not in resolved.parents:
             raise CoursePackageError("course backend file escapes its package")
-        rows.append({"path": path.relative_to(root).as_posix(), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
+        rows.append({"path": path.relative_to(root).as_posix(), "sha256": hashlib.sha256(_content_bytes(path)).hexdigest()})
     shared = root.parent / "shared" / "backend"
     if shared.exists():
         if shared.is_symlink() or os.path.isjunction(shared) or not shared.is_dir():
             raise CoursePackageError("shared backend helpers are not a trusted directory")
-        for path in sorted(shared.rglob("*")):
+        for path in shared.rglob("*"):
             if "__pycache__" in path.parts:
                 continue
             if path.is_symlink() or os.path.isjunction(path):
@@ -92,7 +103,7 @@ def content_version(root: Path, manifest: CourseManifest) -> str:
             resolved = path.resolve(strict=True)
             if shared.resolve(strict=True) not in resolved.parents:
                 raise CoursePackageError("shared backend file escapes its package")
-            rows.append({"path": path.relative_to(root.parent).as_posix(), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
+            rows.append({"path": path.relative_to(root.parent).as_posix(), "sha256": hashlib.sha256(_content_bytes(path)).hexdigest()})
     rows.sort(key=lambda row: row["path"])
     payload = json.dumps(rows, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()

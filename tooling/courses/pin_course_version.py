@@ -1,6 +1,7 @@
 """Repin one trusted course after authoring changes, preserving manifest text."""
 from __future__ import annotations
 import argparse, os, re, sys
+sys.dont_write_bytecode = True
 from pathlib import Path
 from uuid import uuid4
 from create_course import ROOT, registry_lock
