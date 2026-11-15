@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mentor Eval"
+  short_description: "Сравнение Mentor по grounding и учебным кейсам"
+  default_prompt: "Используй $mentor-eval для сравнения baseline и candidate на фиксированном наборе без утечки эталонов, с rubric и реальными evidence."

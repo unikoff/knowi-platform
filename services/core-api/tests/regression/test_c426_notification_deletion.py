@@ -107,6 +107,10 @@ def test_historical_unlinked_notification_is_not_guessed_from_email(database, mo
         db.add(historical)
         db.commit()
         historical_id = historical.id
-        service.delete_user(target, None, db, expected_account_ref=reference)
-        # No generation reference exists, so this is deliberately unresolved.
+        with pytest.raises(HTTPException) as error:
+            service.delete_user(target, None, db, expected_account_ref=reference)
+        assert error.value.status_code == 409
+        db.rollback()
+        # No generation reference exists: the account is preserved until review.
+        assert db.get(models.User, target) is not None
         assert db.get(models.BookingNotificationOutbox, historical_id) is not None

@@ -1,0 +1,2771 @@
+{
+  "source": "services/core-api/content",
+  "file_count": 553,
+  "files": [
+    {
+      "path": "__init__.py",
+      "bytes": 2,
+      "sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6"
+    },
+    {
+      "path": "COURSES.md",
+      "bytes": 1376,
+      "sha256": "639382a8214fcf9c2e78bb630fb14d97f481518be6352e4da46f2c30576f4fe6"
+    },
+    {
+      "path": "LEGACY_RESOURCES.md",
+      "bytes": 1146,
+      "sha256": "4dae041d9ef44fb4e6c116880f693a193985bcd27f65db401ad9741f7e066d04"
+    },
+    {
+      "path": "materials/__init__.py",
+      "bytes": 74,
+      "sha256": "220a5083e675763bfd35a361793b2d39d1c8e7763abefd6e5c9849fe96beea75"
+    },
+    {
+      "path": "materials/chapter_01/__init__.py",
+      "bytes": 204,
+      "sha256": "95bacde2da951cf902008be8471fc1692e4fca784a278d69b423bc4b3079014d"
+    },
+    {
+      "path": "materials/chapter_01/block_00/__init__.py",
+      "bytes": 213,
+      "sha256": "7943541685fdf08d64fc55c81a627ac24d0ff8176f62834c92be986824a6b722"
+    },
+    {
+      "path": "materials/chapter_01/block_00/manual.py",
+      "bytes": 220,
+      "sha256": "c3c4a0356ac87173cee301d44028f0d73ec95f3fefc0636e96bce42f879dfd3d"
+    },
+    {
+      "path": "materials/chapter_01/block_00/План обучения.md",
+      "bytes": 17877,
+      "sha256": "925326d7bac9013eb2ffa6502109f33412e9c3cd1f97a6d9145cc53fb41618bc"
+    },
+    {
+      "path": "materials/chapter_01/block_01/01 - Как запускается программа.md",
+      "bytes": 41619,
+      "sha256": "20a84f2057e98a8604f93fc9bf0c505b533d2255b49146d3d214b19f64ced156"
+    },
+    {
+      "path": "materials/chapter_01/block_01/01.1 - Переменные и значения.md",
+      "bytes": 47611,
+      "sha256": "e1613210082ae4d38af401ea9ca0ec18f5692870b5035cf2e151864a9dd713b5"
+    },
+    {
+      "path": "materials/chapter_01/block_01/02 - Строки- длина и части.md",
+      "bytes": 65743,
+      "sha256": "73bbbff28fcef6f46a9bbd8a5341e7a1a3ecf9636d2613578911da537e97da21"
+    },
+    {
+      "path": "materials/chapter_01/block_01/02.1 - Методы строк на практике.md",
+      "bytes": 45997,
+      "sha256": "9d0347425400dcc4ea50cc24194b918bfd5178eda047320606b9d25ad6fdc51d"
+    },
+    {
+      "path": "materials/chapter_01/block_01/03 - Целые числа и деление.md",
+      "bytes": 66187,
+      "sha256": "71fff3d7dfbba88ea2e4b914cd12b715b7d652d0b75043156984794da1e7a6a0"
+    },
+    {
+      "path": "materials/chapter_01/block_01/03.1 - Дробные числа и округление.md",
+      "bytes": 62046,
+      "sha256": "f2cb068db0478ae10fe074d54d985be45ed6a66e6ca05396d4f381fdd48aaeb5"
+    },
+    {
+      "path": "materials/chapter_01/block_01/04 - Сообщение из данных.md",
+      "bytes": 43912,
+      "sha256": "01a82535c1f1a1d5cbfae17e88dc4c550a80bfc2c972db42319b5d7826baae64"
+    },
+    {
+      "path": "materials/chapter_01/block_01/04.1 - Сравнения и логика.md",
+      "bytes": 51772,
+      "sha256": "b8072015592b2083a3d338ccb4ed302cac24acfd2925432e217b0f89c4667756"
+    },
+    {
+      "path": "materials/chapter_01/block_01/05 - Значение None в программе.md",
+      "bytes": 45537,
+      "sha256": "1cdb737eb9304841570b7519cd180dbf31867fc0d962865f774b9273a1622c84"
+    },
+    {
+      "path": "materials/chapter_01/block_01/05.1 - Пишем короткую программу.md",
+      "bytes": 54728,
+      "sha256": "c763354418d4ccd586a036dffad0aa1b53099ac69edaddd330aefd2d1391fec6"
+    },
+    {
+      "path": "materials/chapter_01/block_01/__init__.py",
+      "bytes": 213,
+      "sha256": "b09fd55b84f06c24780bbf08edd1cdcde632dfbe63fa7c254c41e2a0322907fc"
+    },
+    {
+      "path": "materials/chapter_01/block_01/code_tasks.py",
+      "bytes": 224,
+      "sha256": "2951ee4d679a3302bd976930b7b1e1a4e6447ff838f48bbce7c792c058d29339"
+    },
+    {
+      "path": "materials/chapter_01/block_01/manual.py",
+      "bytes": 220,
+      "sha256": "10f065579c7e6b62ffafacf3630edf4d758e3ab7ba98cd699d44de3b0d743ded"
+    },
+    {
+      "path": "materials/chapter_01/block_02/06 - Как работает ветвление.md",
+      "bytes": 39056,
+      "sha256": "cfde0478781093eca7d5464f1425268086c4086860f8165b8efc9760f65835ce"
+    },
+    {
+      "path": "materials/chapter_01/block_02/06.1 - Списки- чтение и изменение.md",
+      "bytes": 41056,
+      "sha256": "70d6e1c0661765302614eddf7c4dd22183b7bc55afd8c8144dde6d50275635d4"
+    },
+    {
+      "path": "materials/chapter_01/block_02/07 - Общие ссылки и копии.md",
+      "bytes": 39374,
+      "sha256": "ca542f40b5242f7d56073e5425cecd9bc29e3c37c7cc3f8232f47b11068b1437"
+    },
+    {
+      "path": "materials/chapter_01/block_02/07.1 - Разделяем и соединяем текст.md",
+      "bytes": 36042,
+      "sha256": "b7fc897d3debd5fd56bafc0cdbd17d1897eb0c07042ee3cdc66d3a577f756332"
+    },
+    {
+      "path": "materials/chapter_01/block_02/07.2 - Кортежи и множества.md",
+      "bytes": 29437,
+      "sha256": "b841b8bb52a2b0f9235aff65441b43d1ed0fb50c252854e62927a2934658de4d"
+    },
+    {
+      "path": "materials/chapter_01/block_02/08 - Словари- поля и значения.md",
+      "bytes": 34148,
+      "sha256": "43ecac0555aa80476a4e23a2728abee56bcdc983477d9f749f70b52df98e6b86"
+    },
+    {
+      "path": "materials/chapter_01/block_02/08.1 - Список записей и копии.md",
+      "bytes": 41811,
+      "sha256": "850479c94708d775b507cd008542e0fb3cc133803164c42c9530aaf4bc00e106"
+    },
+    {
+      "path": "materials/chapter_01/block_02/09 - Цикл for и элементы данных.md",
+      "bytes": 37734,
+      "sha256": "32d8f158db29c9149492f07e6d524fd9c6161ed8ffb25256cd6cea8c988bd6fe"
+    },
+    {
+      "path": "materials/chapter_01/block_02/09.1 - Суммы, счётчики и максимум.md",
+      "bytes": 26127,
+      "sha256": "c143d7f29d5e647cf8ed577160d67fc29658e86b1c8e6ea1b4c88e8440247aa4"
+    },
+    {
+      "path": "materials/chapter_01/block_02/10 - Управление циклом и поиск.md",
+      "bytes": 44342,
+      "sha256": "b3d5f7163f193e8780f1865f36c9da487dedfec4e4ba8d66a727fd8f84807f57"
+    },
+    {
+      "path": "materials/chapter_01/block_02/10.1 - Цикл while и выход.md",
+      "bytes": 36105,
+      "sha256": "bda4890c31099ce525314b411dfb02412766667cf780ab3ae10c7dc6e4294ec1"
+    },
+    {
+      "path": "materials/chapter_01/block_02/10.2 - Пишем программу с циклами.md",
+      "bytes": 36478,
+      "sha256": "a7aa078ba711cf75d95e2360755afda6dcf2fff2d895fe6978086840d2f7153e"
+    },
+    {
+      "path": "materials/chapter_01/block_02/__init__.py",
+      "bytes": 213,
+      "sha256": "8187a4f0e5e962db9c75e75fa0577b840533c4804bd48f9d7500ef8849b8939d"
+    },
+    {
+      "path": "materials/chapter_01/block_02/code_tasks.py",
+      "bytes": 224,
+      "sha256": "73b1aaab3843d4830de6e10b0ac50b30b2f8b1a89afc197638e4cdc7197946d9"
+    },
+    {
+      "path": "materials/chapter_01/block_02/manual.py",
+      "bytes": 220,
+      "sha256": "91a7776ffe2bc3e261f751541384038e5564f8cab8704d869406a27353986dff"
+    },
+    {
+      "path": "materials/chapter_01/block_03/11 - Функции- вход и результат.md",
+      "bytes": 56431,
+      "sha256": "2b66979e040089787094d5982db3880865b0af8db4db0786a08c9d468cec159b"
+    },
+    {
+      "path": "materials/chapter_01/block_03/11.1 - Область видимости и данные.md",
+      "bytes": 42848,
+      "sha256": "616aabe2f975127ba21b4ace4eb106604fc96ba71e9e41b0f2ad61d941ee33be"
+    },
+    {
+      "path": "materials/chapter_01/block_03/11.2 - Ошибки- ищем причину.md",
+      "bytes": 35941,
+      "sha256": "39fdcde53635735ee4650022986c4447e8d4804f5de53197b36c8368ccdc900f"
+    },
+    {
+      "path": "materials/chapter_01/block_03/12 - Настраиваем Python и VS Code.md",
+      "bytes": 47478,
+      "sha256": "f228dccc10a6f46bd9eb361a87a38aea672b159ca5b5d3ade8f55310c5621c1a"
+    },
+    {
+      "path": "materials/chapter_01/block_03/12.1 - Создаём проект и репозиторий.md",
+      "bytes": 36992,
+      "sha256": "465f87628e0acbc79af85fb91661a6dd4c1bc5b3c69ca2e69eed6ea998274380"
+    },
+    {
+      "path": "materials/chapter_01/block_03/13 - Первый коммит в Git.md",
+      "bytes": 42708,
+      "sha256": "9e5f88111b53678da45fb319ab2b4bdc2e7af831616741f65d281b6918aafdc2"
+    },
+    {
+      "path": "materials/chapter_01/block_03/13.1 - Отправляем код на GitHub.md",
+      "bytes": 38469,
+      "sha256": "1b7a06eb348d3bb699b82a40b3571699aa6c88c738bb3006c551dad55c3da3a9"
+    },
+    {
+      "path": "materials/chapter_01/block_03/13.2 - Название задачи и Git.md",
+      "bytes": 47086,
+      "sha256": "9ceb84ea6a84bfbbf01f040c0a1112d08ed9c47690c1264bf1cdfe79edc0b847"
+    },
+    {
+      "path": "materials/chapter_01/block_03/14 - Создаём задачу и карточку.md",
+      "bytes": 43163,
+      "sha256": "e0fe0142f19db0a2abb899f6e4b22bb7171ae5fb7df5b3d196d4262b29d0ee9f"
+    },
+    {
+      "path": "materials/chapter_01/block_03/14.1 - Соединяем готовые функции.md",
+      "bytes": 39340,
+      "sha256": "6af5f80b94d04d1fe00a192df7003e14a66787cd305b43fc62195163ad2a7813"
+    },
+    {
+      "path": "materials/chapter_01/block_03/14.2 - Отладка своего проекта.md",
+      "bytes": 54092,
+      "sha256": "2bc1ecc2940388e123fde14e23f4c1693af3cb7ecf0f53cbf6d3ff63893505f6"
+    },
+    {
+      "path": "materials/chapter_01/block_03/15 - Ввод и обработка ошибок.md",
+      "bytes": 41577,
+      "sha256": "60c115b6f7923622bf9994e9377e3053ed1e78382088382ab29ed0597bcc2462"
+    },
+    {
+      "path": "materials/chapter_01/block_03/15.1 - Передаём проект дальше.md",
+      "bytes": 47390,
+      "sha256": "eaaa32951e1fe096ea49f44933e9cdb2b05fc0f656745a31d1aeda30fde88e8b"
+    },
+    {
+      "path": "materials/chapter_01/block_03/__init__.py",
+      "bytes": 213,
+      "sha256": "1695bf642eeb7b72f6b170fcff5f45a13f299f327b288654d6d41ef83b54fc06"
+    },
+    {
+      "path": "materials/chapter_01/block_03/code_tasks.py",
+      "bytes": 224,
+      "sha256": "eebbff0077e32c27f43d52dddac134b27f44b3b6d412181e9b34cdec39f2e946"
+    },
+    {
+      "path": "materials/chapter_01/block_03/manual.py",
+      "bytes": 220,
+      "sha256": "2bb8f09b88ca8ec8f38b2f9b9dc125678651ded4e8b888ddbdfd776ef83f33dc"
+    },
+    {
+      "path": "materials/chapter_01/block_04/16 - Запускаем каркас Planner.md",
+      "bytes": 47472,
+      "sha256": "bafad5505e8ad84f3f037fc0efd8fba97662cae97653e15747f36ed493c7d797"
+    },
+    {
+      "path": "materials/chapter_01/block_04/16.1 - Проверяем ввод задачи.md",
+      "bytes": 36305,
+      "sha256": "20efd6f2f10d32b112799fa96b1fb39d46f2164bfbbb0de7ebc36dabe1391dbf"
+    },
+    {
+      "path": "materials/chapter_01/block_04/17 - Добавляем первую задачу.md",
+      "bytes": 40827,
+      "sha256": "9e76ef4b1f85df72f16d20b9f7cb05ae1ba0f13fa176a0eb78364a801bbe728c"
+    },
+    {
+      "path": "materials/chapter_01/block_04/17.1 - Показываем список задач.md",
+      "bytes": 26100,
+      "sha256": "b9478a68f528d8475f5af977579da49be2d9a342c9236e1d97de3b1a88ff5460"
+    },
+    {
+      "path": "materials/chapter_01/block_04/18 - Находим задачу по номеру.md",
+      "bytes": 35499,
+      "sha256": "6e2b18c3fd4e6294035242d9bd8f35ea18f323691eca6bee3e48ed41f8606bca"
+    },
+    {
+      "path": "materials/chapter_01/block_04/18.1 - Отмечаем задачу выполненной.md",
+      "bytes": 36421,
+      "sha256": "674ad3bd5a9c4170ef8d24d203ba0e38346f2df3041749c40c5be61b5796c07f"
+    },
+    {
+      "path": "materials/chapter_01/block_04/19 - Ищем задачи по названию.md",
+      "bytes": 40150,
+      "sha256": "49a6552b78d76903c7bc58795cfaa9ecffdd06563019c14db7d6a8375486a4bc"
+    },
+    {
+      "path": "materials/chapter_01/block_04/19.1 - Считаем статистику задач.md",
+      "bytes": 44041,
+      "sha256": "3a91a2fa7f52f34adad20bb8b5f5c704bce81cae2beb4e02a14962c2eff6170c"
+    },
+    {
+      "path": "materials/chapter_01/block_04/20 - Проверяем работу Planner.md",
+      "bytes": 66848,
+      "sha256": "f84883f4d57c1e254bccbf634c1941ca48ebb8d43d082b2ac73d804e6ad0898f"
+    },
+    {
+      "path": "materials/chapter_01/block_04/20.1 - Проверяем чистую копию.md",
+      "bytes": 38425,
+      "sha256": "3d72503b36cef16c97fc0139fbddf4640c2b82d2f07e45e5e5453e6923038b34"
+    },
+    {
+      "path": "materials/chapter_01/block_04/__init__.py",
+      "bytes": 213,
+      "sha256": "b57acf3da2d03c8d8dc1c6f5fc310453fd19618a9d1398c434bf830d5620f3e5"
+    },
+    {
+      "path": "materials/chapter_01/block_04/code_tasks.py",
+      "bytes": 224,
+      "sha256": "e055290b289424ca1f1ab6f4300b1d665a1c758455316a72ee1010a78f85d806"
+    },
+    {
+      "path": "materials/chapter_01/block_04/manual.py",
+      "bytes": 220,
+      "sha256": "01b426cb5d14f35cfb8043cef12049d14d27dbfa6b07651ce81b72c711bdad7d"
+    },
+    {
+      "path": "materials/chapter_01/numbering.py",
+      "bytes": 214,
+      "sha256": "92d378270e221268d9c75cacc349eeaac4695f18516736e4eefa79c8cd66f0b1"
+    },
+    {
+      "path": "materials/chapter_01/track.json",
+      "bytes": 246,
+      "sha256": "b0486b72d4ad1260e52433e524ed485604395ad11dd92ffde73e6b9c72b3f4de"
+    },
+    {
+      "path": "materials/chapter_01_archive/__init__.py",
+      "bytes": 212,
+      "sha256": "3fcdd75b3a0a5ac8fc314ed6ee22c73008a2d6ecb3facf7f28fd42207ec0d775"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_00/__init__.py",
+      "bytes": 221,
+      "sha256": "2c99848135213be84f86dcc67194cf15eaba9e0ae2ac46c141581d440292abaf"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_00/manual.py",
+      "bytes": 228,
+      "sha256": "d24bd12742e5a9ac1680120ddf7cda33e96eb73cf7f570ba945cc028bafe7c7f"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_00/План обучения.md",
+      "bytes": 25282,
+      "sha256": "c1d510b0924ed94826fd983110a18eb75000521cee1256f2b0d3d873a0b88778"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_01/01 - Как Python выполняет программу.md",
+      "bytes": 24117,
+      "sha256": "f989ca52934d2ae3c6e18dee6220d1494f557d62d61c7acdebdb558fa488b50d"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_01/02 - Терминал, файлы и запуск скрипта.md",
+      "bytes": 28894,
+      "sha256": "9903b2c3ff62fb5e85ae23b1af256e4f96d8bfe781ff725968bdbf326d95598b"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_01/03 - Git, GitHub и история изменений.md",
+      "bytes": 29810,
+      "sha256": "c2fead7ded2367da2e2cd46949d8066960be255235f4e6dfcec841f20373fe61"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_01/03.1 - Состояния файлов, staging и diff.md",
+      "bytes": 21521,
+      "sha256": "555649a455d26f07795eb7fa043913b0d19d6e0e552f248f3ac8e3ab9bc84958"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_01/03.2 - GitHub, remote, авторизация и push.md",
+      "bytes": 28793,
+      "sha256": "f7b4e8f1c6e551ad0fc35e5edf18b66a61df1ae3ebb66a10f7476fa32c9b5094"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_01/03.3 - Clone и получение своего проекта заново.md",
+      "bytes": 24162,
+      "sha256": "7b9c09b5d27d1caf0eb1ea22f50a47ba537aee6c72d7a0a877ecaa24ba266c56"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_01/04 - Переменные и базовые типы.md",
+      "bytes": 23265,
+      "sha256": "ed9281965311dc0cae5d43ea243f157bb20a21a5905ac0017e95799b7bc80f1c"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_01/05 - Числа, операции и преобразование типов.md",
+      "bytes": 26255,
+      "sha256": "f26a9458fe3b22a2eff960cdd388ac671acb65bc938b6fb6d0800691a456938e"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_01/__init__.py",
+      "bytes": 221,
+      "sha256": "97a04299b6df1ef9d88cc3b29c78114e7cd72247d3b3aaa93b2839f18e56708d"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_01/code_tasks.py",
+      "bytes": 232,
+      "sha256": "5ab76476b60948d84fbe77e792aa6e70bc4ea69d6f7f80117d4c2aafc05f8f37"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_01/manual.py",
+      "bytes": 228,
+      "sha256": "e41aee8e535e8e4f72211616fc01bdcaed128c4bb294b4e5d70c0a9945576c82"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_02/06 - Строки и форматирование.md",
+      "bytes": 24886,
+      "sha256": "a9277272bc52d766a6f87dc15c65592e78770e87aa054d57b691f593bb4b0888"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_02/07 - Boolean, сравнения и логика.md",
+      "bytes": 24902,
+      "sha256": "1ab3559d3d577786099dbf1e892eab0bc121b46ae719ea79631e6bc73e4d4535"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_02/08 - Ветвления if elif else.md",
+      "bytes": 28414,
+      "sha256": "8412805b85cccb5344eddba68a908a84c881f6b66415bf691e13cbe92b594abc"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_02/09 - Цикл for и последовательности.md",
+      "bytes": 23599,
+      "sha256": "a772e52ab7066df311aabf1c3d5e858a5e8c87825bfbc2ab8c87f3c8caf6fa48"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_02/09.1 - Накопление, счётчик и итог после цикла.md",
+      "bytes": 24482,
+      "sha256": "6aa915e3840efec7e72c17b9bcbcb3576cc63ef0d9a25f6c481741c45f48d859"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_02/10 - Цикл while и проверка ввода.md",
+      "bytes": 23936,
+      "sha256": "8c4c1448674471c6ae1582690788103cfce3fecdea257a3794b189fc1fc1dade"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_02/10.1 - Повторный ввод и безопасный выход.md",
+      "bytes": 22402,
+      "sha256": "e03eaa484529901476ec290ad019045c91970d758e5420386157db17e4f3c436"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_02/__init__.py",
+      "bytes": 221,
+      "sha256": "712f4ed4a19d5a97f9c024d8f77189b150da03fb1f1fe204b5245a0b5058bece"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_02/code_tasks.py",
+      "bytes": 232,
+      "sha256": "f4ba11c8befcfb6c446e783a1a5d60ff1b0506186d7184449b7a16c5f688606c"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_02/manual.py",
+      "bytes": 228,
+      "sha256": "33cb2d2330c030db7c6edb84ed5a95cd75330e46c8e33215a7e12eee06894acb"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_03/11 - Списки, кортежи и множества.md",
+      "bytes": 27048,
+      "sha256": "1631a49632cf33c5673063bde8d1344337d77fabc5df45ff8c9a6447c213b41f"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_03/11.1 - Другие коллекции, текст и распаковка.md",
+      "bytes": 20708,
+      "sha256": "c98ad695b97a0d51695f608661908f262a1c60369ea11ea3db191c9a1fc2c005"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_03/12 - Словари и модель задачи.md",
+      "bytes": 27134,
+      "sha256": "82ef812932a15c1461c0648ab418257e6eedcc53aad5b04f7bd97f47f519200f"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_03/12.1 - Список словарей и границы копирования.md",
+      "bytes": 23832,
+      "sha256": "a3c8ad9084376038aa108bb96cfc2b2631c5b3971ed153012a1b89a4974c727d"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_03/13 - Функции, параметры и return.md",
+      "bytes": 23803,
+      "sha256": "aa09b4369e6a5f02b973348977e58576407b10a4e7aaaab2303739b80203b003"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_03/13.1 - Результат функции, локальные имена и состояние.md",
+      "bytes": 23748,
+      "sha256": "2afac1bf99155e6fc6e56f652118b4e90a7f6804e1009f7ab2a138838a8d3a29"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_03/14 - Декомпозиция и чистые функции.md",
+      "bytes": 27812,
+      "sha256": "51122250130d0f32bd40143e62951d15d78e4256438a98a8228f9431c7b19a65"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_03/15 - Ошибки, traceback и отладка.md",
+      "bytes": 19834,
+      "sha256": "4e80188d62ffdf7c36e0b315483613f1a6bb45e49a2c72d2fa829232e07fd64b"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_03/__init__.py",
+      "bytes": 221,
+      "sha256": "13b1f4740c48059ab8956c82f558c5428769b67481aba8d54304e4ba49f02a36"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_03/code_tasks.py",
+      "bytes": 232,
+      "sha256": "92a1d8906a0b08bce58e28606489097a0b2d14d72ce7c69f1b6f413ec01000dd"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_03/manual.py",
+      "bytes": 228,
+      "sha256": "ae0d6ec30c0f9a095f3406fa19f683cca7ac962af7da52036f2b2a1a710b74a6"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_04/16 - Проектное меню и валидация.md",
+      "bytes": 24518,
+      "sha256": "273da0f4d6ef2075fbd52cd406ce46376df37672d2e18caaaab0a39e895ddb00"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_04/16.1 - Ввод данных и границы отказа.md",
+      "bytes": 355,
+      "sha256": "3af664c29c3fa5482e06b0d0c017e11cd61416bff47f48b17ce95e3b90b441af"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_04/17 - Проект добавление и вывод задач.md",
+      "bytes": 18859,
+      "sha256": "ce32f0f1e1fc8f2a4ac044b6fdabdfb8e45e38d7ef1d19ec86bad6c58696bb7b"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_04/17.1 - Полный вывод и пустое состояние.md",
+      "bytes": 20042,
+      "sha256": "db2eaa91972ea30aaa34b08e8606e5e46614e541f439fc76424d694d8c17f5f6"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_04/18 - Проект поиск, статус и статистика.md",
+      "bytes": 20329,
+      "sha256": "a8814ac53beb5a8dc2503ec7a0da14eb6ebe3c5499e5892d555853a73617dd25"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_04/18.1 - Поиск по части названия.md",
+      "bytes": 20579,
+      "sha256": "0d2db42f927aed42f0d8c30082042a8c2df54d68414cf423f05e861aafccfba8"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_04/18.2 - Статистика и проверка согласованности.md",
+      "bytes": 23873,
+      "sha256": "9d7803eaee9f656c82c967f4160d719a90f001fed8666abcd0af03dd3d06413a"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_04/19 - README, .gitignore и публикация.md",
+      "bytes": 25228,
+      "sha256": "53bd8624f04fb7eead32faa11e13b839a8d2ba8d3b53348431bed3dbb4ddbb55"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_04/19.1 - Проверка передачи из чистой копии.md",
+      "bytes": 27523,
+      "sha256": "5375b863dc0a00dbeb183d282b47be9cbcbef84256c71aa1585fb50d87681fad"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_04/20 - Контрольная точка месяца.md",
+      "bytes": 26051,
+      "sha256": "e508cc787b6eed94b12f4339ebb00dc7e5d1c0ff96e5a3ab47b4b323f5f7b9e1"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_04/__init__.py",
+      "bytes": 221,
+      "sha256": "1e7c5fa1722191ef73f967f578a3a55e09c04f79d3c0a94145c606489c74e405"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_04/code_tasks.py",
+      "bytes": 232,
+      "sha256": "0f33b988f40a2b11f647eee89092509295d1d6a5c9b526a8a08c09bbe4bf5509"
+    },
+    {
+      "path": "materials/chapter_01_archive/block_04/manual.py",
+      "bytes": 228,
+      "sha256": "7959dce71c8358d972631d1b3e66a0b9807a242de6c5e50ece8c4c9ee987f61c"
+    },
+    {
+      "path": "materials/chapter_01_archive/README.md",
+      "bytes": 2954,
+      "sha256": "63e59a1e0a474129894265216e31c09c6c908f0398d409eb1e07031dde78c4e4"
+    },
+    {
+      "path": "materials/chapter_01_archive/track.json",
+      "bytes": 253,
+      "sha256": "d1b16b3e61423f750d5f57e556aab37940a473efae699a931921040bffd6ba6c"
+    },
+    {
+      "path": "materials/chapter_02/__init__.py",
+      "bytes": 204,
+      "sha256": "0f3362cfa0706d7b3d728e1538edfd9cd4d995a3037cd0779191ac317a01f72b"
+    },
+    {
+      "path": "materials/chapter_02/block_00/__init__.py",
+      "bytes": 213,
+      "sha256": "7259d334e1410918fe2d3076696791d11b176c2c1f1581ec525fd31a8450a8f4"
+    },
+    {
+      "path": "materials/chapter_02/block_00/manual.py",
+      "bytes": 220,
+      "sha256": "c0ef5bd6e2f069841fdf35d639091d7a10d73c1a83308ce15afd92c562289f21"
+    },
+    {
+      "path": "materials/chapter_02/block_00/План обучения.md",
+      "bytes": 17992,
+      "sha256": "2d1f18ee77f29f8fedecf8e3624db16a5fff52cc4ac9cce267ee07bdbc3cd247"
+    },
+    {
+      "path": "materials/chapter_02/block_05/21 - Переход от первого месяца, разбираем Console Planner.md",
+      "bytes": 53597,
+      "sha256": "ff67664d7fd12620693e376e712262a2c13c1567d8eeae47468f7f7c800e2611"
+    },
+    {
+      "path": "materials/chapter_02/block_05/21.1 - Функция как контракт, вход, правило, результат.md",
+      "bytes": 54496,
+      "sha256": "409db89d04deb5620848293dbe043804c53e11515988cc38ac9b3a9aa841a415"
+    },
+    {
+      "path": "materials/chapter_02/block_05/21.2 - Позиционные, именованные аргументы и значения по умолчанию.md",
+      "bytes": 48932,
+      "sha256": "46bbc57ed4226a5b6e31aee929a28559b2e23c7c7edd9e870ef45ba093e801fc"
+    },
+    {
+      "path": "materials/chapter_02/block_05/22 - Область видимости и изменяемые объекты.md",
+      "bytes": 39900,
+      "sha256": "42cc43fac80928f82fa4ee65296569bb0433311f58bb8fe005c04b896a2fe656"
+    },
+    {
+      "path": "materials/chapter_02/block_05/22.1 - Состояние запуска и изменяемый default.md",
+      "bytes": 39406,
+      "sha256": "d65affb44f5c0772f3d37420701474f0b3f02a5c6276b7ffc3e99dc61d96bf31"
+    },
+    {
+      "path": "materials/chapter_02/block_05/23 - args, kwargs и распаковка.md",
+      "bytes": 42087,
+      "sha256": "4ac958f9ab5ae093e5e5587fabdec286a87730103b1f34a4438258fcf2f6978a"
+    },
+    {
+      "path": "materials/chapter_02/block_05/24 - Функция как значение, callbacks и замыкания.md",
+      "bytes": 50255,
+      "sha256": "522297cbc67f712629119bfe2630c64846c846fa5665d9f1fcd86419c6584073"
+    },
+    {
+      "path": "materials/chapter_02/block_05/24.1 - Вложенная функция и замыкание.md",
+      "bytes": 41100,
+      "sha256": "28de2b1f6a4e61a7b9ca81d51621006c73269ecddc9fd8f3a9d684ab4dc52774"
+    },
+    {
+      "path": "materials/chapter_02/block_05/25 - Диагностическая обёртка существующей функции.md",
+      "bytes": 48590,
+      "sha256": "d3035f03e16bab705914c2bd3c220abe77331ad1a609d16ed8d86f0e849fabd1"
+    },
+    {
+      "path": "materials/chapter_02/block_05/25.1 - Синтаксис @ и границы применения.md",
+      "bytes": 59847,
+      "sha256": "969aa6f8b5488384a27f2180f027aeaef5e462a919d92d44668e8feedd52d3fc"
+    },
+    {
+      "path": "materials/chapter_02/block_05/__init__.py",
+      "bytes": 213,
+      "sha256": "4c5159191a37abb0618399f5c05a79fa438651dee3edd7b6a5ccbfcef511dcf6"
+    },
+    {
+      "path": "materials/chapter_02/block_05/code_tasks.py",
+      "bytes": 224,
+      "sha256": "54eba332a145b05821090c15df66a839de8e0d7e6344c3ec6d7229eb9a949aa6"
+    },
+    {
+      "path": "materials/chapter_02/block_05/manual.py",
+      "bytes": 220,
+      "sha256": "6835140b4ff875c3229e101cc95ac484b9d15f2af6e1eb23ae09198c6554f022"
+    },
+    {
+      "path": "materials/chapter_02/block_06/26 - Как возникает исключение и как читать traceback.md",
+      "bytes": 31593,
+      "sha256": "ef0b72a5976cbfdf8bed9c562f7f5d3f5ca927a3c2548ffb45210f09a635de20"
+    },
+    {
+      "path": "materials/chapter_02/block_06/26.1 - try и конкретные except.md",
+      "bytes": 31752,
+      "sha256": "95b0fb99be06403f0247865ff77ef7866ffaec196da3d216c3fd466c64896901"
+    },
+    {
+      "path": "materials/chapter_02/block_06/27 - else, finally, raise и собственные исключения.md",
+      "bytes": 33239,
+      "sha256": "ef7b201132518cf297cb9270594638d09998dde8c836f635809fb97103942ed1"
+    },
+    {
+      "path": "materials/chapter_02/block_06/27.1 - Собственная ошибка и обязательное получение задачи.md",
+      "bytes": 28970,
+      "sha256": "89b6b066d6a694cf50b94921f5c34526a8af162c9198433217b968b34881772c"
+    },
+    {
+      "path": "materials/chapter_02/block_06/28 - Модули, импорты и точка входа.md",
+      "bytes": 27146,
+      "sha256": "4eeb3c2ce0f3195220a2455d429d991c2a1aa299a2836abc102e138b06896b1f"
+    },
+    {
+      "path": "materials/chapter_02/block_06/28.1 - Пакеты, init.py и направление импортов.md",
+      "bytes": 27151,
+      "sha256": "40b75cd6e49bf048e22492994d182daf8788529f7157bb5ad6f2fed0fd2d4bc1"
+    },
+    {
+      "path": "materials/chapter_02/block_06/28.2 - Отделить CLI от сборки.md",
+      "bytes": 36928,
+      "sha256": "1525b4a45a887e67d6be16a929060113ee56253500c8bd291cf0d9826273ebaf"
+    },
+    {
+      "path": "materials/chapter_02/block_06/29 - Файл как ресурс, путь, режим, with и UTF-8.md",
+      "bytes": 32735,
+      "sha256": "87673eb093bf3ca99803d9ccc944cd7b14455e2523c61d7819d6ea01e5610608"
+    },
+    {
+      "path": "materials/chapter_02/block_06/29.1 - JSON-представление настоящих задач.md",
+      "bytes": 41304,
+      "sha256": "36641b7eaabfd2e32c4e624b75705d9524320e25c27f45cf5df197cdf8cbf7e0"
+    },
+    {
+      "path": "materials/chapter_02/block_06/30 - Подключить загрузку и сохранение после изменения.md",
+      "bytes": 59659,
+      "sha256": "cdd067e1266540da1256d9a2725997a4fc0dd2141e14ed616b586fb97c37b8e6"
+    },
+    {
+      "path": "materials/chapter_02/block_06/30.1 - Проверить форму восстановленного состояния.md",
+      "bytes": 28042,
+      "sha256": "03170c1aeacff19d26f8f057655370b26ca5779babe633f996845ae30252cee9"
+    },
+    {
+      "path": "materials/chapter_02/block_06/30.2 - Ошибки хранения и сохранность данных.md",
+      "bytes": 35554,
+      "sha256": "d86e393043746270b9b150d7e5a17f0598a8ea678359bb98a17ed28bdcc03f96"
+    },
+    {
+      "path": "materials/chapter_02/block_06/__init__.py",
+      "bytes": 213,
+      "sha256": "ed658809ed166c72c6723a720f5dcd4fcbe600b550a2d4c29c54e15506a7ee9a"
+    },
+    {
+      "path": "materials/chapter_02/block_06/code_tasks.py",
+      "bytes": 224,
+      "sha256": "bf72675d040f0440deda7767495a7b5c8368c5b399affc527938e7b725e2746c"
+    },
+    {
+      "path": "materials/chapter_02/block_06/manual.py",
+      "bytes": 220,
+      "sha256": "0654a19ea653869b13fed1fda59c8fa1b5c6c3a602dbc0b76dc297f2324e94c0"
+    },
+    {
+      "path": "materials/chapter_02/block_07/31 - Класс, объект, init и self.md",
+      "bytes": 22660,
+      "sha256": "3877bbfe3cf0fa45653b40b24b4bd1ed33559f5ccc998fb980cb9ac841db8fd7"
+    },
+    {
+      "path": "materials/chapter_02/block_07/31.1 - Обычная Task в настоящем пакете.md",
+      "bytes": 33349,
+      "sha256": "871aa044439010fa347809b8e57443383fb3d7de0246c8b9cfecab51f5c0a87b"
+    },
+    {
+      "path": "materials/chapter_02/block_07/32 - Экземпляр, атрибут класса и общие ссылки.md",
+      "bytes": 25251,
+      "sha256": "059b7b3f5dd556d29e1f689d54b8a5de8d49799621c52fad0e18298c9f2a9e2c"
+    },
+    {
+      "path": "materials/chapter_02/block_07/32.1 - Атрибуты, методы и str.md",
+      "bytes": 36345,
+      "sha256": "42142559d820b63e56eef364afff2e2ecdab9f180f9a2a3fa7c1976245422392"
+    },
+    {
+      "path": "materials/chapter_02/block_07/33 - Ответственность файлов небольшого проекта.md",
+      "bytes": 108,
+      "sha256": "a7743e7ef64a82887295523fb4952beb66ced76e3088c92ba8be5165b5cc0f56"
+    },
+    {
+      "path": "materials/chapter_02/block_07/33 - Представление, инкапсуляция и вычисляемое property.md",
+      "bytes": 33633,
+      "sha256": "72bf4be757c143719ed6c5e6df319a16df49feb7466a848cb47ab843afa3cc1d"
+    },
+    {
+      "path": "materials/chapter_02/block_07/33.1 - Task на границе словаря.md",
+      "bytes": 33305,
+      "sha256": "01d3c3a8622b74315e78a777e73d237f9347b3b17a706815a389535fdfdc7fb0"
+    },
+    {
+      "path": "materials/chapter_02/block_07/34 - Инкапсуляция, геттеры, сеттеры и property.md",
+      "bytes": 42918,
+      "sha256": "3254f9d0d5cdb73c1f4351e784ff8b3fec756206e577751bc1c7f5d811ced23e"
+    },
+    {
+      "path": "materials/chapter_02/block_07/34 - Файлы, pathlib, with и кодировка.md",
+      "bytes": 970,
+      "sha256": "d3f0a14c893dfed13490aff804aed76534f9b48df0422a06db36269688c0220f"
+    },
+    {
+      "path": "materials/chapter_02/block_07/34.1 - Независимые tags и совместимость записи.md",
+      "bytes": 34278,
+      "sha256": "a7fe83aa21e676aaeae77de6956584befa91a1cf0e03eef64bdeac3cf19d610a"
+    },
+    {
+      "path": "materials/chapter_02/block_07/35 - Выбор формы и базовая композиция.md",
+      "bytes": 31663,
+      "sha256": "529bbd7f56958f710756e3ef4905a5972f8aa89baf37e3e3e57708066a7adb24"
+    },
+    {
+      "path": "materials/chapter_02/block_07/__init__.py",
+      "bytes": 213,
+      "sha256": "166fbf62ec7836967be0fefdd1dc44d7ec19ea97462a22900ce98968d8277167"
+    },
+    {
+      "path": "materials/chapter_02/block_07/code_tasks.py",
+      "bytes": 224,
+      "sha256": "8befc211d31808ab45c84d28bcbdb1470b2c6e40b6248d7e2e6bfabc281994a9"
+    },
+    {
+      "path": "materials/chapter_02/block_07/manual.py",
+      "bytes": 220,
+      "sha256": "9fa97984f824675a9ab14ccbcfd6d8a2f306e200ff0e2e045e0bccaf5e60b8df"
+    },
+    {
+      "path": "materials/chapter_02/block_08/36 - Включить Task в существующий Planner.md",
+      "bytes": 38019,
+      "sha256": "610f6a0b8929684e2cae4914018a6a42b40cc5891f3d79566c5c27a0e6fbf9c9"
+    },
+    {
+      "path": "materials/chapter_02/block_08/36.1 - JsonStorage вокруг готового хранения.md",
+      "bytes": 32878,
+      "sha256": "56084b0b890d7ad06aa02f2126dc6a83022ece027bb102d55aa4cd8cb27807f7"
+    },
+    {
+      "path": "materials/chapter_02/block_08/37 - MemoryStorage и один договор.md",
+      "bytes": 24878,
+      "sha256": "ba00960844283344b95ed8bd1c5b7c7a800a85c27e0720a62105f13da453809d"
+    },
+    {
+      "path": "materials/chapter_02/block_08/37.1 - PlannerService и перенос чтения.md",
+      "bytes": 38437,
+      "sha256": "3e4c85ed93b814e5d69c98439c2b9db6ad427ff3076a5271b2970f6d948d80cf"
+    },
+    {
+      "path": "materials/chapter_02/block_08/37.2 - Единое изменение и тонкий CLI.md",
+      "bytes": 44790,
+      "sha256": "cda543706310fc68a50f6190913fb45cc669991b8532afdfc6ea134f7ddc1bb4"
+    },
+    {
+      "path": "materials/chapter_02/block_08/37.3 - Виртуальное окружение проекта.md",
+      "bytes": 33248,
+      "sha256": "1b3a9d985260a95feb2ca6948bb15a1893aa18c79a32bdef3f7db0f57a0900cf"
+    },
+    {
+      "path": "materials/chapter_02/block_08/38 - Первые тесты через pytest.md",
+      "bytes": 44109,
+      "sha256": "cbb5a894523d26ec86cc697385ae61f4a86e0a6a200b649c2b25aae1e3bde49c"
+    },
+    {
+      "path": "materials/chapter_02/block_08/38.1 - Свежая fixture и параметризация.md",
+      "bytes": 43037,
+      "sha256": "a600d4740b52be4e2f75b48b4da3d073b81eab446abb4925ef963efdb63a86bc"
+    },
+    {
+      "path": "materials/chapter_02/block_08/39 - Файловая интеграция через tmp_path.md",
+      "bytes": 35936,
+      "sha256": "ae07edc148f5a54be9632eb070abe728559a415bdeb43f11f6d95e2cca60a104"
+    },
+    {
+      "path": "materials/chapter_02/block_08/39.1 - SOLID и проверяемая граница CLI.md",
+      "bytes": 41794,
+      "sha256": "777f126adf6340322e6901e077e964927af6fe0a4ddd5a8f135266a8bdb11bb9"
+    },
+    {
+      "path": "materials/chapter_02/block_08/39.2 - Регрессия команд, сохранений и безопасной сборки.md",
+      "bytes": 45982,
+      "sha256": "3d01e0e1ae0beb13e1c2175ccaf810c49376e0e2fa97425cd2037f6e73383e55"
+    },
+    {
+      "path": "materials/chapter_02/block_08/40 - Финальный проект 2, модель, сервисы и хранение.md",
+      "bytes": 38326,
+      "sha256": "6d62845cc6139cd7e7ee360ed4d1a1c1c4a751d0824287a7644b5450d3fade0b"
+    },
+    {
+      "path": "materials/chapter_02/block_08/40.1 - Финальный проект 3, тесты, README, GitHub Release и защита.md",
+      "bytes": 52485,
+      "sha256": "d0010865183f7fe299cbbabefc79546e804990b0fe19240185d1c86a69ea9fe5"
+    },
+    {
+      "path": "materials/chapter_02/block_08/__init__.py",
+      "bytes": 213,
+      "sha256": "18fe950729930670c7712d270fa72b7625d5c9f8526a59d7ca9abb07db5253ec"
+    },
+    {
+      "path": "materials/chapter_02/block_08/code_tasks.py",
+      "bytes": 224,
+      "sha256": "7334963d81dd079f4db80960c8a448cc6ccf004ddebb9163c1d350e8c04943f4"
+    },
+    {
+      "path": "materials/chapter_02/block_08/manual.py",
+      "bytes": 220,
+      "sha256": "d331bcf5b5cc08d5cec6880d85486c6b32b6ad95894df1b0e2b50f07bb371118"
+    },
+    {
+      "path": "materials/chapter_02/numbering.py",
+      "bytes": 214,
+      "sha256": "739907192c2dc4de4358bd37d23ea7eed415c64a578114e66cf3f46748740278"
+    },
+    {
+      "path": "materials/chapter_02/README.md",
+      "bytes": 3128,
+      "sha256": "31a47421082da76c34b3d2196c2bd79edd4a0b04e61372922b0e1c387d138702"
+    },
+    {
+      "path": "materials/chapter_02/track.json",
+      "bytes": 279,
+      "sha256": "d0cbec39b34db3af6869bd5f56e129b206ece530b3f5c193b319febdd725e400"
+    },
+    {
+      "path": "materials/chapter_03/__init__.py",
+      "bytes": 204,
+      "sha256": "6943979baaed492a00bf4971221ca322662206dab682d681f0fdf1064d312ec8"
+    },
+    {
+      "path": "materials/chapter_03/block_00/__init__.py",
+      "bytes": 213,
+      "sha256": "5707b222dc1c3524e3054504a54ff915e18a3b7cb6ced3e9ae59614625320a2a"
+    },
+    {
+      "path": "materials/chapter_03/block_00/manual.py",
+      "bytes": 220,
+      "sha256": "676ca928f6295a808f6e4e59387ac074f2b093a0a80df24239bd07d2093fa92e"
+    },
+    {
+      "path": "materials/chapter_03/block_00/План обучения.md",
+      "bytes": 13135,
+      "sha256": "ce3ba2530b033f98c46775636a601879140aad91258a2357c4e8d459ad8be120"
+    },
+    {
+      "path": "materials/chapter_03/block_09/41 - Адрес и метод запроса.md",
+      "bytes": 39949,
+      "sha256": "fbaa2003c6b4e7d8fbd4d1a02498b21ad975b4a5d85f0339b2708ef8dabebce0"
+    },
+    {
+      "path": "materials/chapter_03/block_09/41.1 - Заголовки и тело запроса.md",
+      "bytes": 34200,
+      "sha256": "45a0fcd9e6ea5d6261da389f7869bd455a34ce7691baea590638d0f2169e4db7"
+    },
+    {
+      "path": "materials/chapter_03/block_09/42 - Статус и результат запроса.md",
+      "bytes": 30715,
+      "sha256": "8814be584d14857e8c93db05dd8fee19217031cd79bfb3c091ee4e4c7e6b73b6"
+    },
+    {
+      "path": "materials/chapter_03/block_09/42.1 - Тело ответа и Content-Type.md",
+      "bytes": 35949,
+      "sha256": "008094dc000d8ba1233bcc5e003d69df15134b62fbec3cc41323cac48d9348db"
+    },
+    {
+      "path": "materials/chapter_03/block_09/43 - Методы и изменение задачи.md",
+      "bytes": 41405,
+      "sha256": "ac5454e1a600dde2e9b24b87318fe758514c45be0c1d1f623a9a8d0755ba68b7"
+    },
+    {
+      "path": "materials/chapter_03/block_09/44 - Ресурс и адрес операции.md",
+      "bytes": 27538,
+      "sha256": "e034e42b61feeb908117ad008a20ae694f9263be77412e3a594bd129ec00de3e"
+    },
+    {
+      "path": "materials/chapter_03/block_09/45 - Данные и договор запроса.md",
+      "bytes": 40947,
+      "sha256": "53693b8227d15942be164d9397447b7e323e7f52949002dafed0d4c97646a65c"
+    },
+    {
+      "path": "materials/chapter_03/block_09/45 - Почему CLI недостаточно, клиент и сервер.md",
+      "bytes": 35568,
+      "sha256": "517d80efdd20aaf03286c657e5f5797c5ecc0b43206eca2317e58da2c959ea11"
+    },
+    {
+      "path": "materials/chapter_03/block_09/46 - HTTP request, адрес, метод, headers и body.md",
+      "bytes": 16241,
+      "sha256": "bb2a3c9b800a60356bad77fc5f1e32bf4966ee887c66d9146ef0f37baf470da2"
+    },
+    {
+      "path": "materials/chapter_03/block_09/47 - HTTP response, status, headers, body и Content-Type.md",
+      "bytes": 18273,
+      "sha256": "c75bdfa1d5e9b6470d7c471b4731aadf1d997075042e6636e6d792d16439920b"
+    },
+    {
+      "path": "materials/chapter_03/block_09/48 - Методы GET, POST, PUT, PATCH, DELETE.md",
+      "bytes": 25836,
+      "sha256": "b28e15f04ec75f4d0e701bb8074f9c8167b63c5c643090674400c6b067ef36c3"
+    },
+    {
+      "path": "materials/chapter_03/block_09/49 - REST, ресурс, endpoint и URL.md",
+      "bytes": 18629,
+      "sha256": "c38d2364c538b358b2d641128eec8a55a0caf5e1b329801b900cfc8437eada1a"
+    },
+    {
+      "path": "materials/chapter_03/block_09/50 - Path, query, body и контракт API.md",
+      "bytes": 23735,
+      "sha256": "6574076140dbcf79b050193b5a33e8d213ddbb402d8a75753e5b77a287cd2ac2"
+    },
+    {
+      "path": "materials/chapter_03/block_09/__init__.py",
+      "bytes": 213,
+      "sha256": "f48a03646bc9245ac2b1e5db13fc739d10cbe85f2c1d86df168ce108f36d51d4"
+    },
+    {
+      "path": "materials/chapter_03/block_09/code_tasks.py",
+      "bytes": 224,
+      "sha256": "c215f5b7ebb3e4c3078cb38a5ff94309b7ca657ae83891c3b7fb4e33bda368e9"
+    },
+    {
+      "path": "materials/chapter_03/block_09/manual.py",
+      "bytes": 220,
+      "sha256": "b6e8a48f51b6fe62f92b2cb2f90fd04effd2565f7284179dfa29776be56ae882"
+    },
+    {
+      "path": "materials/chapter_03/block_10/46 - Первый запрос в Postman.md",
+      "bytes": 28268,
+      "sha256": "a884fe078b5958012e96f2347d8089643f9c3a4de878530939cdc31833949a9c"
+    },
+    {
+      "path": "materials/chapter_03/block_10/46.1 - JSON-запросы и коллекция.md",
+      "bytes": 32105,
+      "sha256": "0415a541abcd821fe6beb6b3d41acac3cd674e40001a7ff47384b69bb5ee5c33"
+    },
+    {
+      "path": "materials/chapter_03/block_10/47 - FastAPI и первый маршрут.md",
+      "bytes": 35279,
+      "sha256": "1dac063ae27f863bf34c55220da3545ee3143a68b3ccec6dc1492ef8f42879e7"
+    },
+    {
+      "path": "materials/chapter_03/block_10/47.1 - Swagger и проверка запуска.md",
+      "bytes": 30352,
+      "sha256": "485fdfae94dea1fb3537b457826ae1e72ae83c811a81818ee8dfa9f761ccf4f9"
+    },
+    {
+      "path": "materials/chapter_03/block_10/48 - Чтение данных Planner.md",
+      "bytes": 38186,
+      "sha256": "54d99e15e3c173fb60668f7878f1908e85c5fac0c1f67c7fd9a08b28641f409b"
+    },
+    {
+      "path": "materials/chapter_03/block_10/49 - Выборка внутри сервиса.md",
+      "bytes": 34362,
+      "sha256": "fe0fbd115793e71ad395f6fc5879ee7458f0881a594b1377f72f9df97d10325d"
+    },
+    {
+      "path": "materials/chapter_03/block_10/49.1 - Query и границы выборки.md",
+      "bytes": 35411,
+      "sha256": "fd724dc59ccfef7842216a5fc12cf5cecc6eeabca0ce03b6313c76b2653831c6"
+    },
+    {
+      "path": "materials/chapter_03/block_10/50 - Модель входящего JSON.md",
+      "bytes": 27389,
+      "sha256": "7ce40177eca499284fec442cfa4c6ad784afe1303855a289cb8037b62d97f621"
+    },
+    {
+      "path": "materials/chapter_03/block_10/50.1 - Создание задачи через POST.md",
+      "bytes": 30243,
+      "sha256": "12fc54ee9a1977e2b4e8576c0fbd3e6a487e2dcef2c0308fbf3d9993ff3be1b6"
+    },
+    {
+      "path": "materials/chapter_03/block_10/51 - Postman, отправляем запрос вручную.md",
+      "bytes": 19545,
+      "sha256": "aa084793782e6d46b93ee5bbcacd6d3e7321bfbb9fe65533ef75e0345fa8d178"
+    },
+    {
+      "path": "materials/chapter_03/block_10/54 - Path-параметры и поиск объекта.md",
+      "bytes": 27026,
+      "sha256": "c6fb26854ba776064ed0721d65cdadb7570ed5c118af4c063362c17cf07762c1"
+    },
+    {
+      "path": "materials/chapter_03/block_10/56 - Pydantic BaseModel и request body.md",
+      "bytes": 26807,
+      "sha256": "09bb888453b606949d6ac2342d92b2db3cac6fb058d3d0a93db49cbb0c2be5d5"
+    },
+    {
+      "path": "materials/chapter_03/block_10/__init__.py",
+      "bytes": 213,
+      "sha256": "9d6215712d5643a2183d34e070dda91c6edfda227ca20491836a664e5dfd8d6a"
+    },
+    {
+      "path": "materials/chapter_03/block_10/code_tasks.py",
+      "bytes": 224,
+      "sha256": "da8ac673683953adb31d02f68c2b7fdafbcf618ea8304102e01b9e5b7f187cec"
+    },
+    {
+      "path": "materials/chapter_03/block_10/manual.py",
+      "bytes": 220,
+      "sha256": "08a3d4d3330031f6c02c082fcd283b51caf5fda4395df9461b8c4e0ea41eafb9"
+    },
+    {
+      "path": "materials/chapter_03/block_11/51 - Очистка входной строки.md",
+      "bytes": 27960,
+      "sha256": "d3549c325ac0f6f97357453e157619de2f3685fd2db231735531f234ca51df94"
+    },
+    {
+      "path": "materials/chapter_03/block_11/51.1 - Ограничения и ошибка 422.md",
+      "bytes": 28077,
+      "sha256": "34c9fb10fa54a68d502ce3cf6d9a4b85eadd8e038be8fddde6ae89440ef3e829"
+    },
+    {
+      "path": "materials/chapter_03/block_11/52 - Схемы входа и ответа.md",
+      "bytes": 35895,
+      "sha256": "a11175d4647c92027b1dae234d509a54d54dc7a7349a42c84afbca608884fbcb"
+    },
+    {
+      "path": "materials/chapter_03/block_11/52.1 - Сохранение и серверный id.md",
+      "bytes": 40006,
+      "sha256": "35240a18853b249667ce667253f458de0e178f118e34c1ee41b6fca77ca4372f"
+    },
+    {
+      "path": "materials/chapter_03/block_11/53 - Полная замена в сервисе.md",
+      "bytes": 37417,
+      "sha256": "207edfe07f44b52a5cea9f68d98cca830982eb003ac0d5eab47d1560400321e6"
+    },
+    {
+      "path": "materials/chapter_03/block_11/53.1 - PUT и полная форма.md",
+      "bytes": 37227,
+      "sha256": "0ebbb8922483ca5443c25353156dbabdd61efc1f6d8d28d6507f04f0cc20dc21"
+    },
+    {
+      "path": "materials/chapter_03/block_11/54 - Частичное изменение задачи.md",
+      "bytes": 32242,
+      "sha256": "9a0b8a95387a1b3cd4ebb892ee38b059c688b003b96a6f432672e29736b7d665"
+    },
+    {
+      "path": "materials/chapter_03/block_11/54.1 - Пропуск поля в TaskPatch.md",
+      "bytes": 26398,
+      "sha256": "3a38ba815a7b6c66787e0130edfccfdc4319373454717f80376f76bcd7391401"
+    },
+    {
+      "path": "materials/chapter_03/block_11/54.2 - PATCH и сохранённый ответ.md",
+      "bytes": 30311,
+      "sha256": "ce848aa03602baa3d687b0ea5ec7fe7ba2c9ac9f8ddaca422070c38cd99a66cf"
+    },
+    {
+      "path": "materials/chapter_03/block_11/55 - Удаление и пустой ответ.md",
+      "bytes": 25023,
+      "sha256": "bcd2eadac13cd4fa35bdbbac876359227e4c9eb8cbd202972bf200f726bc5654"
+    },
+    {
+      "path": "materials/chapter_03/block_11/55.1 - Проверка общего ядра.md",
+      "bytes": 23993,
+      "sha256": "5e857dc2d6a1014fd527826888de7e9d618073260a1db098377d3d48e7cbd5a0"
+    },
+    {
+      "path": "materials/chapter_03/block_11/57 - Pydantic-валидация и ошибка 422.md",
+      "bytes": 30131,
+      "sha256": "1ca1dfde2b2da995c34cab3efe33836b54f442c7ec2a52d45d5af9b36d0b249f"
+    },
+    {
+      "path": "materials/chapter_03/block_11/58 - Разные схемы, TaskCreate, TaskUpdate, TaskRead.md",
+      "bytes": 49737,
+      "sha256": "336437ab69b6057b376948e9dcf641cdac47dfa8655267dde7e63136f5d2e891"
+    },
+    {
+      "path": "materials/chapter_03/block_11/59 - Хранилище в памяти и генерация идентификатора.md",
+      "bytes": 24336,
+      "sha256": "41b522d0104d2f5d268e94d2623235942b9a752b7b4b2e384763972f3fdcc86e"
+    },
+    {
+      "path": "materials/chapter_03/block_11/60 - CRUD, создать, получить список и найти по id.md",
+      "bytes": 18167,
+      "sha256": "a9b9eff03dc28cf992840d2f8be6e87baba4921c2237f80737362855cc40a15f"
+    },
+    {
+      "path": "materials/chapter_03/block_11/61 - PUT и PATCH, полная и частичная замена.md",
+      "bytes": 16609,
+      "sha256": "4eed2d429cf085b2003aa5608bacb29ec842404a0b5ad432aca7d550793306e5"
+    },
+    {
+      "path": "materials/chapter_03/block_11/__init__.py",
+      "bytes": 213,
+      "sha256": "3fa6567b120ec2e187479ed3ee18bcd29ceb3c5152c1dcddfba02dd754039b0c"
+    },
+    {
+      "path": "materials/chapter_03/block_11/code_tasks.py",
+      "bytes": 224,
+      "sha256": "2147d0cccd27db34ddbd6c035d896a3ff2d102d1b795205b9a326163e5e04b3d"
+    },
+    {
+      "path": "materials/chapter_03/block_11/manual.py",
+      "bytes": 220,
+      "sha256": "7e6043e1215f0a0deebe913bf1ef581144150bcda0148189adddba0efe0dadd2"
+    },
+    {
+      "path": "materials/chapter_03/block_12/56 - Первый HTTP-тест.md",
+      "bytes": 26536,
+      "sha256": "e899592e386337448143b4b3316801c8daff2ab1b242e43fc6ce770948c61263"
+    },
+    {
+      "path": "materials/chapter_03/block_12/56.1 - Изоляция данных HTTP-теста.md",
+      "bytes": 26538,
+      "sha256": "c329cbd8dbe8667539c4cd45b82c5ecf767b6e2ea09c59212dc810f70021a1ad"
+    },
+    {
+      "path": "materials/chapter_03/block_12/57 - Проверки операций API.md",
+      "bytes": 23782,
+      "sha256": "74923f1cec1a3439b84ed96c07b46190f3e874ccdd8d06a9fe060e8b8df8ba84"
+    },
+    {
+      "path": "materials/chapter_03/block_12/57.1 - Маршруты в APIRouter.md",
+      "bytes": 26944,
+      "sha256": "973ea3ba394ae036282fabc22573db3bc016181e13b4755689b4f7d39de9d468"
+    },
+    {
+      "path": "materials/chapter_03/block_12/58 - Границы body и path.md",
+      "bytes": 31730,
+      "sha256": "dd5f5e74e2d5d0eb158d3a14e87aa92c379c037be5b8785945c4a507458b8036"
+    },
+    {
+      "path": "materials/chapter_03/block_12/58.1 - Отказы без изменения данных.md",
+      "bytes": 25707,
+      "sha256": "e49c6570778197488ef509e1912fa1774ace6cbf9c6c3ed55a017799b9f9761c"
+    },
+    {
+      "path": "materials/chapter_03/block_12/58.2 - Выборка и схема OpenAPI.md",
+      "bytes": 23875,
+      "sha256": "d6b22f70776252d2ad213e9dc2aefc8d6c8c283ea657103fb87758b4d16bc86a"
+    },
+    {
+      "path": "materials/chapter_03/block_12/59 - Проверка слоёв Planner.md",
+      "bytes": 28169,
+      "sha256": "d83de4f27bfd1d3b870f7158eef0838aa3f98d8447a18f7bf99a8f3458001fdf"
+    },
+    {
+      "path": "materials/chapter_03/block_12/59.1 - Жизненный цикл одной задачи.md",
+      "bytes": 35158,
+      "sha256": "6f44cf76734fcc7f17e687c283190cdf65efe24e874920c6dd02a248826b0755"
+    },
+    {
+      "path": "materials/chapter_03/block_12/60 - Чистая установка проекта.md",
+      "bytes": 30748,
+      "sha256": "f3fc24e845197a16262355f532ff1f845a3f3be49ee20cbc91c3939802c733ae"
+    },
+    {
+      "path": "materials/chapter_03/block_12/60.1 - README и проверенная версия.md",
+      "bytes": 30800,
+      "sha256": "63c9981ba6c8c410c410908e4854823b8a03c8c9a3d3b1f6e0f467da2f02417b"
+    },
+    {
+      "path": "materials/chapter_03/block_12/63 - Тесты FastAPI через TestClient и независимое состояние.md",
+      "bytes": 19181,
+      "sha256": "313ac5987f13efc20b8d8f23b7aa6975492080a22fdd2946cc51b04f6a10814b"
+    },
+    {
+      "path": "materials/chapter_03/block_12/64 - APIRouter, prefix, tags и include_router.md",
+      "bytes": 18877,
+      "sha256": "ffbbcb4217265fe690ec808c48e198d38e43dd52dd22d1f854db218901cbbe8e"
+    },
+    {
+      "path": "materials/chapter_03/block_12/65 - Контракт API, границы, ошибки и регрессия.md",
+      "bytes": 16328,
+      "sha256": "006dcf0100027ce5afbd29bceb1e5f5ddb8bebdba8b441ed4d224fb401a12781"
+    },
+    {
+      "path": "materials/chapter_03/block_12/66 - Границы слоёв и тесты прикладного ядра.md",
+      "bytes": 20705,
+      "sha256": "b7c5a65b27a34bd49e391b0c165e78fc0cbc177907a452055c8e12122ccad49a"
+    },
+    {
+      "path": "materials/chapter_03/block_12/__init__.py",
+      "bytes": 213,
+      "sha256": "984b224096fadfe00b6eca2b87f8d2155b61edc916cf2011869c6abc0dc9a0ec"
+    },
+    {
+      "path": "materials/chapter_03/block_12/code_tasks.py",
+      "bytes": 224,
+      "sha256": "da7569f086092d38ce937a6d338ec5f03e935bcd68894cb1a97332f5a7526c0f"
+    },
+    {
+      "path": "materials/chapter_03/block_12/manual.py",
+      "bytes": 220,
+      "sha256": "357048e9f298708a9218cf340a6e1f038cb3178a12b5d1b8ea62b1e9147abb52"
+    },
+    {
+      "path": "materials/chapter_03/README.md",
+      "bytes": 1305,
+      "sha256": "f619bfa093e726b3768747c4e77f01cee8a446368e5fcf0c11fcdb9cc18e8eeb"
+    },
+    {
+      "path": "materials/chapter_03/track.json",
+      "bytes": 188,
+      "sha256": "48c5fdcc85d8c73a2d3aaed12cfe379fe238480b39c99be7b2fc10beba3ddc7a"
+    },
+    {
+      "path": "materials/chapter_04/__init__.py",
+      "bytes": 204,
+      "sha256": "2af051c5ba10a12f5c7dd180e66f87046216f9e9b67d0b66635772cc067fc3f5"
+    },
+    {
+      "path": "materials/chapter_04/block_00/__init__.py",
+      "bytes": 213,
+      "sha256": "b6b583434ff85faf87829769cb6c8ab4a1a113e26d8f898a2cde351491eeefa3"
+    },
+    {
+      "path": "materials/chapter_04/block_00/manual.py",
+      "bytes": 220,
+      "sha256": "ed31fdc853a81282a9ea4a414bd7e48743cf8ade0fac5a8e54d2917cb6774551"
+    },
+    {
+      "path": "materials/chapter_04/block_00/План обучения.md",
+      "bytes": 20872,
+      "sha256": "62a206f31e8b8083a25dd9690b3df828cface0aa79106cf997edc51b54aff3f7"
+    },
+    {
+      "path": "materials/chapter_04/block_13/61 - Путь HTTP-запроса внутри FastAPI.md",
+      "bytes": 15309,
+      "sha256": "ac118e2daaea0e2c3dd0a1538a4d16a428ae5bc91e981d267ed41f5a99427c9e"
+    },
+    {
+      "path": "materials/chapter_04/block_13/62 - Окружение и .env.md",
+      "bytes": 18374,
+      "sha256": "58312656be13454f169e2510bfc193e59f2e084a26608f5aed06b46445c5ee48"
+    },
+    {
+      "path": "materials/chapter_04/block_13/62.1 - Централизованные настройки.md",
+      "bytes": 14264,
+      "sha256": "468196402a9ed05e7f48dbae007cfe938de460258dd43c0b25b8d0c5be1b40b5"
+    },
+    {
+      "path": "materials/chapter_04/block_13/63 - Depends — получение готового сервиса.md",
+      "bytes": 16600,
+      "sha256": "b9e99ec96a70c4dbecb92272a3c289c4350e4a71ee3c35c07fd7f5d0332b9c2b"
+    },
+    {
+      "path": "materials/chapter_04/block_13/63.1 - Заголовки, cookies и Response.md",
+      "bytes": 16456,
+      "sha256": "6697f3f5a5b1cb233b5170a6280458d1c9801ac32bab6e54fbe2a72c4dceddec"
+    },
+    {
+      "path": "materials/chapter_04/block_13/64 - Middleware и CORS.md",
+      "bytes": 18760,
+      "sha256": "6bb846d1eb439a29408b034ae7ff14d919502d1d24c6f375e2acb7455e56d1e8"
+    },
+    {
+      "path": "materials/chapter_04/block_13/65 - Headers и Response.md",
+      "bytes": 16142,
+      "sha256": "27e4ac806c7b396e764edd50331ce76938963d24b9fbd5c447749badfe80bf33"
+    },
+    {
+      "path": "materials/chapter_04/block_13/65.1 - Cookie-настройка представления.md",
+      "bytes": 18484,
+      "sha256": "4f9a8b8d2b6d578720e1355aa419a76f64bb07d94433570e582ef5bd3461e62b"
+    },
+    {
+      "path": "materials/chapter_04/block_13/65.2 - Границы доверия и безопасность cookie.md",
+      "bytes": 18683,
+      "sha256": "f9d931bcfdb938b1e7a9043cee2feff29f9b57ea3b51558cec509fc1e540968a"
+    },
+    {
+      "path": "materials/chapter_04/block_13/__init__.py",
+      "bytes": 213,
+      "sha256": "b26d10727b230da6e521b9bcf1c21d3af808ebf5aa691512c82b4533303309e9"
+    },
+    {
+      "path": "materials/chapter_04/block_13/code_tasks.py",
+      "bytes": 224,
+      "sha256": "e318146673a75d13be9f9725f8f9b854df174cc2fbf43538cda3118dc5a2c957"
+    },
+    {
+      "path": "materials/chapter_04/block_13/manual.py",
+      "bytes": 123298,
+      "sha256": "0d04e33ccf708ff42043967c2d1168b0de889baf1b828050d72f65617c401662"
+    },
+    {
+      "path": "materials/chapter_04/block_14/66 - Почему одного JSON становится мало.md",
+      "bytes": 19058,
+      "sha256": "b2659cf5c8b4e4ffaabc636fa624df70148ae4d5b96cd44c3218288770f4b086"
+    },
+    {
+      "path": "materials/chapter_04/block_14/66.1 - SQLite и минимальный SQL.md",
+      "bytes": 18940,
+      "sha256": "eab81dcb560c27ef422e448a3ebbac45d2dfc9ee6c1c5ccc40bcb2add24569e2"
+    },
+    {
+      "path": "materials/chapter_04/block_14/67 - Engine и адрес базы.md",
+      "bytes": 18901,
+      "sha256": "7d33e5b30e4d5513e0dc9d69f13ea6aa530ef2f59988986e36f776523bb92e1b"
+    },
+    {
+      "path": "materials/chapter_04/block_14/67.1 - ORM-модель и исходная схема.md",
+      "bytes": 17527,
+      "sha256": "73140594e2f9c480f9422c1fbc6107a7357f035229807f327ef8506b2ff0a80e"
+    },
+    {
+      "path": "materials/chapter_04/block_14/68 - Session — первая сохранённая запись.md",
+      "bytes": 17959,
+      "sha256": "d409405dbab5eddcebbc03364bcd7f6ebf5b1732b70ea588583fa94417db3c2b"
+    },
+    {
+      "path": "materials/chapter_04/block_14/68.1 - Транзакция, отмена и закрытие.md",
+      "bytes": 16360,
+      "sha256": "81eee1ecc93178c7eb7f39291a7b13bff05fdc3c8b4e4dc461a3e285d5d79a98"
+    },
+    {
+      "path": "materials/chapter_04/block_14/68.2 - SELECT и преобразование результата.md",
+      "bytes": 16609,
+      "sha256": "691adf5c1be6ec34fe4d979bdec0f2e84cf29c86aa438cd92ac336e70321d01a"
+    },
+    {
+      "path": "materials/chapter_04/block_14/69 - Новая граница хранения — чтение.md",
+      "bytes": 20590,
+      "sha256": "5a843d95967c83041c182378cc7c9085488873ab4f9b9effeb576c0e147e6bf6"
+    },
+    {
+      "path": "materials/chapter_04/block_14/69.1 - Новая граница хранения — изменения.md",
+      "bytes": 18853,
+      "sha256": "3deb47872549e291adef1e517a10f99b7f6b050b460f76633bdd8d1edc6d5d26"
+    },
+    {
+      "path": "materials/chapter_04/block_14/70 - SQL-репозиторий чтения.md",
+      "bytes": 17978,
+      "sha256": "a4826d59d9766eeb4d34e40adfa79a17381a082d095fa74125825879bf42f2d5"
+    },
+    {
+      "path": "materials/chapter_04/block_14/70.1 - Ресурс на запрос и ресурс на команду.md",
+      "bytes": 16116,
+      "sha256": "db48c1bbea60b925f4fcfa4f68c351109c8b9ebaf7b6b0d099831c50191cac37"
+    },
+    {
+      "path": "materials/chapter_04/block_14/70.2 - Однократный перенос прежних задач.md",
+      "bytes": 24534,
+      "sha256": "3167c964c5a438b6857b31e48ae95e8272ea330b21f51f076653115a6187e357"
+    },
+    {
+      "path": "materials/chapter_04/block_14/__init__.py",
+      "bytes": 213,
+      "sha256": "8da5a8a1dc006d55cf148d0104879ff56d4147d191b8ddcda96021170fbe01c3"
+    },
+    {
+      "path": "materials/chapter_04/block_14/code_tasks.py",
+      "bytes": 224,
+      "sha256": "2570a3c944776aad61f8cd63d32f092f44851d294cef14d10bfde98213db3857"
+    },
+    {
+      "path": "materials/chapter_04/block_14/manual.py",
+      "bytes": 188403,
+      "sha256": "1bcc09c60a7c8148a0a97aa30c6c499e117429af7ee400c6aec91ea8d9407905"
+    },
+    {
+      "path": "materials/chapter_04/block_15/71 - Создание и серверный id из базы.md",
+      "bytes": 22706,
+      "sha256": "0c79d2aabca8fc16bf2fd5355f4dfe47d5730ab94283d23c3dc004f8be3747ba"
+    },
+    {
+      "path": "materials/chapter_04/block_15/71.1 - PUT — замена без потери внутренних данных.md",
+      "bytes": 18631,
+      "sha256": "ec138613687a4b3f803b9dfab96335b99cf21e476b0029bf7de28eb9f0477c29"
+    },
+    {
+      "path": "materials/chapter_04/block_15/72 - PATCH — только переданные изменения.md",
+      "bytes": 17971,
+      "sha256": "73055ab870d61ca8890abbcc4860a563c8dc2447ec71b7f4a76aec6757b30833"
+    },
+    {
+      "path": "materials/chapter_04/block_15/72.1 - Завершение и удаление.md",
+      "bytes": 23055,
+      "sha256": "5bd776e71caf6a39d65e5e9fdf2c4cc8f3ee96ab62db55243bf18a55aa9c3c1a"
+    },
+    {
+      "path": "materials/chapter_04/block_15/73 - Выборка и статистика запросами.md",
+      "bytes": 18433,
+      "sha256": "2895ea12f95b144279ff3841c9b562cc75a73c774b598925430f5ae9b4cdf5c3"
+    },
+    {
+      "path": "materials/chapter_04/block_15/73.1 - Поиск в базе без смены его смысла.md",
+      "bytes": 20466,
+      "sha256": "7f7d1f98c19ee7a44f0f8a2618aac8bc8ba6e26938e46260ff7a0fdaf118f6c0"
+    },
+    {
+      "path": "materials/chapter_04/block_15/74 - CLI — отдельный ресурс на команду.md",
+      "bytes": 22389,
+      "sha256": "a1029403e5dad31ed0d45eae1394cabe6730cc081a7ae6d53e73a2cb11b11ac1"
+    },
+    {
+      "path": "materials/chapter_04/block_15/74.1 - Готовность к переключению.md",
+      "bytes": 22237,
+      "sha256": "8f5dfd9938264399b7845a748b8dc675e90ad2ecc3690074d5b614552569d50b"
+    },
+    {
+      "path": "materials/chapter_04/block_15/75 - Единое переключение JSON → SQLite.md",
+      "bytes": 20132,
+      "sha256": "515c4ce013849971813ff2f5a53c16053e4df07a9412a315353fe45b0594aedd"
+    },
+    {
+      "path": "materials/chapter_04/block_15/75.1 - Удаление JSON-backend и проверка независимости.md",
+      "bytes": 21273,
+      "sha256": "bc3c6a9d598844d8ee0235a5ff377860d3870b146abe6a22700994500c3b403b"
+    },
+    {
+      "path": "materials/chapter_04/block_15/__init__.py",
+      "bytes": 213,
+      "sha256": "d8b652054d0db1f1da1a6a217f561b5dc151a8209993c8717b433a1867527c54"
+    },
+    {
+      "path": "materials/chapter_04/block_15/code_tasks.py",
+      "bytes": 224,
+      "sha256": "f812727a7d9f8830bb1c8463ff0c6f8498df7cb6c57a0de00e0405bcb5b1d6c7"
+    },
+    {
+      "path": "materials/chapter_04/block_15/manual.py",
+      "bytes": 220,
+      "sha256": "4a4d072d36f9e9ac19bf9f8b08bb6cdacea18077a9ae427ee3d9de5941d1ed78"
+    },
+    {
+      "path": "materials/chapter_04/block_16/76 - Ошибка БД и граница ответственности.md",
+      "bytes": 21989,
+      "sha256": "4cfd96f42ce32cd904afaf1f6114da3b9323a904e85cb8c33b62f4707d9adf96"
+    },
+    {
+      "path": "materials/chapter_04/block_16/76.1 - Проверки отказов и восстановление работы.md",
+      "bytes": 24490,
+      "sha256": "ca43706e35fce374802fdaa8c9e994fabbd01a51329bf039271fb4d92fedb687"
+    },
+    {
+      "path": "materials/chapter_04/block_16/77 - Какие SQL-запросы делает Planner.md",
+      "bytes": 20619,
+      "sha256": "06a0b60c5542d84acf4d7e7e6a6cf32bd0fbf181c915c03fe5622902044af10c"
+    },
+    {
+      "path": "materials/chapter_04/block_16/78 - Обоснованное улучшение запросов.md",
+      "bytes": 20130,
+      "sha256": "310c1da2267b35b95099c240f04a8dee1ff7ea06a1b8cea9d175a1f454e554a8"
+    },
+    {
+      "path": "materials/chapter_04/block_16/79 - Сквозная проверка готового продукта.md",
+      "bytes": 25587,
+      "sha256": "e70092a330849ca2719855dd629f3d81466e5e0d6a8fd2477cfa777220cbe94d"
+    },
+    {
+      "path": "materials/chapter_04/block_16/80 - Передача работающего DB Planner.md",
+      "bytes": 22858,
+      "sha256": "79ecae688eb2703c9e2a41c121dcd285d9e6420a37d07c5753c0b59db933ef10"
+    },
+    {
+      "path": "materials/chapter_04/block_16/__init__.py",
+      "bytes": 213,
+      "sha256": "0d52cfa0a76809f97397d5a9c83f658990578df25404637b0e3c5d155651b33a"
+    },
+    {
+      "path": "materials/chapter_04/block_16/code_tasks.py",
+      "bytes": 224,
+      "sha256": "e4bc547bba74f7af879dd4695f3196780895491566aa79aa1a545ccd424a7953"
+    },
+    {
+      "path": "materials/chapter_04/block_16/manual.py",
+      "bytes": 220,
+      "sha256": "91046f9562867846174cc47e4bf769033b2e77f97ce7b9b10f60bfc2f48e7134"
+    },
+    {
+      "path": "materials/chapter_04/numbering.py",
+      "bytes": 214,
+      "sha256": "f358cbdd09040363272b96de492249857ea8f27b0d5c7af9cfabb012112e0821"
+    },
+    {
+      "path": "materials/chapter_04/README.md",
+      "bytes": 556,
+      "sha256": "42563f6d63660f993a0e71f5a004fabe07d1c097a676c1fc3f540fd4c952ccb7"
+    },
+    {
+      "path": "materials/chapter_04/track.json",
+      "bytes": 241,
+      "sha256": "0c1474848ed0cfa32aa09739c707e85b9f6128970e2ef6a2a59c6c64bf688760"
+    },
+    {
+      "path": "materials/chapter_05/__init__.py",
+      "bytes": 204,
+      "sha256": "e92e0f70874b08445b7888751d39e68c503945013d48be8aaf9cb30d45685f7b"
+    },
+    {
+      "path": "materials/chapter_05/block_00/__init__.py",
+      "bytes": 213,
+      "sha256": "6be78517330ba5f57f9217e21d0cddccce331b4a6b8d5f647dbd6b5277dc9526"
+    },
+    {
+      "path": "materials/chapter_05/block_00/manual.py",
+      "bytes": 220,
+      "sha256": "b05cec0beb9140a5e4ae28f03c6edf6c74d7f28fd04b05583bdda7732674895e"
+    },
+    {
+      "path": "materials/chapter_05/block_00/План обучения.md",
+      "bytes": 109,
+      "sha256": "3358f85c95238709c029e97429ac7b349cef0c7cb0459166abd9438ddb1d7b31"
+    },
+    {
+      "path": "materials/chapter_05/block_17/81 - Проверяем SQL Planner.md",
+      "bytes": 41351,
+      "sha256": "7e89b30fc2fdb4a65847b00c957eb80ad34b4d301e960f380eaf9c0c263fc482"
+    },
+    {
+      "path": "materials/chapter_05/block_17/81.1 - Сверяем реальную схему.md",
+      "bytes": 47248,
+      "sha256": "0f1da7863a428ce4cedba60cb77d983a3b0820867b8bb4b2e1a2b48701230269"
+    },
+    {
+      "path": "materials/chapter_05/block_17/82 - Получаем согласованный снимок.md",
+      "bytes": 36641,
+      "sha256": "43c775264a123585e7ff9cabe21210c9f1f20c63b5fcdf93827fabe2601e4dfe"
+    },
+    {
+      "path": "materials/chapter_05/block_17/82.1 - Проверяем восстановление.md",
+      "bytes": 46206,
+      "sha256": "2cf06bf77adae5597d782dd6b6b24dad6f09e17162087818b824a3d16fefd65e"
+    },
+    {
+      "path": "materials/chapter_05/block_17/83 - История схемы и настройка Alembic.md",
+      "bytes": 51887,
+      "sha256": "73928e679a07dda42461e7ebdc2bd2aa824d932c2be83d9eaf6793c187b33598"
+    },
+    {
+      "path": "materials/chapter_05/block_17/83.1 - Создаём baseline для новой базы.md",
+      "bytes": 52479,
+      "sha256": "8034c484ed17b59d71de6feeaf33f194431db85ae74678b9d87606fa543e4ffb"
+    },
+    {
+      "path": "materials/chapter_05/block_17/84 - Проверяем baseline заполненной базы.md",
+      "bytes": 38664,
+      "sha256": "ba20630c5c388f587e52849c9246f0169a46fc36b9c275758113f21492db7518"
+    },
+    {
+      "path": "materials/chapter_05/block_17/84.1 - Готовим и применяем расширение схемы.md",
+      "bytes": 47158,
+      "sha256": "4d75d15f02550cc6742d70b598ece6854c9088417b1e6df4306d7b1ba2e3aa59"
+    },
+    {
+      "path": "materials/chapter_05/block_17/85 - Ошибка миграции и безопасное восстановление.md",
+      "bytes": 49188,
+      "sha256": "774426f9c9a207474904e0d0f3d8dee5ccbe21ed934f3f728f4dbf02a1f46ed9"
+    },
+    {
+      "path": "materials/chapter_05/block_17/85.1 - Регрессия и передача истории.md",
+      "bytes": 83666,
+      "sha256": "b18ad83203027cffeb3da8ff506ea5d8fd0cf0321c402498565c5d2962ad23b2"
+    },
+    {
+      "path": "materials/chapter_05/block_17/__init__.py",
+      "bytes": 213,
+      "sha256": "abf25e8020b31757ad3efdfb4eec60ffc7d2e6f08b58349d94723768be0ab80b"
+    },
+    {
+      "path": "materials/chapter_05/block_17/code_tasks.py",
+      "bytes": 224,
+      "sha256": "763296c268abb2415d57be43707d3116c256b4eccd48d3354a30fc39aa173003"
+    },
+    {
+      "path": "materials/chapter_05/block_17/manual.py",
+      "bytes": 220,
+      "sha256": "22012bbfdce1214da2aaaa02e810672c00aaafe7ce43a2d8a31318ca6b1d13e9"
+    },
+    {
+      "path": "materials/chapter_05/block_17/practice_81.py",
+      "bytes": 225,
+      "sha256": "bb1c87b4eecf849472af335110de54ecd929424af5db180cc62833c4ca2f5375"
+    },
+    {
+      "path": "materials/chapter_05/block_17/practice_81_1.py",
+      "bytes": 227,
+      "sha256": "fbb83e00dee56af1e62b4653b7c979944970fb45d261d1db264919a090ca8234"
+    },
+    {
+      "path": "materials/chapter_05/block_17/practice_82.py",
+      "bytes": 225,
+      "sha256": "79481dc5ca79e35c962e508bb479f77be3a6364c7acf32ff0e799b829e480188"
+    },
+    {
+      "path": "materials/chapter_05/block_17/practice_82_1.py",
+      "bytes": 227,
+      "sha256": "949a0e4c3bd7a4f1ae4702e9513d1582402cbdd11c55d05814c45b298613058b"
+    },
+    {
+      "path": "materials/chapter_05/block_17/practice_83.py",
+      "bytes": 225,
+      "sha256": "4e361b4a0df2971afa39fe1bfe3dfaab8fae4d683cfaffcd0e92db707fbd6747"
+    },
+    {
+      "path": "materials/chapter_05/block_17/practice_83_1.py",
+      "bytes": 31079,
+      "sha256": "cf61ce5ab63c311c74c7b23f7ecc55592f605aa60b215ee4b90af5f2823b6939"
+    },
+    {
+      "path": "materials/chapter_05/block_17/practice_84.py",
+      "bytes": 23886,
+      "sha256": "322e8b88e9f49a3498736208835692974f9b0e51002eecf2a2ef1f9ac298c01d"
+    },
+    {
+      "path": "materials/chapter_05/block_17/practice_84_1.py",
+      "bytes": 227,
+      "sha256": "d02df99077c4ad2f723cef78f11c4b0eb9258244fdae2931c1c5734f7ec9e1f5"
+    },
+    {
+      "path": "materials/chapter_05/block_17/practice_85.py",
+      "bytes": 225,
+      "sha256": "f22f6dfdd4ff1dc7ceb33fd79e323e0f11a1a48bf95cc04981f4cb9c34532533"
+    },
+    {
+      "path": "materials/chapter_05/block_17/practice_85_1.py",
+      "bytes": 96188,
+      "sha256": "3229e72179bfd7550783c8b363b700a17b853e14a7d0197761b8efc4bb5c74d0"
+    },
+    {
+      "path": "materials/chapter_05/block_18/86 - Идентичность и границы доступа.md",
+      "bytes": 95,
+      "sha256": "bf5f7207f81ed273cf8b00a802d80a75ec23f9be7e98b69a9a65ccf823085395"
+    },
+    {
+      "path": "materials/chapter_05/block_18/86.1 - Договор данных пользователя.md",
+      "bytes": 102,
+      "sha256": "aed2a35dc0f8ea4f76f79bcc1ecb177602d56efb24a7e31c4694eb677e14f144"
+    },
+    {
+      "path": "materials/chapter_05/block_18/87 - Модель пользователя и миграция.md",
+      "bytes": 100,
+      "sha256": "712c9c6c7d9fdb8287dad39eab6e5a32f061410e582db270a225cce2a57a5a8e"
+    },
+    {
+      "path": "materials/chapter_05/block_18/87.1 - Уникальность и конфликт.md",
+      "bytes": 102,
+      "sha256": "d56e6556e5abd0e57df3d8242217990f7f9edbb9fe4809ac68051e45d3f9e1c1"
+    },
+    {
+      "path": "materials/chapter_05/block_18/88 - Пароль и адаптивный хеш.md",
+      "bytes": 85,
+      "sha256": "1fc72d1451d0ccfa5e58b53896af38be4ba10fd95481c9545cb168021207b5db"
+    },
+    {
+      "path": "materials/chapter_05/block_18/88.1 - Проверка credentials.md",
+      "bytes": 94,
+      "sha256": "39c8a8ddbfa3e7065581afbce328f8ce7d2782d5a7f0dc8b99e1fe44777fa232"
+    },
+    {
+      "path": "materials/chapter_05/block_18/89 - Сервис регистрации.md",
+      "bytes": 98,
+      "sha256": "86515b9b91cc46b38cbaa09312315da8bdfe01df6382a2567a465b8d55a7784e"
+    },
+    {
+      "path": "materials/chapter_05/block_18/89.1 - HTTP-регистрация.md",
+      "bytes": 97,
+      "sha256": "87c8a6d5cf66bccc539a4078fa977760114e039d7684c96ea63201386aeda888"
+    },
+    {
+      "path": "materials/chapter_05/block_18/90 - Первый администратор.md",
+      "bytes": 102,
+      "sha256": "0da6b4928d95f2741d2818d9b8fb223dd3b03e7d2e8c991740a7e1b74c81da7f"
+    },
+    {
+      "path": "materials/chapter_05/block_18/90.1 - Сквозная проверка и передача.md",
+      "bytes": 104,
+      "sha256": "d685bdc175496dc8b7b03f271ff6bee054276f22abbaf329afdf542223c253c5"
+    },
+    {
+      "path": "materials/chapter_05/block_18/__init__.py",
+      "bytes": 213,
+      "sha256": "e214c98a6d4e3095e45c5a25858d7fec742bb360d85922a36894ced5a5de27be"
+    },
+    {
+      "path": "materials/chapter_05/block_18/code_tasks.py",
+      "bytes": 224,
+      "sha256": "145a18a1c4038636aa96d290d743812275b72a1a2bec49e07319495747573519"
+    },
+    {
+      "path": "materials/chapter_05/block_18/manual.py",
+      "bytes": 220,
+      "sha256": "83351c2f8528e4d60d9a74982ceae35ac43266425a5bf01efd3bc946dad83b73"
+    },
+    {
+      "path": "materials/chapter_05/block_19/91 - Клиент, сервер и cookie.md",
+      "bytes": 99,
+      "sha256": "4e45a549290eef67f1b63a05c3b579c1465be52113d84a0f46f7eaa2c71638d3"
+    },
+    {
+      "path": "materials/chapter_05/block_19/91.1 - Секрет, подпись и серверная сессия.md",
+      "bytes": 95,
+      "sha256": "4be69ee5fc66807efef57fc6eb712e5b0d2fa9aac4ec6dffd7ef2fe62a3d26b8"
+    },
+    {
+      "path": "materials/chapter_05/block_19/92 - Запись сессии и миграция.md",
+      "bytes": 92,
+      "sha256": "5f7f8309523051c476604902b795ed9fa90f0088653561d17f41d9b459cd6a0d"
+    },
+    {
+      "path": "materials/chapter_05/block_19/92.1 - Секрет сессии и проверочный digest.md",
+      "bytes": 87,
+      "sha256": "2f464051f059c6800a5157c8071aa4b294c422571813f0c445653d1437902830"
+    },
+    {
+      "path": "materials/chapter_05/block_19/93 - Вход и выпуск cookie.md",
+      "bytes": 81,
+      "sha256": "a1538217ada600c173f086be02a930ba4c58c74c06745784d345f0f54ac11b4c"
+    },
+    {
+      "path": "materials/chapter_05/block_19/93.1 - Текущий пользователь из серверной сессии.md",
+      "bytes": 104,
+      "sha256": "9f677f07e8afaec21acca618e7dbd3f80644b938146c6c0b5699d1ca06d2453f"
+    },
+    {
+      "path": "materials/chapter_05/block_19/94 - Срок действия и отзыв.md",
+      "bytes": 95,
+      "sha256": "c02419c39cde81a5ce464cb59e0cb1570b98c427628d1b352a80af5dc431f3ef"
+    },
+    {
+      "path": "materials/chapter_05/block_19/94.1 - Выход и независимые клиенты.md",
+      "bytes": 93,
+      "sha256": "b8bea45ea354c0a94757586ab7888ef67e897e985fcd47547b3b6c05b2af8820"
+    },
+    {
+      "path": "materials/chapter_05/block_19/95 - CSRF и токен своей сессии.md",
+      "bytes": 85,
+      "sha256": "82c4e40a484610f178c148eb0dbad18631490a672581efdc1376285f2ea00066"
+    },
+    {
+      "path": "materials/chapter_05/block_19/95.1 - Origin до входа.md",
+      "bytes": 88,
+      "sha256": "c346f4f5c6de507af1277d196f8ba0378f8416abd3647682b40bcaef04ba74bc"
+    },
+    {
+      "path": "materials/chapter_05/block_19/95.2 - Итоговый сценарий и передача.md",
+      "bytes": 94,
+      "sha256": "ddc487861e803943534f69fbf99a3b1a04d85fdfde8922b8d7b4c1d7ce013929"
+    },
+    {
+      "path": "materials/chapter_05/block_19/__init__.py",
+      "bytes": 213,
+      "sha256": "d1ca58d2715c84af22d86ad4616ca549c3ee8e6c95d3eaaf0cb1112b2367f387"
+    },
+    {
+      "path": "materials/chapter_05/block_19/code_tasks.py",
+      "bytes": 224,
+      "sha256": "bbd91023cad82294833bc55b724f29c309cfe130ba27f86d35df6c43bdd30a74"
+    },
+    {
+      "path": "materials/chapter_05/block_19/manual.py",
+      "bytes": 220,
+      "sha256": "a0b0571b6957bdee2b49cd8afc1a4c763de6e2b25828f4957b6af7d7683cf81e"
+    },
+    {
+      "path": "materials/chapter_05/block_20/100 - Два пользователя и передача Planner.md",
+      "bytes": 95,
+      "sha256": "86f223c6fe57d9fd0d354c90115c5f267cec6d2ff8aeb8768877be216e09f193"
+    },
+    {
+      "path": "materials/chapter_05/block_20/96 - Граница владельца.md",
+      "bytes": 96,
+      "sha256": "81793752efbc23e43b256cc0ba80051903c426daa22a4ff4b3d7c9954d304222"
+    },
+    {
+      "path": "materials/chapter_05/block_20/96.1 - Связь задачи с пользователем.md",
+      "bytes": 94,
+      "sha256": "eef58a7e1afae3acdbd36a4aca0fa5a1a6597dfa366e54f02ec32bbdf71f73de"
+    },
+    {
+      "path": "materials/chapter_05/block_20/97 - Резерв и подготовка поля владельца.md",
+      "bytes": 102,
+      "sha256": "896cee82c307b9059afabd29b7618754d76d038cbb0ee6ed8a344a51f87ed688"
+    },
+    {
+      "path": "materials/chapter_05/block_20/97.1 - Явный перенос прежних задач.md",
+      "bytes": 90,
+      "sha256": "51e669e00285024c25ac8859214fd010be4a1c524f5c69c5060f9304be1e3176"
+    },
+    {
+      "path": "materials/chapter_05/block_20/98 - Обязательный владелец и целостность.md",
+      "bytes": 102,
+      "sha256": "de4898a7deaf84a966dc505547c30dbacb624d356d0064ce77d39d4c90708db9"
+    },
+    {
+      "path": "materials/chapter_05/block_20/98.1 - Чтение и статистика по владельцу.md",
+      "bytes": 107,
+      "sha256": "4b81e7fc5e8a6c9b1312ebf36d7add46a54ab2f7508494405bf95487d48576f6"
+    },
+    {
+      "path": "materials/chapter_05/block_20/99 - Защищённые изменения через API.md",
+      "bytes": 98,
+      "sha256": "999537de9ab571b8067a963bcd49bb7a71d7c07e4cf6b9bcabd4ee4787daba5c"
+    },
+    {
+      "path": "materials/chapter_05/block_20/99.1 - Подтверждённая личность в CLI.md",
+      "bytes": 96,
+      "sha256": "232234483b81c2444589feae4653d675a327b4392547954c81ae0173c0c7700e"
+    },
+    {
+      "path": "materials/chapter_05/block_20/__init__.py",
+      "bytes": 213,
+      "sha256": "78265483dac2072560673ac69a8e43c1b313691d5fc4d1133d2caad102a52bf1"
+    },
+    {
+      "path": "materials/chapter_05/block_20/code_tasks.py",
+      "bytes": 224,
+      "sha256": "35f7c9264af95cad6768a3dd7b48705cafcc2003bf3b4a363bdd1910bafbb7e8"
+    },
+    {
+      "path": "materials/chapter_05/block_20/manual.py",
+      "bytes": 220,
+      "sha256": "d4d6a78c31911235f199da5615ec9cab851752ddd24ff5900b58e88da94680bd"
+    },
+    {
+      "path": "materials/chapter_05/README.md",
+      "bytes": 213,
+      "sha256": "1720edc69d735a063d7c9ebfaf0024ff964c20a0f7531ba2cf6a1381e778d38a"
+    },
+    {
+      "path": "materials/chapter_05/track.json",
+      "bytes": 346,
+      "sha256": "957ec7c87dc4f78d264c88d48e74538126591afcb1b79748461d7a946036675f"
+    },
+    {
+      "path": "materials/chapter_06/__init__.py",
+      "bytes": 204,
+      "sha256": "ca6c439bac624cb788984aef19516b0feefc5c8997b9111b974dc0755261ee25"
+    },
+    {
+      "path": "materials/chapter_06/block_00/__init__.py",
+      "bytes": 213,
+      "sha256": "3ff06485137ac382be62e5d3ade1aa057ff8ed2e3a849bddfa12ad7f002d0416"
+    },
+    {
+      "path": "materials/chapter_06/block_00/manual.py",
+      "bytes": 220,
+      "sha256": "8aca7f2038d26be7e42c34ffcef7d144faff406e8155cbeb157e838a7f7ab7a9"
+    },
+    {
+      "path": "materials/chapter_06/block_00/План обучения.md",
+      "bytes": 4573,
+      "sha256": "0e2cd9d480d8f0426ee6b7b058a9486198c72c17b0c087540bba0dfd72cb6dba"
+    },
+    {
+      "path": "materials/chapter_06/block_21/117 - Реляционная модель и SQL под ORM.md",
+      "bytes": 1911,
+      "sha256": "a72812351ecc19f39d26b6177f0aa0891f96dee6f483ad5a92ea205ac7b803e1"
+    },
+    {
+      "path": "materials/chapter_06/block_21/118 - CREATE TABLE и ограничения данных.md",
+      "bytes": 1627,
+      "sha256": "11644396b34ed474bb202c9a6bc23c87c115a4a2c4b36d28165843684d8acf97"
+    },
+    {
+      "path": "materials/chapter_06/block_21/119 - INSERT и безопасные параметры.md",
+      "bytes": 1713,
+      "sha256": "d9ea85ef41e2b1a18afc7353c134415b76d2c8b5bccf6a847ae0549d38acddaa"
+    },
+    {
+      "path": "materials/chapter_06/block_21/120 - SELECT, WHERE, ORDER BY, LIMIT и OFFSET.md",
+      "bytes": 1568,
+      "sha256": "e1b885bf85c0a95195d8660a185953799a2a33aa4f86a05c92dedb76eb2f16a4"
+    },
+    {
+      "path": "materials/chapter_06/block_21/121 - UPDATE и DELETE без опасных ошибок.md",
+      "bytes": 1647,
+      "sha256": "35eae72a7ed219cfc3f77a534d9469f794d6bcec4a6812bedea9d0dce6f4351d"
+    },
+    {
+      "path": "materials/chapter_06/block_21/122 - SQL и SQLAlchemy, две формы одного запроса.md",
+      "bytes": 2154,
+      "sha256": "7e21ac00a94056356ff823eddcba1b2029635418a9ac4e5d5e2fc91515b19078"
+    },
+    {
+      "path": "materials/chapter_06/block_21/__init__.py",
+      "bytes": 213,
+      "sha256": "1ee7bd8bcd2fb2d0534912c4db7ee35055c6d989299991b9a076252757174129"
+    },
+    {
+      "path": "materials/chapter_06/block_21/code_tasks.py",
+      "bytes": 224,
+      "sha256": "3089a450363c4ee9fbe362cca7947d3deebe27ff858d679dadc34264d59219a5"
+    },
+    {
+      "path": "materials/chapter_06/block_21/manual.py",
+      "bytes": 220,
+      "sha256": "5cffc803fbc8fa54e40f67829c3e7b729fe2f36cf598f694db80314e2f3d36ae"
+    },
+    {
+      "path": "materials/chapter_06/block_22/123 - PostgreSQL, сервер, база, схема и подключение.md",
+      "bytes": 1714,
+      "sha256": "f18a6be1306dc56368b5c1fec97118460bac7581f4775221d282b698b450b6a3"
+    },
+    {
+      "path": "materials/chapter_06/block_22/124 - Установка, psql и первая база.md",
+      "bytes": 1624,
+      "sha256": "218616c5b426d777ef744b9bc01fe85e2657d2d2b949a9736319682c1a6f22e5"
+    },
+    {
+      "path": "materials/chapter_06/block_22/125 - Roles, ownership и минимальные права.md",
+      "bytes": 1630,
+      "sha256": "26dfd2252eab59f17144f938f5d3a0f09af4f59cfa0615e90b2066c474cd974c"
+    },
+    {
+      "path": "materials/chapter_06/block_22/126 - DATABASE_URL и SQLAlchemy Engine для PostgreSQL.md",
+      "bytes": 1509,
+      "sha256": "74dbd29d8ae281cfb9ad172ded47c345011f24308a4a6436a3c616f0b7d1e50a"
+    },
+    {
+      "path": "materials/chapter_06/block_22/127 - Alembic на чистой PostgreSQL-базе.md",
+      "bytes": 1515,
+      "sha256": "2725f794066c81cf90e1026883a79c0c8d5eb67fa18a97f2f3b5665422a6823e"
+    },
+    {
+      "path": "materials/chapter_06/block_22/128 - Перенос данных и проверка неизменного API.md",
+      "bytes": 2110,
+      "sha256": "09a660462cb704ee024d615b639c10ba6a3f34bc0fb3edc9f5ad85feacb2ed08"
+    },
+    {
+      "path": "materials/chapter_06/block_22/__init__.py",
+      "bytes": 213,
+      "sha256": "c6fa80ba1e5f94a536f82e5942f9855235014e31b63cff8edfe449be84e466db"
+    },
+    {
+      "path": "materials/chapter_06/block_22/code_tasks.py",
+      "bytes": 224,
+      "sha256": "347e22bdadcfb64b4edd8a56abd24b5aad5664dbd69442dc35dfc14d1d641c1d"
+    },
+    {
+      "path": "materials/chapter_06/block_22/manual.py",
+      "bytes": 220,
+      "sha256": "4b4148067db3808229aafa7137bee32d802ec44fda8be1865257317715752309"
+    },
+    {
+      "path": "materials/chapter_06/block_23/129 - INNER JOIN и связанные строки.md",
+      "bytes": 1813,
+      "sha256": "1de8ab75e6a0dc26c208415d2fe5dc347b3217193ba877e101b86fd5994bf6e1"
+    },
+    {
+      "path": "materials/chapter_06/block_23/130 - LEFT JOIN и отсутствующие связи.md",
+      "bytes": 1585,
+      "sha256": "f457a492e00ef4cc69f3dc048cd45ce59d0f318acbc7220682443764519fff61"
+    },
+    {
+      "path": "materials/chapter_06/block_23/131 - Many-to-many через таблицу связи.md",
+      "bytes": 1559,
+      "sha256": "c7a0045ea8b236a1d798c129395339acd279ab189cb45f48bbc52d7abcd3d460"
+    },
+    {
+      "path": "materials/chapter_06/block_23/132 - COUNT, GROUP BY и статистика StudyHub.md",
+      "bytes": 1572,
+      "sha256": "0b8e3e49c832ce085d165ed81b05765521d40bd3d7a3fa689ef43ad351d78328"
+    },
+    {
+      "path": "materials/chapter_06/block_23/133 - HAVING, EXISTS и подзапросы.md",
+      "bytes": 1594,
+      "sha256": "5609de340e3d056674d7a2ef9df9d81499bd339bd1739ef88bc9e68e080383ea"
+    },
+    {
+      "path": "materials/chapter_06/block_23/134 - Транзакция из нескольких изменений.md",
+      "bytes": 2090,
+      "sha256": "c0f902d165b3d9bb3c6674b42827e9593a9025c9fa7fae1937606a4ce6431e70"
+    },
+    {
+      "path": "materials/chapter_06/block_23/__init__.py",
+      "bytes": 213,
+      "sha256": "864b40291753893c72520ce44ad943f4436b69f864be1e5329bf1e4b197ea42c"
+    },
+    {
+      "path": "materials/chapter_06/block_23/code_tasks.py",
+      "bytes": 224,
+      "sha256": "cfe654683830af05ddf4c16b38a3990e16de7200b1d4d5516434b7e4809952e0"
+    },
+    {
+      "path": "materials/chapter_06/block_23/manual.py",
+      "bytes": 220,
+      "sha256": "54a8751bf53a36ccc23266b373dc946fc16137f4357bd58308e319dfa79c9867"
+    },
+    {
+      "path": "materials/chapter_06/block_24/135 - Почему запрос становится медленным.md",
+      "bytes": 1860,
+      "sha256": "e9683b28fd696c7970592481a28b24a585eff420aa66e0b96ebc1465b50531d2"
+    },
+    {
+      "path": "materials/chapter_06/block_24/136 - Одиночные и составные индексы.md",
+      "bytes": 1535,
+      "sha256": "9102e20b725319327750459628ac947eda78b07af14f7fd3c51f8361937b6ff9"
+    },
+    {
+      "path": "materials/chapter_06/block_24/137 - EXPLAIN и EXPLAIN ANALYZE без магии.md",
+      "bytes": 1442,
+      "sha256": "4ff54e3d262d012fe66d76633365032557aeb2e1a073b91807773f4137fb47bd"
+    },
+    {
+      "path": "materials/chapter_06/block_24/138 - Backup, restore и проверка восстановления.md",
+      "bytes": 1480,
+      "sha256": "df1d1d8fa97e48e71ddd1de81f6a82cee70a179e4893f172f882ee38218fa3eb"
+    },
+    {
+      "path": "materials/chapter_06/block_24/139 - MongoDB и документная модель.md",
+      "bytes": 1533,
+      "sha256": "009a6249401802118ef225acb09c919713facc00df9fb0ca71a3f4401f2c2447"
+    },
+    {
+      "path": "materials/chapter_06/block_24/140 - Redis, TTL и итоговый аудит хранилищ.md",
+      "bytes": 2968,
+      "sha256": "f530947be8da39b5fb95f191781a5aadbdce5f2d0df889a9e90aa4dd39a0c715"
+    },
+    {
+      "path": "materials/chapter_06/block_24/__init__.py",
+      "bytes": 213,
+      "sha256": "f1685ec14687b4e0cfd5b951a65dff24f7e318acd50fe79ee31d1324597e6239"
+    },
+    {
+      "path": "materials/chapter_06/block_24/code_tasks.py",
+      "bytes": 224,
+      "sha256": "59e1cb419a14ba9ce0b3f7a62f8343f27ed706062269d3b89a2461600e403324"
+    },
+    {
+      "path": "materials/chapter_06/block_24/manual.py",
+      "bytes": 220,
+      "sha256": "8f024f44536c3a09f7205e83776bddcdb3f98c605cde282eff91b6bcb61dfc11"
+    },
+    {
+      "path": "materials/chapter_06/README.md",
+      "bytes": 184,
+      "sha256": "9c2c8605ff646fdb08ef12c8831e45bb17670a3cb709782eadbd19610c3bcdb6"
+    },
+    {
+      "path": "materials/chapter_06/track.json",
+      "bytes": 260,
+      "sha256": "2db4b71e352c45c258c10254dafb94a1b59109c4d7b5bcc673244e735a94b666"
+    },
+    {
+      "path": "materials/chapter_07/__init__.py",
+      "bytes": 204,
+      "sha256": "f686f46a0c4cf5b7c052496a860bf993ff9d1d4db1d81ec2423ead84c62ae69e"
+    },
+    {
+      "path": "materials/chapter_07/block_00/__init__.py",
+      "bytes": 213,
+      "sha256": "adfdc593131a55814406bb949efcab71f3b96c2a338490ae0c3c63aaada2a0b7"
+    },
+    {
+      "path": "materials/chapter_07/block_00/manual.py",
+      "bytes": 220,
+      "sha256": "ca0fcd69ad9d9762eecc1be48a8ecf9bb4d03ac1a90111280d7afbc0022f778c"
+    },
+    {
+      "path": "materials/chapter_07/block_00/План обучения.md",
+      "bytes": 4575,
+      "sha256": "6de629aad58ab488b60e73ad40052567fdc093f4ef827cd7bfa46b38f65d48f5"
+    },
+    {
+      "path": "materials/chapter_07/block_25/141 - Блокирующее выполнение, CPU и I,O.md",
+      "bytes": 1884,
+      "sha256": "bc69398ec6a45b97aa699ad65ed54ac9e3feb8c27a63fc947540d932c484d460"
+    },
+    {
+      "path": "materials/chapter_07/block_25/142 - async def и coroutine object.md",
+      "bytes": 1620,
+      "sha256": "6a9012edfb77cfa275b995caac9f2f3b531bc191ecd3bc1ed51abb34b6fbc9f9"
+    },
+    {
+      "path": "materials/chapter_07/block_25/143 - asyncio.run, event loop и первый await.md",
+      "bytes": 1496,
+      "sha256": "fd79b638922cf01a99d52111e98369b16433dc126a28a49bdfb9f8f15291213f"
+    },
+    {
+      "path": "materials/chapter_07/block_25/144 - Последовательные await и иллюзия асинхронности.md",
+      "bytes": 1667,
+      "sha256": "fb11f4867ae28d82fda596aced12bff6690837146de3c3c08f1bc621922d0477"
+    },
+    {
+      "path": "materials/chapter_07/block_25/145 - Ошибки async-кода, забытый await и блокировка loop.md",
+      "bytes": 1540,
+      "sha256": "40863d02a906978dc5e01cdf0a13b7925f844f497fc73287ce1f585682c52f85"
+    },
+    {
+      "path": "materials/chapter_07/block_25/146 - Мини-проект, трассировка асинхронного загрузчика.md",
+      "bytes": 2182,
+      "sha256": "98819cd42df3161770fb014409eeae850a1dcf37e30675b0c85f98f8235784a0"
+    },
+    {
+      "path": "materials/chapter_07/block_25/__init__.py",
+      "bytes": 213,
+      "sha256": "4d3591f5574580672477b0dda7c50dba160058b4674b01c76075fc4d0d2a05ee"
+    },
+    {
+      "path": "materials/chapter_07/block_25/code_tasks.py",
+      "bytes": 224,
+      "sha256": "1026dfd1f8b932e2ce10c77cdf7b52aad726ae7ef240bfd2a175d8e81c0c2692"
+    },
+    {
+      "path": "materials/chapter_07/block_25/manual.py",
+      "bytes": 220,
+      "sha256": "bc443f9297fac573179e82178acddca10d74ed4e26cdf76b5bfefb1bab77ab38"
+    },
+    {
+      "path": "materials/chapter_07/block_26/147 - asyncio.create_task и жизненный цикл Task.md",
+      "bytes": 1844,
+      "sha256": "2e8fe3034d3505e3bdc5f9f6cc00fbf841103e8b98df12b9b056073421681656"
+    },
+    {
+      "path": "materials/chapter_07/block_26/148 - asyncio.gather и сбор результатов.md",
+      "bytes": 1660,
+      "sha256": "53bcd5a5c55327b761f0d43dfd6691ac3937a08a379384bfe82d7b2fb9e20140"
+    },
+    {
+      "path": "materials/chapter_07/block_26/149 - Timeout через asyncio.wait_for.md",
+      "bytes": 1469,
+      "sha256": "f8c0fef62e202d7a85a5cfa145a9d13d244a611bc3fa55d41340e4020a89419d"
+    },
+    {
+      "path": "materials/chapter_07/block_26/150 - Cancellation и обязательная очистка.md",
+      "bytes": 1514,
+      "sha256": "f21aea1771f390eee41b03a6d2b791854a591ddfff6a489d59b7947593fe8c51"
+    },
+    {
+      "path": "materials/chapter_07/block_26/151 - Semaphore и ограничение concurrency.md",
+      "bytes": 1513,
+      "sha256": "e577f2030f2538dfb454d4ce19e25e1490889cf193f526258955b2622776fc8e"
+    },
+    {
+      "path": "materials/chapter_07/block_26/152 - Частичные ошибки и итоговый async-агрегатор.md",
+      "bytes": 2187,
+      "sha256": "f37cfca700645ad0e918f73ffffb845b8bf4354d14ce07631087d4fd10f66d68"
+    },
+    {
+      "path": "materials/chapter_07/block_26/__init__.py",
+      "bytes": 213,
+      "sha256": "ed357070267b422c29cfb5438583d5b2e367d0bb4957c1f909884c7583cca56c"
+    },
+    {
+      "path": "materials/chapter_07/block_26/code_tasks.py",
+      "bytes": 224,
+      "sha256": "b4c2fb7fb8b0567218b4114ab68c7c7507d85f0735195ae90842a28c62357e6e"
+    },
+    {
+      "path": "materials/chapter_07/block_26/manual.py",
+      "bytes": 220,
+      "sha256": "201303d2847bd01bf2924875ae62e1d050ee1e2eb6397daae097af323de81cde"
+    },
+    {
+      "path": "materials/chapter_07/block_27/153 - def и async def внутри FastAPI.md",
+      "bytes": 1867,
+      "sha256": "4c712229494131dca2809f9fe64b5d87b9c94be3bb74de459a46b31a5b224f56"
+    },
+    {
+      "path": "materials/chapter_07/block_27/154 - Первый запрос через httpx.AsyncClient.md",
+      "bytes": 1476,
+      "sha256": "bdbc998a5d6584b646d69d1758ea6bc9be5316433d45a4186e8ace5f2ffb44d1"
+    },
+    {
+      "path": "materials/chapter_07/block_27/155 - HTTP timeout, network errors и безопасный response.md",
+      "bytes": 1510,
+      "sha256": "16508e702a185b0e157d5065b549d09c1d20d2851f133492628a230def61b92b"
+    },
+    {
+      "path": "materials/chapter_07/block_27/156 - Dependency для внешнего клиента.md",
+      "bytes": 1554,
+      "sha256": "e588d8499bef0bead7645fa34d2762d0c852f005cbc151b23b8f0bf105395052"
+    },
+    {
+      "path": "materials/chapter_07/block_27/157 - Lifespan и переиспользование AsyncClient.md",
+      "bytes": 1506,
+      "sha256": "0db1d61f2a61cc4b4d99ec402f55dcce1d1eda2f9ec7d80e51ca5d4127c7738e"
+    },
+    {
+      "path": "materials/chapter_07/block_27/158 - Агрегирующий endpoint и mock внешнего API.md",
+      "bytes": 2000,
+      "sha256": "d884b80023e65c58bc6172e733e247b6d031ca7289b3795fcf9dc75f30802735"
+    },
+    {
+      "path": "materials/chapter_07/block_27/__init__.py",
+      "bytes": 213,
+      "sha256": "674ad9ee5deb58cf2749354af95041071dd976a94183e2acf5aac419e96e2d60"
+    },
+    {
+      "path": "materials/chapter_07/block_27/code_tasks.py",
+      "bytes": 224,
+      "sha256": "d5493ed3607cbe3f19603afdfce37a634b354ae298930fa76263cc9ed00f9556"
+    },
+    {
+      "path": "materials/chapter_07/block_27/manual.py",
+      "bytes": 220,
+      "sha256": "59c2aaa0a162b5bd57492c71fe3de7ea2ee2f6afb8b5051b1eea662088fd066c"
+    },
+    {
+      "path": "materials/chapter_07/block_28/159 - AsyncEngine и async driver PostgreSQL.md",
+      "bytes": 1738,
+      "sha256": "5066b13f7e071405ff5ea3f2c9f798c9e84bdf771715fb43c0022b655ee256d8"
+    },
+    {
+      "path": "materials/chapter_07/block_28/160 - async_sessionmaker и get_db.md",
+      "bytes": 1447,
+      "sha256": "aeb33f6db3f2749f8eb3cd528df41dc0fa45281077086ca2e9ec06878fe71ed4"
+    },
+    {
+      "path": "materials/chapter_07/block_28/161 - Асинхронный SELECT и CRUD.md",
+      "bytes": 1380,
+      "sha256": "e5113e61eb678661cead2d24368a308701a1ead3b449ee470d92de5e952062d8"
+    },
+    {
+      "path": "materials/chapter_07/block_28/162 - Асинхронные транзакции и rollback.md",
+      "bytes": 1494,
+      "sha256": "66204637ca5f9aa25cabfe74d48470842a1852f194ff73680d2a0439d5ed7f17"
+    },
+    {
+      "path": "materials/chapter_07/block_28/163 - Связи, N+1 и connection pool.md",
+      "bytes": 1515,
+      "sha256": "d93e814deb11b2d22a62e4a9ff2dd99f55182bf38679c4351791d3a4f228c2ce"
+    },
+    {
+      "path": "materials/chapter_07/block_28/164 - Нагрузочная проверка и финальный Async StudyHub.md",
+      "bytes": 3278,
+      "sha256": "549f5445c871d901b07877426fb9d27d5797de0e40ed563ca957d7a8cd5f256f"
+    },
+    {
+      "path": "materials/chapter_07/block_28/__init__.py",
+      "bytes": 213,
+      "sha256": "e9bd211464867db22b66eaa798494a59d2b15131d22dc9e37faf81d4361847bc"
+    },
+    {
+      "path": "materials/chapter_07/block_28/code_tasks.py",
+      "bytes": 224,
+      "sha256": "aff605c4e8d54a85c6cba4c9fb5f3e520a81f5210c48624dc1c655f7b3dd4407"
+    },
+    {
+      "path": "materials/chapter_07/block_28/manual.py",
+      "bytes": 220,
+      "sha256": "390f9ad8571122c016d68e25bf02e631e1690bc61cc8a48cbab508bb8fddbcbd"
+    },
+    {
+      "path": "materials/chapter_07/README.md",
+      "bytes": 196,
+      "sha256": "81ab3c803034d2e83d1918c8122158ed3c53793dbf265e05839fe2450b5b555f"
+    },
+    {
+      "path": "materials/chapter_07/track.json",
+      "bytes": 273,
+      "sha256": "502299eebff21e381eff7896091e161b884753e016290e69ef3adfd74bc7a425"
+    },
+    {
+      "path": "materials/chapter_08/__init__.py",
+      "bytes": 204,
+      "sha256": "de5f352006cb115f5863739699b27d7fccc8b8f4c32f929f4a465cfce0655ad6"
+    },
+    {
+      "path": "materials/chapter_08/block_00/__init__.py",
+      "bytes": 213,
+      "sha256": "88ce3cd5db0830ac72edbef4a0519557baf0f076e437f14f1c79ec13b91c4eff"
+    },
+    {
+      "path": "materials/chapter_08/block_00/manual.py",
+      "bytes": 220,
+      "sha256": "3e4ec44a7ea42fa00962ac0592deb27a90941c48aeec204e61087f9f7bd00b92"
+    },
+    {
+      "path": "materials/chapter_08/block_00/План обучения.md",
+      "bytes": 4264,
+      "sha256": "9f239aee702ee6a817335a013b4d2741a7fcb53d7a8515e4e0431e419aaa4445"
+    },
+    {
+      "path": "materials/chapter_08/block_29/165 - Linux-путь проекта и базовая навигация.md",
+      "bytes": 3824,
+      "sha256": "0299b046d4ef2fb4bd873b839a5730e6f4ba9f465e9e96a344c431685951dde6"
+    },
+    {
+      "path": "materials/chapter_08/block_29/166 - Процессы, PID, порты и сигналы.md",
+      "bytes": 2544,
+      "sha256": "2c3bbcc0fa9f29998e8f499afa9aa9ed0f7d8ca62e67c14baf6c4378aaf2a2c1"
+    },
+    {
+      "path": "materials/chapter_08/block_29/167 - Environment variables и конфигурация окружений.md",
+      "bytes": 2437,
+      "sha256": "9d40b961703ee2a9481e191e995ce426a613a7e8a52d43cf285e99bc58e65beb"
+    },
+    {
+      "path": "materials/chapter_08/block_29/168 - stdout, stderr и структурированные логи.md",
+      "bytes": 2415,
+      "sha256": "ea16f92bb19f8c0e44c5258b4bcab3bee448c8d9fe0b9d60f2b6ecad684965df"
+    },
+    {
+      "path": "materials/chapter_08/block_29/169 - Healthcheck, readiness и graceful shutdown.md",
+      "bytes": 2350,
+      "sha256": "e845e5c6ebf4440d8eeae5c4ae47b3172ef5071ef99f74c42796a8561066ae89"
+    },
+    {
+      "path": "materials/chapter_08/block_29/170 - Linux-runbook и диагностика запуска StudyHub.md",
+      "bytes": 3155,
+      "sha256": "6d2b61a456887f7c0250c00e7cb00642d1a4a77a85e985cf2afd1de46723a736"
+    },
+    {
+      "path": "materials/chapter_08/block_29/__init__.py",
+      "bytes": 213,
+      "sha256": "ee6257c2d47865612aa2d73eb6e6d6371720e0ce53ccb9d89b2171e1da99f3f7"
+    },
+    {
+      "path": "materials/chapter_08/block_29/code_tasks.py",
+      "bytes": 224,
+      "sha256": "ff1c463f1f1ba83e98232de6a51a804f016ddcf5dc8004404be8f843697e6a7d"
+    },
+    {
+      "path": "materials/chapter_08/block_29/manual.py",
+      "bytes": 220,
+      "sha256": "cc76cad17c810321a27148c847aa6cdae78be89c40efc3cafdccd0431384e2a1"
+    },
+    {
+      "path": "materials/chapter_08/block_30/171 - Image, container и изоляция процесса.md",
+      "bytes": 3208,
+      "sha256": "baa1a9d336a5d1d66ad14fa5c38243178d47e304282fa96e20d5054f4fb6d835"
+    },
+    {
+      "path": "materials/chapter_08/block_30/172 - Первый Dockerfile для FastAPI.md",
+      "bytes": 1878,
+      "sha256": "44257eaf63bbbd183c7b74eb61fae74558c7686c365720062da4808cdc2b9775"
+    },
+    {
+      "path": "materials/chapter_08/block_30/173 - Build context, layers и кеш сборки.md",
+      "bytes": 2188,
+      "sha256": "bc12873c37ac40091c7727d97ac0f2a657515ac40945b79bb28438cbd822cb3a"
+    },
+    {
+      "path": "materials/chapter_08/block_30/174 - Ports, environment и файловое состояние container.md",
+      "bytes": 2290,
+      "sha256": "c7289c5a598270053b7e5a8bae0e6db8cddda17c7385d92e4f6e91041e01471f"
+    },
+    {
+      "path": "materials/chapter_08/block_30/175 - dockerignore, непривилегированный пользователь и чистый image.md",
+      "bytes": 2244,
+      "sha256": "b08ccd3167472ae2b8976617de66cfa6655beb42bae04197573a11c5e24e5eb4"
+    },
+    {
+      "path": "materials/chapter_08/block_30/176 - Диагностика container и релизный Dockerfile.md",
+      "bytes": 2808,
+      "sha256": "04ece0f23f612ac08f0728fad014e7e555f0b06ca0dd690ff04a33cf2dc16b66"
+    },
+    {
+      "path": "materials/chapter_08/block_30/__init__.py",
+      "bytes": 213,
+      "sha256": "4bd1edc86ce25da1b9ccdf4ebdc77a370aad6ce7cb44cc8257206177ff20cbfb"
+    },
+    {
+      "path": "materials/chapter_08/block_30/code_tasks.py",
+      "bytes": 224,
+      "sha256": "848a6b0b8a4b6540784834706a306ec58db7aa4f8071c7d4e9802943c136d25b"
+    },
+    {
+      "path": "materials/chapter_08/block_30/manual.py",
+      "bytes": 220,
+      "sha256": "fe3f8202921617d8d8cbfae430fc2fc2a66d002c4b10ee8d0d752d8e00ae5b47"
+    },
+    {
+      "path": "materials/chapter_08/block_31/177 - Compose services и внутренняя сеть.md",
+      "bytes": 2787,
+      "sha256": "caf47115cc75e344d212bb87e6e82104c26a9e02790cf87664470f53db42ac3e"
+    },
+    {
+      "path": "materials/chapter_08/block_31/178 - PostgreSQL service и DATABASE_URL внутри Compose.md",
+      "bytes": 1892,
+      "sha256": "41506e5f4206a936e58d83beba71b4d1ce325e3e38050da9bd9de6c1c9410167"
+    },
+    {
+      "path": "materials/chapter_08/block_31/179 - Volumes и постоянные данные PostgreSQL.md",
+      "bytes": 2006,
+      "sha256": "eed23fbee95cb6b19edf1d5d75ec07128fead50b68c0014472dcd65899a7b9ec"
+    },
+    {
+      "path": "materials/chapter_08/block_31/180 - Readiness, healthcheck и запуск migrations.md",
+      "bytes": 1948,
+      "sha256": "57f058f7d4c9cf22e5da9fa970cc622a258d613aeb409da21eb37038574f3fc2"
+    },
+    {
+      "path": "materials/chapter_08/block_31/181 - Redis service как будущая инфраструктура.md",
+      "bytes": 2155,
+      "sha256": "950c15959e016c6af3dc9850435af09aede403dc1d7fc5bb43ded34a879cff5e"
+    },
+    {
+      "path": "materials/chapter_08/block_31/182 - Полный local stack и сценарии восстановления.md",
+      "bytes": 2765,
+      "sha256": "0a1e4009c81c4fb286219448a80d4c79e88bb978a7786da1ffd39309760b1949"
+    },
+    {
+      "path": "materials/chapter_08/block_31/__init__.py",
+      "bytes": 213,
+      "sha256": "3d75dd744f92ff00f648652eca4f66cbf22191be467e6c2932c93dd2cfd0e12a"
+    },
+    {
+      "path": "materials/chapter_08/block_31/code_tasks.py",
+      "bytes": 224,
+      "sha256": "2301e7c68eb3cc18314b804ff12448f42d9ce1b5aa718a680c1c6d7cec915624"
+    },
+    {
+      "path": "materials/chapter_08/block_31/manual.py",
+      "bytes": 220,
+      "sha256": "b432aabe3fbb2dbf3021f4daaa30eef4c884ea17471ee6624bd41bd29fb7676a"
+    },
+    {
+      "path": "materials/chapter_08/block_32/183 - Continuous Integration и quality gates.md",
+      "bytes": 2835,
+      "sha256": "e5d08adaa4594e557f7e81020ccc7b69becc6564096e5398ec2586312ebcea91"
+    },
+    {
+      "path": "materials/chapter_08/block_32/184 - Первый workflow GitHub Actions.md",
+      "bytes": 1931,
+      "sha256": "4cca98d1c767c27d318dce22d5d8eb719bb7bf70df80ffb7b93b41deb2ca401f"
+    },
+    {
+      "path": "materials/chapter_08/block_32/185 - PostgreSQL service и migrations в CI.md",
+      "bytes": 1882,
+      "sha256": "de38ee080c918c31ad40e7f640fb8b481076563c2fbeb26351664b4c5bf4271b"
+    },
+    {
+      "path": "materials/chapter_08/block_32/186 - Автоматическая сборка и tagging Docker image.md",
+      "bytes": 2026,
+      "sha256": "9bb37b96e360cfd08ef1b1e1af5f7b59430d40f87bd97559511c85cc7bf22cdd"
+    },
+    {
+      "path": "materials/chapter_08/block_32/187 - Deployment, secrets и production configuration.md",
+      "bytes": 2062,
+      "sha256": "91bd3a86045c80d6682cd7929119430dc955155d2f2de63da086169c7223c3c5"
+    },
+    {
+      "path": "materials/chapter_08/block_32/188 - Smoke test, rollback и Release StudyHub.md",
+      "bytes": 5177,
+      "sha256": "35d2a8d01453decd1220a880f0c37fb61e54f163468f69d29716658c9fc1d479"
+    },
+    {
+      "path": "materials/chapter_08/block_32/__init__.py",
+      "bytes": 213,
+      "sha256": "5bb26b9ef1b12627872511569cd546d635bea91c328499a922b0b64941ad83a3"
+    },
+    {
+      "path": "materials/chapter_08/block_32/code_tasks.py",
+      "bytes": 224,
+      "sha256": "613699de19765b9f13f8b593810fc06a5cce5725eae9394768c26c905cf00663"
+    },
+    {
+      "path": "materials/chapter_08/block_32/manual.py",
+      "bytes": 220,
+      "sha256": "795b629a24d122a2a566f1557806a179197b2d0fc536cf64f6d6f7f301bd9923"
+    },
+    {
+      "path": "materials/chapter_08/README.md",
+      "bytes": 189,
+      "sha256": "778a7b82e231c22db353f7200847ae0dcad68a6203ad4c81ca39ac613a8925f3"
+    },
+    {
+      "path": "materials/chapter_08/track.json",
+      "bytes": 267,
+      "sha256": "de20b2de394849122f7b34d172e9ae5baaf0173eb85a883de68bf64b074e15f4"
+    },
+    {
+      "path": "materials/chapter_09/__init__.py",
+      "bytes": 204,
+      "sha256": "f56483f5674479730c3ebf4285f93e1d2d2402750cc06665dac68d246dfb358d"
+    },
+    {
+      "path": "materials/chapter_09/block_00/__init__.py",
+      "bytes": 213,
+      "sha256": "cada73039b33cc9441de4d83bbff0a53586980b182988a60a2c4d597bcb040be"
+    },
+    {
+      "path": "materials/chapter_09/block_00/manual.py",
+      "bytes": 220,
+      "sha256": "b6971bc587bdb331844111e4ff3b92c23789364873621f1d205b1b67c82fa284"
+    },
+    {
+      "path": "materials/chapter_09/block_00/План обучения.md",
+      "bytes": 7045,
+      "sha256": "2e5a254e67b5237dc9f31044419dc8abec144a8173c37225aa4a43fc797195bf"
+    },
+    {
+      "path": "materials/chapter_09/block_33/189 - От Planner к LMS, требования и границы MVP.md",
+      "bytes": 3103,
+      "sha256": "e2977a81a1b2c79bb6236c72b48d34f9282773aff047dea5716210b9bc150996"
+    },
+    {
+      "path": "materials/chapter_09/block_33/190 - Course, Module и Lesson, структура учебного контента.md",
+      "bytes": 1996,
+      "sha256": "6f06eec92f739bc0e514b6ec6b51bb38b3d02ef7091ee01d1439ac9e3522ae10"
+    },
+    {
+      "path": "materials/chapter_09/block_33/191 - Enrollment как отдельная сущность связи.md",
+      "bytes": 2023,
+      "sha256": "64eb356cf6d50aca9ac96991879e4a64b3588ee195a36dfa9a8a3432e3cdbb4b"
+    },
+    {
+      "path": "materials/chapter_09/block_33/192 - Progress и инварианты прохождения.md",
+      "bytes": 2160,
+      "sha256": "3545884b04f737e0e701155a874fe7f6517637a70af8fa5464b02c35d87cecaf"
+    },
+    {
+      "path": "materials/chapter_09/block_33/193 - Ownership, роли и permissions matrix.md",
+      "bytes": 2041,
+      "sha256": "a961ca99e58f44953323f8f318613fea24fa6a3ec4cb087807dd764914f71bc0"
+    },
+    {
+      "path": "materials/chapter_09/block_33/194 - API contract, ER-диаграмма и migration plan.md",
+      "bytes": 2760,
+      "sha256": "73b4d31216b02839e94e38f5094d789e614cc18fd72f1f5ece573de5164b33fa"
+    },
+    {
+      "path": "materials/chapter_09/block_33/__init__.py",
+      "bytes": 213,
+      "sha256": "de12a19714d79e660963a5a3c0e0bd79a3d8e1eddf479acfffa2296619c1b8da"
+    },
+    {
+      "path": "materials/chapter_09/block_33/code_tasks.py",
+      "bytes": 224,
+      "sha256": "b7dd9961d3bbb7574e54f0f1a8763ddfbe28df1577df090443432fc4ccabd9b9"
+    },
+    {
+      "path": "materials/chapter_09/block_33/manual.py",
+      "bytes": 220,
+      "sha256": "f3ddf3779427b648fbf2acd364efb5fd7a5dbb22b3bc50e42674f39977177638"
+    },
+    {
+      "path": "materials/chapter_09/block_34/195 - Teacher создаёт и редактирует Course.md",
+      "bytes": 2787,
+      "sha256": "28ad30b934476c3458770ed901b9827c12f7f5f11da262d30f47a3559ed70aa2"
+    },
+    {
+      "path": "materials/chapter_09/block_34/196 - Modules, Lessons и устойчивый порядок.md",
+      "bytes": 1966,
+      "sha256": "3eda58b78f3391f658d5ea42ae59cf2af639bce8ec92c4cd046e6bf52ebc3da6"
+    },
+    {
+      "path": "materials/chapter_09/block_34/197 - Draft, publish и публичный каталог курсов.md",
+      "bytes": 1987,
+      "sha256": "e5aa1006392b00ed0c42622095e3521d42e4145bdb39c26d8275981d6361f2dd"
+    },
+    {
+      "path": "materials/chapter_09/block_34/198 - Enrollment и защита от повторной записи.md",
+      "bytes": 1988,
+      "sha256": "0d55ad126e7c6b791fa074bd635f2b96a5ca2e105a627a5604eda08b97780c47"
+    },
+    {
+      "path": "materials/chapter_09/block_34/199 - Завершение Lesson и расчёт Progress.md",
+      "bytes": 1884,
+      "sha256": "9b3cb201a0e5625a02524b604fc166e6bfe3b5021ec82e7310d00dbe497d48a8"
+    },
+    {
+      "path": "materials/chapter_09/block_34/200 - End-to-end LMS flow и отрицательные тесты.md",
+      "bytes": 2653,
+      "sha256": "e0e8af1bb059abdbd6fb3a4dc61c6eff222c2dd51d0d39732505dabf8ff57adf"
+    },
+    {
+      "path": "materials/chapter_09/block_34/__init__.py",
+      "bytes": 213,
+      "sha256": "95cd5cad78cf94b9d997f3416e17b128d3aff09c6815453bf224d4b21063068e"
+    },
+    {
+      "path": "materials/chapter_09/block_34/code_tasks.py",
+      "bytes": 224,
+      "sha256": "ce81b1cde4eedac87ced2e3bbcec6e16ff6593d2226fcc9649c008e2b67480cc"
+    },
+    {
+      "path": "materials/chapter_09/block_34/manual.py",
+      "bytes": 220,
+      "sha256": "d20c4f959f45ff7faaddc2fd8836ff3bdec6127a330ed105121c4ef25530cfae"
+    },
+    {
+      "path": "materials/chapter_09/block_35/201 - Redis key,value, TTL и source of truth.md",
+      "bytes": 2985,
+      "sha256": "e3ad87d59fa83c7ce88587540a06db897c63ffc489aeaa57b9d679ef9bc90cf0"
+    },
+    {
+      "path": "materials/chapter_09/block_35/202 - Cache-aside для каталога курсов.md",
+      "bytes": 1880,
+      "sha256": "80a99e417126ce66a4d6f23e8f4008be6cbd8d4f12cdae273d8c3e418e9f0878"
+    },
+    {
+      "path": "materials/chapter_09/block_35/203 - Cache invalidation после изменения курса.md",
+      "bytes": 1992,
+      "sha256": "f7a41490aa0a89c27fff6c362be32bff73ef3c7d769126e8e2a6118aa08a38d3"
+    },
+    {
+      "path": "materials/chapter_09/block_35/204 - Простой rate limit через Redis.md",
+      "bytes": 2071,
+      "sha256": "a68657a07f1d3c5918f451ccbf7665d5f623e970ed95a7eafd3ddd6549a3986f"
+    },
+    {
+      "path": "materials/chapter_09/block_35/205 - BackgroundTasks и действие после response.md",
+      "bytes": 2314,
+      "sha256": "c1092e1a92fd182ef40f9a891ddb7764e0f7d582d253f82b8e9d0dab1a0ac944"
+    },
+    {
+      "path": "materials/chapter_09/block_35/206 - Тестирование кеша, rate limit и фоновых ошибок.md",
+      "bytes": 2786,
+      "sha256": "200248e438be8f2d4673c77508120b3d1f775e393cf8d023e7388909dd53fe26"
+    },
+    {
+      "path": "materials/chapter_09/block_35/__init__.py",
+      "bytes": 213,
+      "sha256": "43c715696b7929e51c0eb8cf224b90869d1df465db592049d44ebad5874a7177"
+    },
+    {
+      "path": "materials/chapter_09/block_35/code_tasks.py",
+      "bytes": 224,
+      "sha256": "8249f96f421dd3a86cb69c3e5475791476e238d2e6fb45dc2d993ee7b0d43a07"
+    },
+    {
+      "path": "materials/chapter_09/block_35/manual.py",
+      "bytes": 220,
+      "sha256": "d702371973a480187c3a3b7132d47db4a3e95d8ff1e122fc083549d060007c0a"
+    },
+    {
+      "path": "materials/chapter_09/block_36/207 - Единый API error contract и versioning.md",
+      "bytes": 2952,
+      "sha256": "84541e2b832da47d0b1797b3d451d7030ae0e5021076e05f75f1a6d3ca453bc8"
+    },
+    {
+      "path": "materials/chapter_09/block_36/208 - Аудит безопасности и производительности.md",
+      "bytes": 2048,
+      "sha256": "b4129b883ace17fe3a2d718ab686560027e4e46729a336fadbb126c8721ad0f0"
+    },
+    {
+      "path": "materials/chapter_09/block_36/209 - Финальный test suite и quality gate.md",
+      "bytes": 2020,
+      "sha256": "c4deddd0e14f9ac32bf92c39ca4c54d9010925600186540b4c27217bd0c444e0"
+    },
+    {
+      "path": "materials/chapter_09/block_36/210 - README, ER-диаграмма и архитектурный рассказ.md",
+      "bytes": 2056,
+      "sha256": "9c88c3ba3ada96a49cf800e631610c248e5d07e3904f0b683a633406d57c5513"
+    },
+    {
+      "path": "materials/chapter_09/block_36/211 - Interview lab, Python, SQL, API и code review.md",
+      "bytes": 2243,
+      "sha256": "e9a8b434138192df586adffa47fdd956e80294d40904113838fffdf044c9bed5"
+    },
+    {
+      "path": "materials/chapter_09/block_36/212 - StudyHub LMS Release и финальная защита.md",
+      "bytes": 5503,
+      "sha256": "b5c23507b84f657176de2d1afed652584d737a9ba67cf76ff0fc3e4132f12e81"
+    },
+    {
+      "path": "materials/chapter_09/block_36/__init__.py",
+      "bytes": 213,
+      "sha256": "15718cfa88d054746c7f4bbca6f848a67490167eb372774fddaf422d78171997"
+    },
+    {
+      "path": "materials/chapter_09/block_36/code_tasks.py",
+      "bytes": 224,
+      "sha256": "d6ef2cd6fe6cb84d641706ea298112065360f5a6b4eb611f9ebccfc919680411"
+    },
+    {
+      "path": "materials/chapter_09/block_36/manual.py",
+      "bytes": 220,
+      "sha256": "62f71f13a9042352ed6f6bdb3f49142108ce262463bf7e03bddbd4c171696e65"
+    },
+    {
+      "path": "materials/chapter_09/README.md",
+      "bytes": 193,
+      "sha256": "7e05aff8503795ecc41d2a97d9d62c4a1aa08bec6756cf59f0e0a89ad2f04f28"
+    },
+    {
+      "path": "materials/chapter_09/track.json",
+      "bytes": 293,
+      "sha256": "f5fa82c5dc10cb4123548f3665e03a6edc817a1e5b7c64c9fe1d92612bb420ef"
+    },
+    {
+      "path": "materials/README-практика.md",
+      "bytes": 9841,
+      "sha256": "6b2a5f0872aca90bf3c2319277fe98308d40ff299216b25ee94ca147e61cbd5c"
+    },
+    {
+      "path": "materials/README.md",
+      "bytes": 7869,
+      "sha256": "b6390de8ae788f1eb125222cbc2cd05e70759d62dfddc23f26da7dcdb8663f49"
+    },
+    {
+      "path": "practice/__init__.py",
+      "bytes": 2,
+      "sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6"
+    },
+    {
+      "path": "practice/helpers.py",
+      "bytes": 5084,
+      "sha256": "f1d67b2f7fbe9fc5c3d33f770da8c68bda40fdc8262adcd3034fc745bbe7c553"
+    }
+  ]
+}

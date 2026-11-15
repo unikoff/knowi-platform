@@ -46,6 +46,9 @@ class User(Base):
     is_admin: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="0"
     )
+    verified: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
 
     @property
     def password(self):
@@ -62,6 +65,24 @@ class User(Base):
 
     def verify_password(self, plain_password: str) -> bool:
         return _verify_password(plain_password, self._password_hash)
+
+
+class ConsumedEmailChange(Base):
+    __tablename__ = "consumed_email_changes"
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class EmailChangeRequest(Base):
+    __tablename__ = "email_change_requests"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    old_confirmed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    new_confirmed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
 
 class Admin(Base):
@@ -127,7 +148,7 @@ class UserActivityDay(Base):
 class UserLessonProgress(Base):
     __tablename__ = "user_lesson_progress"
     __table_args__ = (
-        UniqueConstraint("user_id", "lesson_id", name="uq_user_lesson_progress"),
+        UniqueConstraint("course_id", "user_id", "lesson_id", name="uq_course_user_lesson_progress"),
         Index("ix_user_lesson_progress_completed_at", "completed_at"),
     )
 
@@ -136,6 +157,7 @@ class UserLessonProgress(Base):
         ForeignKey("users.id"), index=True, nullable=False
     )
     lesson_id: Mapped[str] = mapped_column(String(40), index=True, nullable=False)
+    course_id: Mapped[str] = mapped_column(String(80), nullable=False, default="backend", server_default="backend")
     completed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -144,7 +166,7 @@ class UserLessonProgress(Base):
 class UserTaskProgress(Base):
     __tablename__ = "user_task_progress"
     __table_args__ = (
-        UniqueConstraint("user_id", "task_id", name="uq_user_task_progress"),
+        UniqueConstraint("course_id", "user_id", "task_id", name="uq_course_user_task_progress"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -152,6 +174,7 @@ class UserTaskProgress(Base):
         ForeignKey("users.id"), index=True, nullable=False
     )
     task_id: Mapped[str] = mapped_column(String(160), index=True, nullable=False)
+    course_id: Mapped[str] = mapped_column(String(80), nullable=False, default="backend", server_default="backend")
     task_revision: Mapped[str] = mapped_column(String(64), nullable=False)
     completed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

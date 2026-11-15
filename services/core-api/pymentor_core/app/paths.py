@@ -4,23 +4,19 @@ import os
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
-LEGACY_ROOT = PROJECT_ROOT / "backend"
+SERVICE_ROOT = Path(__file__).resolve().parents[2]
+LEGACY_ROOT = SERVICE_ROOT
 BACKEND_ROOT = LEGACY_ROOT
-DIST_DIR = PROJECT_ROOT / "frontend" / "dist"
-MATERIALS_ROOT = LEGACY_ROOT / "content" / "materials"
+DIST_DIR = PROJECT_ROOT / "apps" / "web" / "dist"
+MATERIALS_ROOT = PROJECT_ROOT / "courses" / "backend" / "backend" / "plans"
+COURSES_ROOT = Path(os.environ.get("PYMENTOR_COURSES_ROOT", str(PROJECT_ROOT / "courses")))
+if not COURSES_ROOT.is_absolute():
+    raise ValueError("PYMENTOR_COURSES_ROOT must be absolute")
 
 
 def state_directory():
     configured = os.environ.get("PYMENTOR_STATE_DIR", "").strip()
-    path = (
-        Path(configured)
-        if configured
-        else (
-            LEGACY_ROOT
-            if os.environ.get("PYMENTOR_PROFILE", "legacy_sqlite") == "legacy_sqlite"
-            else PROJECT_ROOT / "data" / "core-api"
-        )
-    )
+    path = Path(configured) if configured else SERVICE_ROOT / ".local" / "state"
     if not path.is_absolute():
         raise ValueError("PYMENTOR_STATE_DIR must be absolute")
     return path

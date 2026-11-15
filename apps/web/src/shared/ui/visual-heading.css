@@ -1,0 +1,17 @@
+.visual-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  color: var(--accent);
+  font: 650 0.82rem/1.5 var(--font-body);
+  letter-spacing: normal;
+  text-transform: none;
+  text-align: start;
+}
+
+.visual-heading > svg { flex: 0 0 18px; width: 18px; height: 18px; color: inherit; }
+.visual-heading > span { min-width: 0; color: inherit; font: inherit; overflow-wrap: anywhere; }
+
+.code-block-context { display: none; }

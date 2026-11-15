@@ -1,0 +1,4 @@
+interface:
+  display_name: "Methodic Run"
+  short_description: "Материалы по точной версии методички Pymentor"
+  default_prompt: "Используй $methodic-run для создания указанных материалов по заданной версии методички и проверки покрытия её требований."

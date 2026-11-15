@@ -7,8 +7,8 @@ from pymentor_core.adapters.legacy_runner.python import run_python_task
 
 
 def dictionary_removal_task():
-    source = (Path(__file__).resolve().parents[4] / 'backend') / "content/materials/chapter_01/block_02/code_tasks.py"
-    tasks = runpy.run_path(str(source))["CODE_TASKS"]
+    from pymentor_core.adapters.course_local.runtime import default_runtime
+    tasks = default_runtime().context("backend").get_authoring("chapter_01.block_02.code_tasks").CODE_TASKS
     return tasks[8][4]
 
 

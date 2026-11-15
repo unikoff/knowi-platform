@@ -17,7 +17,7 @@ import pytest
 
 STAGE_ROOT = Path(__file__).resolve().parents[4]
 SOURCE_BACKEND = Path(
-    os.environ.get("PYMENTOR_SOURCE_BACKEND", (Path(__file__).resolve().parents[4] / 'backend'))
+    os.environ.get("PYMENTOR_SOURCE_BACKEND", (Path(__file__).resolve().parents[2]))
 )
 _MISSING = object()
 
@@ -63,6 +63,7 @@ async def _asgi_request(app, method: str, path: str, payload: dict):
         "root_path": "",
         "headers": [
             (b"host", b"testserver"),
+            (b"cookie", b"session=synthetic-session"),
             (b"content-type", b"application/json"),
             (b"content-length", str(len(request_body)).encode("ascii")),
         ],
@@ -92,6 +93,9 @@ def api_harness(monkeypatch):
     import pymentor_core.modules.identity.api as identity_api
     import pymentor_core.adapters.sql as sql
     import pymentor_core.app as app_package
+    # Load the real identity and request helpers before installing module fakes.
+    import pymentor_core.modules.identity.api.sessions
+    import pymentor_core.app.async_request
 
     package_bindings = [
         (learning, "catalog"),
@@ -153,6 +157,7 @@ def api_harness(monkeypatch):
 
     fake_runner_python.RunnerBusy = RunnerBusy
     fake_runner_python.RunnerUnavailable = RunnerUnavailable
+    fake_runner_python.get_runner_policy = lambda: None
     fake_runner_python.get_runner_executor = lambda: None
     fake_progress = _stub('pymentor_core.modules.learning.progress')
     fake_access = _stub(
@@ -244,10 +249,31 @@ def api_harness(monkeypatch):
     monkeypatch.setattr(service, "_get_available_task", resolved_task)
     monkeypatch.setattr(service, "find_lesson_by_task", resolved_lesson)
     monkeypatch.setattr(service, "_execute_task", execute)
-    monkeypatch.setattr(service, "_save_task_progress", lambda _context: state.events.append("progress"))
+    monkeypatch.setattr(service, "_write_task_progress", lambda _context, _db, _root: state.events.append("progress"))
     monkeypatch.setattr(service, "SessionLocal", DummySession)
 
+    class FakeSession:
+        async def run_sync(self, operation):
+            return operation(None)
+
+    class FakeUnitOfWork:
+        session = FakeSession()
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return False
+
+    class FakeIdentity:
+        database = SimpleNamespace(unit_of_work=FakeUnitOfWork)
+
+        async def authenticate(self, token):
+            assert token == "synthetic-session"
+            return SimpleNamespace(id=7)
+
     app = FastAPI()
+    app.state.identity_sessions = FakeIdentity()
     app.include_router(router.learning_router)
     yield SimpleNamespace(
         app=app,
@@ -440,7 +466,7 @@ def test_invalid_resolved_source_file_fails_closed_before_runner_or_progress(
     _assert_no_secrets(response)
 
 
-def test_asgi_chapter_two_retains_legacy_serialized_result(api_harness):
+def test_asgi_chapter_two_uses_public_judge_projection(api_harness):
     harness = api_harness
     harness.state.source_file = "chapter_02/block_01/synthetic.md"
     harness.state.result = {
@@ -452,14 +478,16 @@ def test_asgi_chapter_two_retains_legacy_serialized_result(api_harness):
     response = _submit(harness, task_id="chapter-one-looking-client-id")
     assert response.status_code == 200
     body = response.json()
-    assert body["tests"][0]["name"] == "legacy test name"
-    assert body["tests"][0]["expected"] == "legacy expected"
-    assert body["tests"][0]["actual"] == "legacy actual"
-    assert body["stdout"] == "legacy output"
+    assert body["tests"][0]["name"] == "Проверка 1"
+    assert body["tests"][0]["expected"] is None
+    assert body["tests"][0]["actual"] is None
+    assert body["stdout"] == ""
+    assert "legacy expected" not in response.text
+    assert "legacy actual" not in response.text
 
 
 @pytest.mark.parametrize("source_file", ["chapter_01_archive/block_01/synthetic.md", "chapter_03/block_01/synthetic.md"])
-def test_unrecognized_or_missing_source_file_does_not_expand_projection_scope(api_harness, source_file):
+def test_archive_and_other_chapters_also_hide_private_judge_data(api_harness, source_file):
     harness = api_harness
     harness.state.source_file = source_file
     harness.state.result = {
@@ -469,9 +497,9 @@ def test_unrecognized_or_missing_source_file_does_not_expand_projection_scope(ap
         "stdout": "legacy output",
     }
     body = _submit(harness).json()
-    assert body["tests"][0]["name"] == "legacy name"
-    assert body["tests"][0]["expected"] == "legacy expected"
-    assert body["stdout"] == "legacy output"
+    assert body["tests"][0]["name"] == "Проверка 1"
+    assert body["tests"][0]["expected"] is None
+    assert body["stdout"] == ""
 
 
 def test_asgi_preview_keeps_preview_executor_and_response_contract(api_harness):

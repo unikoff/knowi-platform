@@ -3,7 +3,9 @@
 import unittest
 
 from pymentor_core.adapters.legacy_runner.python import run_python_task
-from content.materials.chapter_01 import CODE_TASKS
+from pymentor_core.adapters.course_local.runtime import default_runtime as _course_runtime
+_authoring = _course_runtime().context("backend").get_authoring
+CODE_TASKS = getattr(_authoring("chapter_01"), "CODE_TASKS")
 
 
 def exercise(number, title):

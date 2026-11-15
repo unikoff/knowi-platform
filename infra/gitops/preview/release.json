@@ -1,0 +1,7 @@
+{
+  "source_sha": "c1d52b234c32b000537838f89b6df630d4c6f558",
+  "core_digest": "sha256:3cbbffb33b8c7284efc150b0ca62b7f6226d04d4274cccd986e2826ec6b07a32",
+  "frontend_digest": "sha256:4ec7e5fe9dbe2de5435af3d1803a48df381583410e0ae9ddd0d5a0b7a5923df4",
+  "runner_digest": "sha256:aba2779b7d85f4422621e92a5a85fc1913add9f7c5a4eb4791ce1f35359ab195",
+  "migration_digest": "sha256:0a4650fa18f128c8a950e5eb5d507911d74ff66579c885ce2782e83c47c4f34c"
+}

@@ -1,0 +1,878 @@
+.lesson-infographic,
+.lesson-diagram,
+.lesson11-branch-diagram,
+.lesson12-setup,
+.lesson16-1-priority-path,
+.lesson17-1-path,
+.lesson19-trace,
+.lesson19-identity {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+  grid-column: 1 / -1;
+  flex: 0 0 100%;
+  justify-self: stretch;
+  margin: 0;
+  /* One spacing scale for shared and lesson-specific diagrams. */
+  --diagram-space: 16px;
+  --diagram-space-sm: 8px;
+  --diagram-space-xs: 4px;
+  --diagram-link-size: 80px;
+  --diagram-arrow-length: 24px;
+  --diagram-arrow-width: 10px;
+  --diagram-radius: 12px;
+}
+
+.lesson-infographic figcaption {
+  margin-top: var(--space-2);
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.lesson-infographic img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 1;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--diagram-bg);
+}
+
+.lesson-diagram {
+  container-name: lesson-diagram;
+  container-type: inline-size;
+  display: grid;
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+  grid-column: 1 / -1;
+  flex: 0 0 100%;
+  justify-self: stretch;
+  margin-inline: 0;
+  box-sizing: border-box;
+  gap: var(--diagram-space);
+  padding: var(--diagram-space);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--diagram-radius);
+  background: var(--bg);
+}
+
+.lesson-diagram :where(*) {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.lesson-diagram :where(code, pre) {
+  white-space: pre-wrap;
+}
+
+.lesson-diagram--vertical {
+  max-width: none;
+}
+
+.lesson-diagram-flow--vertical > .lesson-diagram-connector {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: var(--diagram-space-xs);
+  align-items: center;
+  justify-content: center;
+  padding: var(--diagram-space-xs) var(--diagram-space-sm);
+  text-align: center;
+}
+
+.lesson-diagram-flow--vertical > .lesson-diagram-connector > span:first-child {
+  position: static;
+  max-width: 42ch;
+  padding: 0;
+  background: transparent;
+  text-wrap: balance;
+}
+
+.lesson-diagram-flow--vertical > .lesson-diagram-connector > .lesson-diagram-arrow {
+  align-self: center;
+  width: var(--diagram-arrow-width);
+  height: var(--diagram-arrow-length);
+  min-height: var(--diagram-arrow-length);
+  flex: none;
+  clip-path: polygon(40% 0, 60% 0, 60% calc(100% - 9px), 100% calc(100% - 9px), 50% 100%, 0 calc(100% - 9px), 40% calc(100% - 9px));
+}
+
+.lesson-diagram-flow--vertical > .lesson-diagram-connector > .lesson-diagram-arrow--backward {
+  transform: scaleY(-1);
+}
+
+.lesson-diagram-flow--vertical > .lesson-diagram-connector > .lesson-diagram-arrow--both {
+  clip-path: polygon(50% 0, 100% 9px, 60% 9px, 60% calc(100% - 9px), 100% calc(100% - 9px), 50% 100%, 0 calc(100% - 9px), 40% calc(100% - 9px), 40% 9px, 0 9px);
+}
+
+.lesson-diagram-flow--vertical > .lesson-diagram-connector > .lesson-diagram-arrow--dashed {
+  background: repeating-linear-gradient(180deg, var(--accent) 0 8px, transparent 8px 13px);
+}
+
+.lesson39-branches-diagram {
+  max-width: none;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+}
+
+.lesson39-branches-diagram > .lesson-diagram-caption {
+  grid-column: 1 / -1;
+}
+
+@container lesson-diagram (min-width: 560px) {
+  .lesson17-record-copy-diagram .lesson-diagram-group {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .lesson17-record-copy-diagram .lesson-diagram-group > h3 {
+    grid-column: 1 / -1;
+  }
+}
+
+.lesson-diagram > .lesson-diagram-caption,
+.lesson11-branch-diagram > figcaption,
+.lesson12-setup > figcaption,
+.lesson17-1-path__caption,
+.lesson19-identity > figcaption {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 500;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.lesson-diagram-flow {
+  display: flex;
+  min-width: 0;
+  align-items: stretch;
+  gap: 0;
+}
+
+.lesson-diagram-flow--vertical {
+  flex-direction: column;
+}
+
+.lesson-diagram-flow > :is(.lesson-diagram-group, .lesson-diagram-lane) {
+  flex: 1 1 0;
+}
+
+@container lesson-diagram (min-width: 721px) {
+  .lesson79-sqlite-flow {
+    justify-content: center;
+  }
+}
+
+.lesson-diagram-node {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--diagram-space-sm);
+  padding: var(--diagram-space);
+  border: 1px solid var(--diagram-node-border);
+  border-radius: var(--diagram-radius);
+  background: var(--surface);
+}
+
+.lesson-diagram-node--terminator {
+  align-items: center;
+  border-radius: 999px;
+  text-align: center;
+}
+
+.lesson-diagram-node--decision {
+  flex: 1 1 0;
+  max-width: 380px;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  margin-inline: auto;
+  padding: var(--diagram-space);
+  background: var(--diagram-decision-bg);
+  text-align: center;
+}
+
+.lesson-diagram-flow--vertical > .lesson-diagram-node--decision {
+  width: min(100%, 380px);
+  flex: 0 1 auto;
+}
+
+.lesson-diagram-node--decision::before {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  transform: rotate(45deg);
+  border: 1px solid currentColor;
+  content: "";
+}
+
+.lesson-diagram-node--database {
+  border-radius: 50% / 14%;
+  background: var(--diagram-data-bg);
+}
+
+.lesson-diagram-node--subprocess::before {
+  position: absolute;
+  inset: 8px 12px;
+  border-inline: 1px solid var(--diagram-detail-line);
+  content: "";
+  pointer-events: none;
+}
+
+.lesson-diagram-group,
+.lesson-diagram-lane {
+  display: grid;
+  min-width: 0;
+  gap: var(--diagram-space);
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.lesson-diagram-branches {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: var(--diagram-space);
+}
+
+.lesson-diagram-branch {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: var(--diagram-space-sm);
+  padding: var(--diagram-space) 0 0;
+  border-top: 1px solid var(--diagram-group-line);
+  background: transparent;
+}
+
+.lesson-diagram-branch > h4 {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+.lesson-diagram-group > h3,
+.lesson-diagram-lane > h3 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.lesson-diagram-lane {
+  padding-inline-start: var(--diagram-space);
+  border-inline-start: 2px solid var(--diagram-detail-line);
+}
+
+.lesson24-parameter-scope {
+  container-name: lesson24-parameter-scope;
+  container-type: inline-size;
+}
+
+@container lesson24-parameter-scope (min-width: 721px) {
+  .lesson24-parameter-scope-diagram {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .lesson24-parameter-scope-diagram > .lesson-diagram-caption {
+    grid-column: 1 / -1;
+  }
+
+  .lesson24-parameter-scope-diagram > .lesson-diagram-group:nth-of-type(2) {
+    grid-column: 2 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .lesson24-parameter-scope-diagram > .lesson-diagram-group:nth-of-type(2) > h3 {
+    grid-column: 1 / -1;
+  }
+}
+
+.lesson-diagram-note {
+  display: grid;
+  gap: var(--diagram-space-sm);
+  padding: var(--diagram-space);
+  border-inline-start: 3px solid var(--border-tint-accent);
+  border-radius: var(--diagram-radius);
+  background: var(--surface);
+  color: var(--diagram-note-text);
+  font-size: 0.875rem;
+}
+
+.lesson-diagram-note strong {
+  color: var(--text);
+}
+
+.lesson-diagram-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  list-style: none;
+}
+
+.lesson-diagram-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--diagram-space-sm);
+}
+
+.lesson-diagram-node h3,
+.lesson-diagram-node p {
+  margin: 0;
+}
+
+.lesson-diagram-node h3 {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.lesson-diagram-node p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.lesson85-reading-flow .lesson85-service-node {
+  flex: 1.45 1 0;
+}
+
+.lesson-diagram-node code {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: var(--diagram-space-xs) var(--diagram-space-sm);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.8125rem;
+}
+
+.lesson-diagram-connector {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  flex: 0 0 var(--diagram-link-size);
+  grid-template-rows: 1fr var(--diagram-arrow-width) 1fr;
+  row-gap: var(--diagram-space-xs);
+  align-items: center;
+  justify-items: center;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.lesson-diagram-arrow {
+  grid-row: 2;
+  grid-column: 1;
+  width: 100%;
+  height: var(--diagram-arrow-width);
+  background: var(--accent);
+  clip-path: polygon(0 40%, calc(100% - 10px) 40%, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, calc(100% - 10px) 60%, 0 60%);
+}
+
+.lesson19-sum-flow {
+  align-items: center;
+}
+
+.lesson19-sum-flow > .lesson-diagram-node {
+  width: 100%;
+  flex: 0 1 auto;
+  align-self: center;
+}
+
+.lesson-diagram-arrow--both {
+  clip-path: polygon(0 50%, 10px 0, 10px 40%, calc(100% - 10px) 40%, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, calc(100% - 10px) 60%, 10px 60%, 10px 100%);
+}
+
+.lesson-diagram-arrow--backward {
+  transform: scaleX(-1);
+}
+
+.lesson-diagram-arrow--dashed {
+  background: repeating-linear-gradient(90deg, var(--accent) 0 8px, transparent 8px 13px);
+}
+
+.lesson-diagram-connector > span:first-child {
+  position: static;
+  grid-row: 3;
+  grid-column: 1;
+  padding: 0;
+  text-wrap: balance;
+}
+
+.lesson-diagram-exchange {
+  display: flex;
+  min-width: 0;
+  flex: 0 0 calc(var(--diagram-link-size) * 2);
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--diagram-space-sm);
+}
+
+.lesson-diagram-exchange-path {
+  display: flex;
+  flex-direction: column;
+  gap: var(--diagram-space-xs);
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.lesson-diagram-exchange-arrow {
+  position: relative;
+  width: 100%;
+  height: var(--diagram-arrow-width);
+  background: var(--accent);
+  clip-path: polygon(0 40%, calc(100% - 10px) 40%, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, calc(100% - 10px) 60%, 0 60%);
+}
+
+.lesson-diagram-exchange-path--reverse .lesson-diagram-exchange-arrow {
+  background: repeating-linear-gradient(90deg, var(--accent) 0 7px, transparent 7px 12px);
+  transform: scaleX(-1);
+}
+
+.lesson-binding-pair {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.lesson-binding-arrow {
+  position: relative;
+  width: 30px;
+  height: 10px;
+  flex: 0 0 30px;
+  background: var(--accent);
+  clip-path: polygon(0 40%, calc(100% - 8px) 40%, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, calc(100% - 8px) 60%, 0 60%);
+}
+
+.lesson-diagram-results {
+  display: grid;
+  width: 100%;
+  gap: 8px;
+}
+
+.lesson-diagram-results p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.lesson-diagram-track {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.lesson-diagram-track ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--diagram-space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lesson-diagram-track li {
+  position: relative;
+  display: grid;
+  flex: 1 1 8rem;
+  min-width: 0;
+  min-height: 38px;
+  padding: 8px 12px;
+  place-items: center;
+  border: 1px solid var(--diagram-detail-line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.84rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.lesson-diagram-track li.is-active {
+  border-color: var(--border-tint-accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+@container lesson-diagram (max-width: 720px) {
+  .lesson-diagram-flow {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .lesson-diagram-node {
+    flex: auto;
+  }
+
+  .lesson85-reading-flow .lesson85-service-node {
+    flex: auto;
+  }
+
+  .lesson-diagram-connector {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--diagram-space-xs);
+    padding: var(--diagram-space-xs) var(--diagram-space-sm);
+    text-align: center;
+  }
+
+  .lesson-diagram-arrow {
+    align-self: center;
+    width: var(--diagram-arrow-width);
+    height: var(--diagram-arrow-length);
+    min-height: var(--diagram-arrow-length);
+    flex: none;
+    clip-path: polygon(40% 0, 60% 0, 60% calc(100% - 9px), 100% calc(100% - 9px), 50% 100%, 0 calc(100% - 9px), 40% calc(100% - 9px));
+  }
+
+  .lesson-diagram-arrow--both {
+    clip-path: polygon(50% 0, 100% 9px, 60% 9px, 60% calc(100% - 9px), 100% calc(100% - 9px), 50% 100%, 0 calc(100% - 9px), 40% calc(100% - 9px), 40% 9px, 0 9px);
+  }
+
+  .lesson-diagram-arrow--backward {
+    transform: scaleY(-1);
+  }
+
+  .lesson-diagram-arrow--dashed {
+    background: repeating-linear-gradient(180deg, var(--accent) 0 8px, transparent 8px 13px);
+  }
+
+  .lesson-diagram-connector > span:first-child {
+    position: static;
+    max-width: 42ch;
+    padding: 0;
+    background: transparent;
+  }
+
+  .lesson-diagram-exchange {
+    min-height: 0;
+    min-width: 0;
+    flex: auto;
+    flex-direction: row;
+    gap: var(--diagram-space);
+    padding: var(--diagram-space-xs) var(--diagram-space-sm);
+  }
+
+  .lesson-diagram-exchange-path {
+    min-width: 0;
+    flex: 1 1 0;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--diagram-space-xs);
+    text-align: left;
+  }
+
+  .lesson-diagram-exchange-arrow {
+    align-self: center;
+    width: var(--diagram-arrow-width);
+    height: var(--diagram-arrow-length);
+    min-height: var(--diagram-arrow-length);
+    flex: 0 0 var(--diagram-arrow-width);
+    clip-path: polygon(40% 0, 60% 0, 60% calc(100% - 9px), 100% calc(100% - 9px), 50% 100%, 0 calc(100% - 9px), 40% calc(100% - 9px));
+  }
+
+  .lesson-diagram-exchange-path--reverse .lesson-diagram-exchange-arrow {
+    background: repeating-linear-gradient(180deg, var(--accent) 0 7px, transparent 7px 12px);
+    transform: scaleY(-1);
+  }
+}
+
+/* Five or more nodes need a vertical reading order before the small breakpoint. */
+@container lesson-diagram (min-width: 721px) and (max-width: 1000px) {
+  :is(.lesson-diagram-flow:has(> .lesson-diagram-node:nth-child(n + 9)), .lesson15-1-transfer-diagram > .lesson-diagram-flow) {
+    flex-direction: column;
+  }
+
+  :is(.lesson-diagram-flow:has(> .lesson-diagram-node:nth-child(n + 9)), .lesson15-1-transfer-diagram > .lesson-diagram-flow) > .lesson-diagram-node {
+    flex: 0 1 auto;
+  }
+
+  :is(.lesson-diagram-flow:has(> .lesson-diagram-node:nth-child(n + 9)), .lesson15-1-transfer-diagram > .lesson-diagram-flow) > .lesson-diagram-connector {
+    display: flex;
+    flex: 0 0 auto;
+    min-width: 0;
+    min-height: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--diagram-space-xs);
+    padding: var(--diagram-space-xs) var(--diagram-space-sm);
+    text-align: center;
+  }
+
+  :is(.lesson-diagram-flow:has(> .lesson-diagram-node:nth-child(n + 9)), .lesson15-1-transfer-diagram > .lesson-diagram-flow) > .lesson-diagram-connector > span:first-child {
+    position: static;
+    max-width: 42ch;
+    padding: 0;
+    background: transparent;
+  }
+
+  :is(.lesson-diagram-flow:has(> .lesson-diagram-node:nth-child(n + 9)), .lesson15-1-transfer-diagram > .lesson-diagram-flow) > .lesson-diagram-connector > .lesson-diagram-arrow {
+    width: var(--diagram-arrow-width);
+    height: var(--diagram-arrow-length);
+    min-height: var(--diagram-arrow-length);
+    flex: none;
+    clip-path: polygon(40% 0, 60% 0, 60% calc(100% - 9px), 100% calc(100% - 9px), 50% 100%, 0 calc(100% - 9px), 40% calc(100% - 9px));
+  }
+
+  :is(.lesson-diagram-flow:has(> .lesson-diagram-node:nth-child(n + 9)), .lesson15-1-transfer-diagram > .lesson-diagram-flow) > .lesson-diagram-connector > .lesson-diagram-arrow--backward {
+    transform: scaleY(-1);
+  }
+
+  :is(.lesson-diagram-flow:has(> .lesson-diagram-node:nth-child(n + 9)), .lesson15-1-transfer-diagram > .lesson-diagram-flow) > .lesson-diagram-connector > .lesson-diagram-arrow--both {
+    clip-path: polygon(50% 0, 100% 9px, 60% 9px, 60% calc(100% - 9px), 100% calc(100% - 9px), 50% 100%, 0 calc(100% - 9px), 40% calc(100% - 9px), 40% 9px, 0 9px);
+  }
+
+  :is(.lesson-diagram-flow:has(> .lesson-diagram-node:nth-child(n + 9)), .lesson15-1-transfer-diagram > .lesson-diagram-flow) > .lesson-diagram-connector > .lesson-diagram-arrow--dashed {
+    background: repeating-linear-gradient(180deg, var(--accent) 0 8px, transparent 8px 13px);
+  }
+}
+
+.lesson11-branch-diagram {
+  display: grid;
+  width: 100%;
+  max-width: none;
+  gap: var(--diagram-space);
+  margin: 0;
+  padding: var(--diagram-space);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--diagram-radius);
+  background: var(--bg);
+}
+
+.lesson11-flow {
+  display: grid;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.lesson11-flow-node {
+  display: grid;
+  justify-items: center;
+  gap: var(--diagram-space-sm);
+  min-width: 0;
+  padding: var(--diagram-space);
+  border: 1px solid var(--diagram-node-border);
+  border-radius: var(--diagram-radius);
+  background: var(--surface);
+  text-align: center;
+}
+
+.lesson11-flow-label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.lesson11-flow-values {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.lesson11-flow-values > span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.lesson11-flow-node code,
+.lesson11-branch-option code {
+  padding: 4px 8px;
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.lesson11-flow-node--question {
+  width: min(100%, 340px);
+  justify-self: center;
+  border-color: color-mix(in srgb, var(--border-tint-accent) 48%, var(--line-soft));
+  background: color-mix(in srgb, var(--accent-soft) 45%, var(--surface));
+}
+
+.lesson11-flow-down {
+  display: grid;
+  justify-items: center;
+  gap: var(--diagram-space-xs);
+  padding: var(--diagram-space-xs) var(--diagram-space-sm);
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-align: center;
+  line-height: 1.35;
+}
+
+.lesson11-flow-down::after {
+  width: var(--diagram-arrow-width);
+  height: var(--diagram-arrow-length);
+  background: var(--accent);
+  clip-path: polygon(40% 0, 60% 0, 60% calc(100% - 7px), 100% calc(100% - 7px), 50% 100%, 0 calc(100% - 7px), 40% calc(100% - 7px));
+  content: "";
+}
+
+.lesson11-branch-links {
+  position: relative;
+  height: calc(var(--diagram-arrow-length) + var(--diagram-space-sm));
+  margin-inline: 0;
+}
+
+.lesson11-branch-links::before,
+.lesson11-branch-links::after,
+.lesson11-branch-links > span {
+  position: absolute;
+  display: block;
+  background: var(--diagram-detail-line);
+  content: "";
+}
+
+.lesson11-branch-links::before {
+  top: 0;
+  left: calc(50% - 1px);
+  width: 2px;
+  height: 50%;
+}
+
+.lesson11-branch-links::after {
+  top: calc(50% - 1px);
+  right: calc((100% - var(--diagram-space)) / 4);
+  left: calc((100% - var(--diagram-space)) / 4);
+  height: 2px;
+}
+
+.lesson11-branch-links > span {
+  top: 50%;
+  width: 2px;
+  height: 50%;
+  background: var(--accent);
+}
+
+.lesson11-branch-links__left {
+  left: calc((100% - var(--diagram-space)) / 4 - 1px);
+}
+
+.lesson11-branch-links__right {
+  right: calc((100% - var(--diagram-space)) / 4 - 1px);
+}
+
+.lesson11-branch-links > span::after {
+  position: absolute;
+  bottom: -1px;
+  left: -4px;
+  width: 10px;
+  height: 7px;
+  background: var(--accent);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  content: "";
+}
+
+.lesson11-branch-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--diagram-space);
+}
+
+.lesson11-branch-option {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: var(--diagram-space-sm);
+  min-width: 0;
+  padding: var(--diagram-space);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--diagram-radius);
+  background: var(--surface-2);
+  text-align: center;
+}
+
+.lesson11-branch-option h3,
+.lesson11-branch-option p {
+  margin: 0;
+}
+
+.lesson11-branch-option h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--diagram-space-sm);
+  color: var(--accent);
+  font-size: 1rem;
+}
+
+.lesson11-branch-option p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.lesson11-branch-option strong {
+  color: var(--text);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.lesson11-flow-node--common {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--line-soft));
+  background: color-mix(in srgb, var(--accent-soft) 24%, var(--surface));
+}
+
+.lesson11-flow-node--common strong {
+  color: var(--text);
+}
+
+/* Lesson 36 uses vertical flows at every level, including the branch return paths. */
+.lesson36-loop-diagram .lesson36-loop-node {
+  align-items: center;
+  text-align: center;
+}
+
+.lesson36-loop-diagram .lesson36-loop-node > h3,
+.lesson36-loop-diagram .lesson36-loop-node > p {
+  text-align: center;
+}

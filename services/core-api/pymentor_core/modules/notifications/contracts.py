@@ -24,6 +24,7 @@ class ClaimedLandingNotification:
     event_type: str
     landing_id: str
     landing_slug: str
+    course_id: str | None
     destination_config_id: str
     secret_ref: str
     chat_id: str

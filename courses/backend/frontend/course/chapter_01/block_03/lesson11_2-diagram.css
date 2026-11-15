@@ -1,0 +1,64 @@
+.lesson11-2-error-diagram .lesson-diagram-flow--vertical {
+  gap: var(--diagram-space);
+}
+
+.lesson11-2-error-diagram .lesson-diagram-branches {
+  position: relative;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--diagram-space);
+}
+
+.lesson11-2-error-diagram .lesson-diagram-branches::before {
+  position: absolute;
+  bottom: 100%;
+  left: calc(50% - 1px);
+  height: var(--diagram-space-sm);
+  margin-bottom: var(--diagram-space-sm);
+  border-left: 2px solid var(--diagram-detail-line);
+  content: "";
+}
+
+.lesson11-2-error-diagram .lesson-diagram-branches::after {
+  position: absolute;
+  right: calc((100% - var(--diagram-space) * 2) / 6);
+  bottom: calc(100% + var(--diagram-space-sm) - 1px);
+  left: calc((100% - var(--diagram-space) * 2) / 6);
+  border-top: 2px solid var(--diagram-detail-line);
+  content: "";
+}
+
+.lesson11-2-error-diagram .lesson-diagram-branch {
+  position: relative;
+  gap: var(--diagram-space-sm);
+  padding: var(--diagram-space);
+}
+
+.lesson11-2-error-diagram .lesson-diagram-branch::before {
+  position: absolute;
+  bottom: 100%;
+  left: calc(50% - 1px);
+  height: var(--diagram-space-sm);
+  border-left: 2px solid var(--diagram-detail-line);
+  content: "";
+}
+
+.lesson11-2-error-diagram .lesson-diagram-branch p {
+  margin: 0;
+}
+
+@container lesson-diagram (max-width: 620px) {
+  .lesson11-2-error-diagram .lesson-diagram-branches {
+    grid-template-columns: 1fr;
+    gap: var(--diagram-space);
+  }
+
+  .lesson11-2-error-diagram .lesson-diagram-branches::before {
+    height: var(--diagram-space);
+    margin-bottom: 0;
+  }
+
+  .lesson11-2-error-diagram .lesson-diagram-branches::after,
+  .lesson11-2-error-diagram .lesson-diagram-branch::before {
+    display: none;
+  }
+}

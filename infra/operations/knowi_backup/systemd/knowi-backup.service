@@ -1,0 +1,22 @@
+[Unit]
+Description=Verified encrypted knowi Core database backup
+After=k3s.service network-online.target
+Wants=network-online.target
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/bin/python3 /usr/local/lib/knowi-backup/backup.py
+UMask=0077
+Environment=PYTHONDONTWRITEBYTECODE=1
+RuntimeDirectory=knowi-backup
+RuntimeDirectoryMode=0700
+TimeoutStartSec=15min
+Nice=19
+IOSchedulingClass=idle
+CPUQuota=25%
+MemoryMax=384M
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=read-only
+ProtectSystem=strict
+ReadWritePaths=/var/backups/knowi /var/lib/knowi-backup /run/knowi-backup

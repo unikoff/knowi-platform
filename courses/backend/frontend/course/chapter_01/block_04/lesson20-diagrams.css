@@ -1,0 +1,80 @@
+.lesson20-id-diagram .lesson-diagram-node--decision {
+  width: 100%;
+  max-width: 100%;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+
+.lesson20-id-diagram .lesson-diagram-branches {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--diagram-space);
+  margin-top: var(--diagram-space);
+  padding: 0;
+  border: 0;
+}
+
+.lesson20-id-diagram .lesson-diagram-branch {
+  position: relative;
+  margin-top: 0;
+}
+
+.lesson20-id-diagram .lesson-diagram-branches::before {
+  position: absolute;
+  bottom: 100%;
+  left: calc(50% - 1px);
+  width: 2px;
+  height: var(--diagram-space);
+  background: var(--accent);
+  content: "";
+}
+
+.lesson20-id-diagram .lesson-diagram-branch > h4 {
+  text-align: left;
+}
+
+@container lesson-diagram (min-width: 560px) {
+  .lesson20-id-diagram .lesson-diagram-branches {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--diagram-space);
+    margin-top: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .lesson20-id-diagram .lesson-diagram-branches::before {
+    position: absolute;
+    top: calc(var(--diagram-space) - 1px);
+    bottom: auto;
+    left: calc((100% - var(--diagram-space)) / 4);
+    width: calc((100% + var(--diagram-space)) / 2);
+    height: 2px;
+    background: var(--accent);
+    content: "";
+  }
+
+  .lesson20-id-diagram .lesson-diagram-branches::after {
+    position: absolute;
+    top: 0;
+    left: calc(50% - 1px);
+    width: 2px;
+    height: var(--diagram-space);
+    background: var(--accent);
+    content: "";
+  }
+
+  .lesson20-id-diagram .lesson-diagram-branch {
+    margin-top: calc(var(--diagram-space) * 2);
+  }
+
+  .lesson20-id-diagram .lesson-diagram-branch::before {
+    position: absolute;
+    bottom: 100%;
+    left: calc(50% - 1px);
+    width: 2px;
+    height: var(--diagram-space);
+    background: var(--accent);
+    content: "";
+  }
+}

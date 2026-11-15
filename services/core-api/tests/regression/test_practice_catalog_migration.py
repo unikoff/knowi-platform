@@ -2,7 +2,9 @@ import hashlib
 import asyncio
 import json
 import re
-import tempfile
+import shutil
+import uuid
+from contextlib import contextmanager
 import unittest
 from datetime import datetime
 from datetime import timedelta
@@ -15,32 +17,48 @@ from urllib.parse import urlencode
 
 from fastapi import FastAPI
 
-from pymentor_core.adapters.course_local import catalog as content
-from pymentor_core.adapters.course_local import practice as rich_code_tasks
-from pymentor_core.adapters.course_local import practice as rich_practice
 from pymentor_core.adapters.legacy_runner.python import run_python_task
-from content.materials import chapter_07 as async_api
-from content.materials import chapter_04 as database_api
-from content.materials import chapter_02 as deeper
-from content.materials import chapter_08 as deployment
-from content.materials import chapter_01_archive as foundations
-from content.materials import chapter_01 as foundations_12
-from content.materials import chapter_09 as lms
-from content.materials import chapter_05 as personal_api
-from content.materials import chapter_03 as planner_api
-from content.materials import chapter_06 as postgresql
-from content.materials.chapter_03 import block_09
-from content.materials.chapter_03 import block_10
-from content.materials.chapter_03 import block_11
-from content.materials.chapter_03 import block_12
-from content.practice.helpers import merge_lesson_maps
-from content.practice.helpers import validate_block
-from content.materials.chapter_01.numbering import legacy_filename as foundations_12_legacy_filename
-from content.materials.chapter_02.numbering import legacy_filename as deeper_legacy_filename
-from content.materials.chapter_04.numbering import legacy_filename as database_legacy_filename
+from pymentor_core.adapters.course_local.runtime import default_runtime as _course_runtime
+import importlib as _course_importlib
+_authoring = _course_runtime().context("backend").get_authoring
+_helper_module = _course_importlib.import_module(_course_runtime().context("backend").namespace + ".practice_helpers")
+content = _course_importlib.import_module(_course_runtime().context("backend").namespace + ".catalog_builder")
+rich_code_tasks = rich_practice = _course_importlib.import_module(_course_runtime().context("backend").namespace + ".practice_catalog")
+async_api = _authoring("chapter_07")
+database_api = _authoring("chapter_04")
+deeper = _authoring("chapter_02")
+deployment = _authoring("chapter_08")
+foundations = _authoring("chapter_01_archive")
+foundations_12 = _authoring("chapter_01")
+lms = _authoring("chapter_09")
+personal_api = _authoring("chapter_05")
+planner_api = _authoring("chapter_03")
+postgresql = _authoring("chapter_06")
+block_09 = getattr(_authoring("chapter_03"), "block_09")
+block_10 = getattr(_authoring("chapter_03"), "block_10")
+block_11 = getattr(_authoring("chapter_03"), "block_11")
+block_12 = getattr(_authoring("chapter_03"), "block_12")
+merge_lesson_maps = getattr(_helper_module, "merge_lesson_maps")
+validate_block = getattr(_helper_module, "validate_block")
+foundations_12_legacy_filename = getattr(_authoring("chapter_01.numbering"), "legacy_filename")
+deeper_legacy_filename = getattr(_authoring("chapter_02.numbering"), "legacy_filename")
+database_legacy_filename = getattr(_authoring("chapter_04.numbering"), "legacy_filename")
 from pymentor_core.modules.learning.api import service as routers
 from pymentor_core.modules.learning.api.router import learning_router
 from pymentor_core.app.dependencies import get_db
+
+
+@contextmanager
+def catalog_directory():
+    parent = Path(__file__).resolve().parent
+    directory = parent / (".catalog-migration-" + uuid.uuid4().hex)
+    directory.mkdir()
+    try:
+        yield directory
+    finally:
+        resolved = directory.resolve(strict=True)
+        assert resolved.parent == parent and resolved.name.startswith(".catalog-migration-")
+        shutil.rmtree(resolved)
 
 
 class PracticeCatalogMigrationTests(unittest.TestCase):
@@ -69,11 +87,14 @@ class PracticeCatalogMigrationTests(unittest.TestCase):
                 self.assertIs(getattr(rich_practice, f"{prefix}_OVERVIEW_PRACTICE"), package.OVERVIEW_PRACTICE)
                 self.assertIs(getattr(rich_practice, f"{prefix}_PRACTICE"), package.MANUAL_PRACTICE)
                 self.assertIs(getattr(rich_code_tasks, f"{prefix}_CODE_TASKS"), package.CODE_TASKS)
-                self.assertEqual("content.materials." + slug, package.__name__)
+                self.assertEqual(_course_runtime().context("backend").authoring_name + "." + slug, package.__name__)
                 for first, last, block_name in ranges:
                     block = getattr(package, block_name)
                     if slug == "chapter_05":
-                        self.assertEqual({}, block.MANUAL_PRACTICE)
+                        if block_name == "block_17":
+                            validate_block(first, last, block.MANUAL_PRACTICE, block.CODE_TASKS)
+                        else:
+                            self.assertEqual({}, block.MANUAL_PRACTICE)
                         self.assertEqual({}, block.CODE_TASKS)
                     elif slug != "chapter_03":
                         validate_block(first, last, block.MANUAL_PRACTICE, block.CODE_TASKS)
@@ -139,7 +160,7 @@ class PracticeCatalogMigrationTests(unittest.TestCase):
                 self.assertEqual(expected_access, lesson["access"], (track["id"], lesson["source_file"]))
 
     def test_course_and_blocks_use_normal_python_package_names(self):
-        self.assertEqual("content.materials.chapter_03", planner_api.__name__)
+        self.assertEqual(_course_runtime().context("backend").authoring_name + ".chapter_03", planner_api.__name__)
         root = content.COURSE_ROOT / "chapter_03"
         self.assertFalse((content.COURSE_ROOT / "practice").exists())
         for directory in root.iterdir():
@@ -199,8 +220,7 @@ class PracticeCatalogMigrationTests(unittest.TestCase):
             self.assertEqual([], rich_code_tasks.get_code_tasks(track, filename))
 
     def test_service_packages_with_markdown_do_not_become_courses(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
+        with catalog_directory() as root:
             for directory in ("__pycache__", "sample-course"):
                 folder = root / directory
                 folder.mkdir()

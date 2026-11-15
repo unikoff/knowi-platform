@@ -1,0 +1,2 @@
+/* Compatibility entry: the visual library owns its complete stylesheet. */
+@import "@course-ui/components/styles/index.css";

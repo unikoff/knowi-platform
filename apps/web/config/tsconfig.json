@@ -1,0 +1,63 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES2020"
+    ],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "react": [
+        "../node_modules/@types/react/index.d.ts"
+      ],
+      "react/*": [
+        "../node_modules/@types/react/*"
+      ],
+      "lucide-react": [
+        "../node_modules/lucide-react"
+      ],
+      "@course-ui": [
+        "../../../courses/shared/ui/index.ts"
+      ],
+      "@course-ui/*": [
+        "../../../courses/shared/ui/*"
+      ],
+      "@platform/*": [
+        "../src/*"
+      ],
+      "video.js": [
+        "../node_modules/video.js"
+      ],
+      "react-dom": [
+        "../node_modules/@types/react-dom/index.d.ts"
+      ],
+      "react-dom/*": [
+        "../node_modules/@types/react-dom/*"
+      ]
+    },
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "../src",
+    "../../../courses/shared/demo/**/*.ts",
+    "../../../courses/shared/demo/**/*.tsx"
+  ],
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    }
+  ]
+}

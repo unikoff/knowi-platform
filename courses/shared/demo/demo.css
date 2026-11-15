@@ -1,0 +1,53 @@
+body { overflow: auto; }
+.demo-page { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px; max-width: 1600px; margin: 0 auto; padding: 28px 32px 64px; align-items: start; }
+.demo-sidebar { position: sticky; top: 28px; max-height: calc(100dvh - 56px); overflow-y: auto; }
+.demo-sidebar nav { display: grid; gap: 4px; }
+.demo-sidebar nav button { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; padding: 13px 14px; border: 1px solid transparent; border-radius: 12px; background: transparent; color: var(--muted); text-align: left; cursor: pointer; font: inherit; font-size: 13px; line-height: 1.5; }
+.demo-sidebar nav button:hover { color: var(--text); background: var(--surface-2); }
+.demo-sidebar nav button[aria-pressed="true"] { border-color: var(--line-soft); background: var(--surface-2); color: var(--accent); }
+.demo-sidebar small { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.demo-theme { display: flex; align-items: center; gap: 10px; margin-top: 24px; padding: 12px 14px; border: 0; background: transparent; color: var(--muted); cursor: pointer; font: inherit; font-size: 12px; }
+.demo-catalog, .demo-examples { display: grid; gap: 40px; min-width: 0; }
+.demo-component { min-width: 0; }
+.demo-component-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; min-height: 32px; margin-bottom: 10px; }
+.demo-component-heading h3 { flex: 1 1 100px; min-width: 0; margin: 0; overflow: hidden; color: var(--muted); font-size: 13px; font-weight: 500; line-height: 1.5; text-overflow: ellipsis; white-space: nowrap; }
+.demo-carousel-navigation { display: flex; align-items: center; flex: none; gap: 4px; margin-left: auto; }
+.demo-arrow, .demo-dot { display: grid; place-items: center; flex: none; padding: 0; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.demo-arrow { width: 32px; height: 32px; border-radius: 50%; transition: color 150ms, background-color 150ms; }
+.demo-arrow:hover { background: var(--surface-2); color: var(--text); }
+.demo-dots { display: flex; align-items: center; }
+.demo-dot { width: 24px; height: 32px; }
+.demo-dot::after { content: ""; width: 4px; height: 4px; border-radius: 8px; background: var(--muted); opacity: .4; transition: width 220ms ease, opacity 220ms ease, background-color 220ms ease; }
+.demo-dot:hover::after { opacity: .8; }
+.demo-dot[aria-current="true"]::after { width: 16px; background: var(--accent); opacity: 1; }
+.demo-viewport { --slide-shift: 24px; position: relative; min-width: 0; overflow: clip; transition: height 300ms cubic-bezier(.22, 1, .36, 1); }
+.demo-viewport[data-direction="-1"] { --slide-shift: -24px; }
+.demo-slide { position: relative; width: 100%; min-width: 0; }
+.demo-slide.is-entering { animation: demo-slide-in 300ms cubic-bezier(.22, 1, .36, 1); }
+.demo-slide.is-leaving { position: absolute; inset: 0 0 auto; pointer-events: none; animation: demo-slide-out 300ms cubic-bezier(.22, 1, .36, 1) forwards; }
+@keyframes demo-slide-in { from { opacity: 0; transform: translateX(var(--slide-shift)); } to { opacity: 1; transform: translateX(0); } }
+@keyframes demo-slide-out { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(calc(var(--slide-shift) * -1)); } }
+.demo-preview { min-width: 0; overflow-x: auto; }
+.demo-preview:has(.type-cards) { overflow: visible; }
+.demo-stack { display: grid; gap: 24px; min-width: 0; }
+.demo-page :is(button, a, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.demo-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .demo-viewport, .demo-dot::after, .demo-arrow { transition: none; }
+  .demo-slide.is-entering { animation: none; }
+  .demo-slide.is-leaving { display: none; }
+}
+@media (max-width: 1100px) {
+  .demo-page { grid-template-columns: 200px minmax(0, 1fr); gap: 28px; padding: 24px; }
+}
+@media (max-width: 750px) {
+  .demo-page { grid-template-columns: minmax(0, 1fr); padding: 16px 16px 48px; gap: 24px; }
+  .demo-sidebar { position: static; max-height: none; overflow: visible; }
+  .demo-sidebar nav { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; }
+  .demo-sidebar nav button { width: auto; flex: none; gap: 12px; padding: 10px 12px; font-size: 11px; white-space: nowrap; }
+  .demo-theme { margin-top: 4px; padding: 8px 0; }
+  .demo-catalog, .demo-examples { gap: 28px; }
+  .demo-component-heading { column-gap: 8px; }
+  .demo-component-heading h3 { font-size: 12px; }
+  .demo-preview .type-cards { grid-template-columns: 1fr; }
+}

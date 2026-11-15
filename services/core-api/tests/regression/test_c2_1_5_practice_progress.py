@@ -9,17 +9,18 @@ from pymentor_core.modules.learning.api import service
 
 
 @pytest.mark.parametrize(
-    "source,mixed,complete,expected",
+    "source,revision_tracked,completion,mixed,complete,expected",
     [
-        ("foundations/block_03/lesson.py", False, True, ["task", "lesson"]),
-        ("foundations/block_03/lesson.py", False, False, ["task"]),
-        ("foundations/block_03/lesson.py", True, True, ["task"]),
-        ("chapter_01/lesson.py", False, True, ["task"]),
-        ("other/lesson.py", False, True, ["lesson"]),
-        ("other/lesson.py", True, True, []),
+        ("foundations/block_03/lesson.py", True, "lesson", False, True, ["task", "lesson"]),
+        ("foundations/block_03/lesson.py", True, "lesson", False, False, ["task"]),
+        ("foundations/block_03/lesson.py", True, "lesson", True, True, ["task"]),
+        ("chapter_01/lesson.py", True, "cards", False, True, ["task"]),
+        ("other/lesson.py", False, "lesson", False, True, ["lesson"]),
+        ("other/lesson.py", True, "lesson", False, True, ["task", "lesson"]),
+        ("other/lesson.py", False, "lesson", True, True, []),
     ],
 )
-def test_progress_write_order_and_course_rules(monkeypatch, source, mixed, complete, expected):
+def test_progress_write_order_and_course_rules(monkeypatch, source, revision_tracked, completion, mixed, complete, expected):
     events = []
 
     @contextmanager
@@ -34,7 +35,8 @@ def test_progress_write_order_and_course_rules(monkeypatch, source, mixed, compl
     monkeypatch.setattr(service, "_lesson_tasks_are_complete", lambda *args: complete)
     monkeypatch.setattr(service.progress, "mark_task_completed", lambda **kw: events.append("task"))
     monkeypatch.setattr(service.progress, "mark_lesson_completed", lambda **kw: events.append("lesson"))
-    lesson = {"id": "stable-lesson", "source_file": source, "tasks": [{"id": "t"}]}
+    lesson = {"id": "stable-lesson", "source_file": source, "tasks": [{"id": "t"}],
+              "progress_policy": {"revision_tracked": revision_tracked, "completion": completion}}
     if mixed:
         lesson["manual_practice"] = [{}]
     service._save_task_progress({"user_id": 3, "task": {"id": "t", "revision": "r"}, "lesson": lesson})

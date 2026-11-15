@@ -1,0 +1,6 @@
+[
+  {"op": "test", "path": "/metadata/uid", "value": "69a2f746-52ef-4965-a581-4b9d3f6dba1e"},
+  {"op": "test", "path": "/spec/source/path", "value": "deploy/gitops/preview"},
+  {"op": "test", "path": "/spec/source/targetRevision", "value": "Release"},
+  {"op": "replace", "path": "/spec/syncPolicy/automated/enabled", "value": false}
+]

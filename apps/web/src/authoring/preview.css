@@ -1,0 +1,10 @@
+.authoring-page { overflow: auto; }
+.authoring-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 20px; border-bottom: 1px solid var(--border); }
+.authoring-toolbar h1 { flex-basis: 100%; margin: 0; font-size: 1.3rem; }
+.authoring-toolbar form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.authoring-toolbar input { width: min(380px, 75vw); }
+.authoring-toolbar :is(input, select, button) { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); }
+.authoring-toolbar p { flex-basis: 100%; margin: 0; color: var(--muted); line-height: 1.5; }
+.authoring-toolbar a { color: var(--accent); }
+.authoring-canvas { width: 100%; margin: 24px auto; background: var(--surface-1); container-type: inline-size; }
+.authoring-lesson { height: auto; min-height: 200px; --dock-panel-content-top-inset: 0px; --dock-lesson-content-top-inset: 24px; }

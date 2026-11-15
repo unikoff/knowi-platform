@@ -1,0 +1,128 @@
+/* Two prose list styles: connected unordered items and native numbered items. */
+:where(.rich-lesson, .markdown-body, .document-view) :is(ul, ol):not([class]):not(:where(.takeaways *, .lesson-diagram-track *)),
+.lesson-list {
+  display: block;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+  color: var(--reading);
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+:where(.rich-lesson, .markdown-body, .document-view) :is(ul, ol):not([class]):not(:where(.takeaways *, .lesson-diagram-track *)) > li,
+.lesson-list > li {
+  position: relative;
+  min-width: 0;
+  margin: 0;
+  padding: 12px 0 12px 8px;
+  overflow-wrap: anywhere;
+}
+
+:where(.rich-lesson, .markdown-body, .document-view) :is(ul, ol):not([class]):not(:where(.takeaways *, .lesson-diagram-track *)) > li > p,
+.lesson-list > li > p { margin: 0; }
+
+.lesson-list > li > div { display: grid; gap: var(--lesson-stack-tight); margin-block-start: 8px; }
+
+:where(.rich-lesson, .markdown-body, .document-view) :is(ul, ol):not([class]):not(:where(.takeaways *, .lesson-diagram-track *)) strong,
+.lesson-list strong { color: var(--text); font-weight: 600; }
+
+/* Native numbering preserves start, reversed, value and nesting. */
+:where(.rich-lesson, .markdown-body, .document-view) ol:not([class]):not(:where(.takeaways *, .lesson-diagram-track *)),
+ol.lesson-list { padding-inline-start: 2rem; }
+
+:where(.rich-lesson, .markdown-body, .document-view) ol:not([class]):not([type]):not(:where(.takeaways *, .lesson-diagram-track *)),
+ol.lesson-list:not([type]) { list-style-type: decimal-leading-zero; }
+
+:where(.rich-lesson, .markdown-body, .document-view) ol:not([class]):not(:where(.takeaways *, .lesson-diagram-track *)) > li + li,
+ol.lesson-list > li + li { border-top: 1px solid var(--line-soft); }
+
+:where(.rich-lesson, .markdown-body, .document-view) ol:not([class]):not(:where(.takeaways *, .lesson-diagram-track *)) > li::marker,
+ol.lesson-list > li::marker {
+  color: var(--accent);
+  font: 600 0.82em var(--font-code);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Plain dots, one quiet surface and a separate gutter for the rail. */
+:where(.rich-lesson, .markdown-body, .document-view) ul:not([class]):not(:where(.takeaways *, .lesson-diagram-track *)),
+ul.lesson-list {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  padding: 4px 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  background: var(--surface-2);
+  list-style-type: disc;
+}
+
+:where(.rich-lesson, .markdown-body, .document-view) ul:not([class]):not(:where(.takeaways *, .lesson-diagram-track *)) > li,
+ul.lesson-list > li { padding-inline-start: 24px; }
+
+:where(.rich-lesson, .markdown-body, .document-view) ul:not([class]):not(:where(.takeaways *, .lesson-diagram-track *)) > li::marker,
+ul.lesson-list > li::marker { content: ""; }
+
+:where(.rich-lesson, .markdown-body, .document-view) ul:not([class]):not(:where(.takeaways *, .lesson-diagram-track *)) > li::before,
+ul.lesson-list > li::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 3px;
+  top: calc(12px + 0.825em - 3px);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+:where(.rich-lesson, .markdown-body, .document-view) ul:not([class]):not(:where(.takeaways *, .lesson-diagram-track *)) > li:not(:last-child)::after,
+ul.lesson-list > li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: 5.5px;
+  top: calc(12px + 0.825em + 5px);
+  bottom: calc(-12px - 0.825em + 5px);
+  width: 1px;
+  background: color-mix(in srgb, var(--accent) 24%, var(--line-soft));
+}
+
+:where(.rich-lesson, .markdown-body, .document-view) ul:not([class]):not(:where(.takeaways *, .lesson-diagram-track *)) > li + li,
+ul.lesson-list > li + li {
+  background: linear-gradient(var(--line-soft), var(--line-soft)) 24px 0 / calc(100% - 24px) 1px no-repeat;
+}
+
+:where(.rich-lesson, .markdown-body, .document-view) :is(ul, ol):not([class]):not(:where(.takeaways *, .lesson-diagram-track *)) > li > :is(ul, ol),
+.lesson-list > li > :is(ul, ol) { margin-block: 8px 0; font-size: 0.95em; }
+
+.lesson-list-block,
+.linked-notes-block {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  width: 100%;
+}
+
+.linked-notes-block { grid-column: 1 / -1; flex: 0 0 100%; max-width: none; }
+
+/* The optional companion stays next to the list only when both columns fit. */
+.lesson-list-layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 24px;
+  min-width: 0;
+}
+
+.lesson-list-layout > .lesson-list-block {
+  flex: 1 1 22rem;
+}
+
+.lesson-list-content {
+  display: grid;
+  gap: 16px;
+  flex: 1 1 24rem;
+  min-width: 0;
+}
+
+.lesson-list-content > * { min-width: 0; }
+.lesson-list-content > p { margin: 0; color: var(--reading); line-height: 1.7; }

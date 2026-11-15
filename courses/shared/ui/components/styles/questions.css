@@ -1,0 +1,81 @@
+/* ==================== Квиз ==================== */
+
+.lesson-check-group {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.quiz-card {
+  display: grid;
+  min-width: 0;
+  gap: var(--lesson-stack);
+  margin: 0;
+  padding: var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--card);
+}
+
+.quiz-question {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.quiz-question svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.quiz-description {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  color: var(--reading);
+  line-height: 1.65;
+  white-space: pre-line;
+}
+
+.quiz-description > :first-child { margin-top: 0; }
+.quiz-description > :last-child { margin-bottom: 0; }
+
+.quiz-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+  gap: var(--space-2);
+}
+
+.quiz-card .quiz-options[data-detailed="true"] {
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+}
+
+.quiz-card .quiz-options[data-detailed="true"] .quiz-option { padding: 18px; }
+.quiz-card .quiz-options[data-detailed="true"] .quiz-option-title { font-weight: 600; }
+.quiz-card .quiz-options[data-orientation="vertical"] { grid-template-columns: minmax(0, 1fr); }
+
+.quiz-option-body { display: grid; align-content: start; gap: 8px; width: 100%; min-width: 0; }
+.quiz-option-title { white-space: pre-wrap; }
+.quiz-option-description {
+  color: var(--reading);
+  font-size: 0.94em;
+  font-weight: 400;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.quiz-answer { min-width: 0; margin-top: 14px; }
+
+.quiz-explanation {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.quiz-explanation.is-correct { color: var(--accent); }
+.quiz-explanation.is-wrong { color: var(--negative); }
+
+.lesson-done-icon {
+  color: var(--accent);
+}

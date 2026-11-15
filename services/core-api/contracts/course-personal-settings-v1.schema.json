@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Server-only inactive course personal settings",
+  "description": "Structural schema. The server additionally checks course identity/path, 8 KiB and text/control limits, and signed int64 range for numeric-string chat IDs. Parsing does not activate delivery.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "course_id", "contacts", "telegram"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "course_id": {"type": "string", "pattern": "^[a-z0-9]+(?:_[a-z0-9]+)*$", "maxLength": 64},
+    "contacts": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {"type": ["string", "null"], "maxLength": 512},
+        "email": {"type": ["string", "null"], "maxLength": 512},
+        "phone": {"type": ["string", "null"], "maxLength": 512},
+        "telegram": {"type": ["string", "null"], "maxLength": 512},
+        "website": {"type": ["string", "null"], "maxLength": 512}
+      }
+    },
+    "telegram": {
+      "type": "object", "additionalProperties": false,
+      "required": ["enabled", "chat_id", "topic_id"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "chat_id": {"anyOf": [{"type": "null"}, {"type": "string", "pattern": "^-?[1-9][0-9]{0,18}$"}, {"type": "integer", "minimum": -9223372036854775808, "maximum": 9223372036854775807, "not": {"const": 0}}]},
+        "topic_id": {"type": "null"}
+      },
+      "allOf": [{"if": {"properties": {"enabled": {"const": true}}}, "then": {"properties": {"chat_id": {"not": {"type": "null"}}}}}]
+    }
+  }
+}

@@ -354,11 +354,7 @@ def send_landing_notification(
             f"Событие: `{_escape_markdown_v2(event_id)}`"
         )
     elif event_type == "consultation_request.v1" and set(payload) == {
-        "name",
-        "contact",
-        "goal",
-        "consented_at",
-        "consent_version",
+        "name", "contact", "goal", "consented_at", "consent_version"
     }:
         lines = [
             "📨 *Заявка на консультацию*",

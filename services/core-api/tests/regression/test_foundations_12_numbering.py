@@ -6,8 +6,10 @@ import unittest
 from pathlib import Path
 
 from pymentor_core.adapters.course_local import catalog as content
-from content.materials import chapter_01 as course
-from content.materials.chapter_01.numbering import LESSON_NUMBERS
+from pymentor_core.adapters.course_local.runtime import default_runtime as _course_runtime
+_authoring = _course_runtime().context("backend").get_authoring
+course = _authoring("chapter_01")
+LESSON_NUMBERS = getattr(_authoring("chapter_01.numbering"), "LESSON_NUMBERS")
 
 
 class Foundations12NumberingTests(unittest.TestCase):
@@ -56,7 +58,7 @@ class Foundations12NumberingTests(unittest.TestCase):
 
     def test_practice_access_and_frontend_bindings_follow_the_same_lesson(self):
         repo = Path(__file__).resolve().parents[4]
-        registry = (repo / "frontend/src/lessons/chapter_01/index.ts").read_text(encoding="utf-8")
+        registry = (repo / "courses/backend/frontend/course/chapter_01/index.ts").read_text(encoding="utf-8")
         bindings = dict(re.findall(r'"([^"]+\.md)": "([^"]+)"', registry))
         self.assertEqual(len(bindings), 46)
         for ordinal, lesson in enumerate(self.lessons, 1):
@@ -73,7 +75,7 @@ class Foundations12NumberingTests(unittest.TestCase):
                 self.assertTrue(lesson["tasks"] or lesson["manual_practice"])
                 relative = lesson["source_file"].removeprefix("chapter_01/")
                 page = bindings[relative]
-                source = repo / "frontend/src/lessons/chapter_01" / f"{page}.tsx"
+                source = repo / "courses/backend/frontend/course/chapter_01" / f"{page}.tsx"
                 text = source.read_text(encoding="utf-8")
                 self.assertIn(f"export function {page.split('/')[-1]}", text)
                 self.assertRegex(text, r'<RichHero\b[\s\S]*?\btitle=')

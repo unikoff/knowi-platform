@@ -1,0 +1,7 @@
+schema_version: 1
+course_id: backend_copy
+contacts: null
+telegram:
+  enabled: false
+  chat_id: null
+  topic_id: null

@@ -20,22 +20,22 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 
-def get_completed_lesson_ids(user_id: int, db: Session) -> set[str]:
-    return get_bindings().progress.get_completed_lesson_ids(user_id, db)
+def get_completed_lesson_ids(user_id: int, db: Session, *, course_id: str = "backend") -> set[str]:
+    return get_bindings().progress.get_completed_lesson_ids(user_id, db, course_id=course_id)
 
 
 def mark_lesson_completed(
-    user_id: int, lesson_id: str, db: Session | None, *, uow: UnitOfWork | None = None
+    user_id: int, lesson_id: str, db: Session | None, *, uow: UnitOfWork | None = None, course_id: str = "backend"
 ) -> None:
     return get_bindings().progress.mark_lesson_completed(
-        user_id, lesson_id, db, uow=uow
+        user_id, lesson_id, db, uow=uow, course_id=course_id
     )
 
 
 def get_completed_task_revisions(
-    user_id: int, task_ids: list[str], db: Session
+    user_id: int, task_ids: list[str], db: Session, *, course_id: str = "backend"
 ) -> dict[str, str]:
-    return get_bindings().progress.get_completed_task_revisions(user_id, task_ids, db)
+    return get_bindings().progress.get_completed_task_revisions(user_id, task_ids, db, course_id=course_id)
 
 
 def mark_task_completed(
@@ -45,7 +45,8 @@ def mark_task_completed(
     db: Session | None,
     *,
     uow: UnitOfWork | None = None,
+    course_id: str = "backend",
 ) -> None:
     return get_bindings().progress.mark_task_completed(
-        user_id, task_id, task_revision, db, uow=uow
+        user_id, task_id, task_revision, db, uow=uow, course_id=course_id
     )

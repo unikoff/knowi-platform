@@ -1,0 +1,2813 @@
+{
+  "source": "current main before import; SQL imports and network blocked",
+  "content_revision": "7461fa79e8f282327e1dd27e221282d42d355866349963b4b9f53756acb9d82d",
+  "tracks": [
+    {
+      "track_id": "Основы Python и мышление программиста 01.2",
+      "lessons": [
+        {
+          "lesson_id": "lesson-fff797e32c153a1694f78f8d",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-01",
+          "source_file": "chapter_01/block_00/План обучения.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-fa2f4f9cd78e77a18fb1778e",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-02",
+          "source_file": "chapter_01/block_01/01 - Как запускается программа.md",
+          "tasks": [
+            {
+              "task_id": "lesson-fa2f4f9cd78e77a18fb1778e-task-01",
+              "revision": "83367f30ffd739c8da1991864ad0f814ec313d76dcd14c35d0232b295c5b0910"
+            },
+            {
+              "task_id": "lesson-fa2f4f9cd78e77a18fb1778e-task-02",
+              "revision": "1d8666d23d7d3619196ad18921b457773ccd5ce51fe6239dca786a84a1c5ec54"
+            },
+            {
+              "task_id": "lesson-fa2f4f9cd78e77a18fb1778e-task-03",
+              "revision": "508cbf6bbdde255ccca0d8b1b8a8044b81bd024fae66b73e1ba2ef2e346cfdb0"
+            },
+            {
+              "task_id": "lesson-fa2f4f9cd78e77a18fb1778e-task-04",
+              "revision": "06eb3d0103b3a06556f3a830d9497c68b86f1cae73e5d0b5630bfde33a1a9909"
+            },
+            {
+              "task_id": "lesson-fa2f4f9cd78e77a18fb1778e-task-05",
+              "revision": "f0d37322c613a3912b22f4611e3b05b535df1272187854a0bb1ce127709d8c4b"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-b504d05e6763add4db882bfe",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-03",
+          "source_file": "chapter_01/block_01/01.1 - Переменные и значения.md",
+          "tasks": [
+            {
+              "task_id": "lesson-b504d05e6763add4db882bfe-task-01",
+              "revision": "767778c966c296cb98cb9f10a4ace83bd1451499d36dc802587574ab8d4e9e74"
+            },
+            {
+              "task_id": "lesson-b504d05e6763add4db882bfe-task-02",
+              "revision": "3204984e5bd401b36b1be18345ee8020d4d32398cb5f4848f732e893d004afe5"
+            },
+            {
+              "task_id": "lesson-b504d05e6763add4db882bfe-task-03",
+              "revision": "28c560491f68cc8e99983fd820f819166d2ca2acfbc6c15a9f2946bda4c85abe"
+            },
+            {
+              "task_id": "lesson-b504d05e6763add4db882bfe-task-04",
+              "revision": "bb5dd602d6f4ee1dab354ddac4c26c869ed20f6330a349263a222e14ec25b8b5"
+            },
+            {
+              "task_id": "lesson-b504d05e6763add4db882bfe-task-05",
+              "revision": "a1ad290c98522f483a1d8c436ceefb32fba9eff93ab70e3d5eed11ca89acf09f"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-f44a8c32e54924d14c0bd4f9",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-04",
+          "source_file": "chapter_01/block_01/02 - Строки- длина и части.md",
+          "tasks": [
+            {
+              "task_id": "lesson-f44a8c32e54924d14c0bd4f9-task-01",
+              "revision": "02bf7b1a4a3e17cf494b88e066f6e5378572caec262339f3263348bceabbbb38"
+            },
+            {
+              "task_id": "lesson-f44a8c32e54924d14c0bd4f9-task-02",
+              "revision": "d9b6b08c9336b36edfb0c73df540241232832617b6194b459837852da67e9533"
+            },
+            {
+              "task_id": "lesson-f44a8c32e54924d14c0bd4f9-task-03",
+              "revision": "70ae787919615712b6a6dbf13c923c424643fe00f3f15fc17d7bfecbdf98ff3e"
+            },
+            {
+              "task_id": "lesson-f44a8c32e54924d14c0bd4f9-task-04",
+              "revision": "5ca037e808414f7ce3dd8fad2e19656d7f9cb74c165e06e31ebdc26548dbe075"
+            },
+            {
+              "task_id": "lesson-f44a8c32e54924d14c0bd4f9-task-05",
+              "revision": "f0e1f9f416cd691ca206548b84599e67f83f31d95810320fd8e7f2cf2d9a7fd1"
+            },
+            {
+              "task_id": "lesson-f44a8c32e54924d14c0bd4f9-task-06",
+              "revision": "5faeb43380afffed5be997a728e53209db2f65046de0f73d7993ebd31e85a53a"
+            },
+            {
+              "task_id": "lesson-f44a8c32e54924d14c0bd4f9-task-07",
+              "revision": "c903337e77b59f33d4e57198850ba2898713b98d4f41bff884da4c614a3e83c6"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-06acee306de62d66856c8991",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-05",
+          "source_file": "chapter_01/block_01/02.1 - Методы строк на практике.md",
+          "tasks": [
+            {
+              "task_id": "lesson-06acee306de62d66856c8991-task-01",
+              "revision": "4278abe9e5587de79d681f3c322d25f4abf524a4203fe73a9b62748770a52818"
+            },
+            {
+              "task_id": "lesson-06acee306de62d66856c8991-task-02",
+              "revision": "e63c2fdd0ccc7d50870f774053bb7c99db78a9a39fdf5b5db1656063e9ff717f"
+            },
+            {
+              "task_id": "lesson-06acee306de62d66856c8991-task-03",
+              "revision": "c558d26a856dc6292b2ccf28217fc38f1050abeea76df7381ce85a746af49a21"
+            },
+            {
+              "task_id": "lesson-06acee306de62d66856c8991-task-04",
+              "revision": "9505b00238142f037a95b868c76c946e4c0e6a930b95b21d49a0039abedddb27"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-16199da9710a40939c4780d5",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-06",
+          "source_file": "chapter_01/block_01/03 - Целые числа и деление.md",
+          "tasks": [
+            {
+              "task_id": "lesson-16199da9710a40939c4780d5-task-01",
+              "revision": "242ea58bcff44f5ebec9afdb41d4316d38faccdb5f1b50168e914931c2652fc9"
+            },
+            {
+              "task_id": "lesson-16199da9710a40939c4780d5-task-02",
+              "revision": "4dfa4238c93cc60d102af63467215550c0c398f85e300cb5905282f6ecfb9bc1"
+            },
+            {
+              "task_id": "lesson-16199da9710a40939c4780d5-task-03",
+              "revision": "8d765e6a3e1a75a5b53a3d56e56ccbd4d5292655d89c79492dd4358c9af0c573"
+            },
+            {
+              "task_id": "lesson-16199da9710a40939c4780d5-task-04",
+              "revision": "7ade1cfff222ed352252a19a498e3963b68ff903d08cfd809d0407618bf1bc2a"
+            },
+            {
+              "task_id": "lesson-16199da9710a40939c4780d5-task-05",
+              "revision": "6e4f40a1529aad4196ad457e6a1b7859bdfaa91105dfae71b6287448be1f5b4e"
+            },
+            {
+              "task_id": "lesson-16199da9710a40939c4780d5-task-06",
+              "revision": "275acf129316cba49ace74167cfbe1bcb8eebd08468f6b244dc9e9b4d0ddbbef"
+            },
+            {
+              "task_id": "lesson-16199da9710a40939c4780d5-task-07",
+              "revision": "8da317a86f4384eca6f14d070dd630f9316ec90d42e463fca59654a8aeb8ba82"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-97e2d917247b4a8e322df568",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-07",
+          "source_file": "chapter_01/block_01/03.1 - Дробные числа и округление.md",
+          "tasks": [
+            {
+              "task_id": "lesson-97e2d917247b4a8e322df568-task-01",
+              "revision": "de0b5f9d42f870937c0e2f786a9637b878c127deedfb7172dc6d4782e0dfe6e0"
+            },
+            {
+              "task_id": "lesson-97e2d917247b4a8e322df568-task-02",
+              "revision": "9a51ea8ec3e357960c2e5742653081d9f728e84d2c949e328c43645c86045e00"
+            },
+            {
+              "task_id": "lesson-97e2d917247b4a8e322df568-task-03",
+              "revision": "48686ece3734ec2196067ab4824f472d39774fb49a0f630e905beef08697e766"
+            },
+            {
+              "task_id": "lesson-97e2d917247b4a8e322df568-task-04",
+              "revision": "95ebf873236caf15d045aea01f2a21a217cafe1e8621b535e1dfb0810e28b4ff"
+            },
+            {
+              "task_id": "lesson-97e2d917247b4a8e322df568-task-05",
+              "revision": "463e55bb4941793ab881fb00dec6bde5b2454b9ac3f7363fd13b65918b779e64"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-831ead0b3cfea6507d1adcde",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-08",
+          "source_file": "chapter_01/block_01/04 - Сообщение из данных.md",
+          "tasks": [
+            {
+              "task_id": "lesson-831ead0b3cfea6507d1adcde-task-01",
+              "revision": "709016360ae18656af39caeec0195fad188a682742085bf06e1c9a2cd603197c"
+            },
+            {
+              "task_id": "lesson-831ead0b3cfea6507d1adcde-task-02",
+              "revision": "9815fca22222db4270d5386ce1cf3a756f772f63f69cb4b9d052babe9e5416a7"
+            },
+            {
+              "task_id": "lesson-831ead0b3cfea6507d1adcde-task-03",
+              "revision": "c411c44b635f8ec82c625d72a6c7ee16a69e6fb9c5eaa2773ae0bfeec610af16"
+            },
+            {
+              "task_id": "lesson-831ead0b3cfea6507d1adcde-task-04",
+              "revision": "89d07094cc25fd42ae9d38064e1b35f93c99660438c43b23a7075b84be9f5b6b"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-d22f2824828911daba7935bc",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-09",
+          "source_file": "chapter_01/block_01/04.1 - Сравнения и логика.md",
+          "tasks": [
+            {
+              "task_id": "lesson-d22f2824828911daba7935bc-task-01",
+              "revision": "f17d931fa3fcdd64e4c039af54185fe1a131fe8d235823ad99f4d989d26ec6cf"
+            },
+            {
+              "task_id": "lesson-d22f2824828911daba7935bc-task-02",
+              "revision": "d044c9dbb115f78240484127bee6bed71f2e30b470334529e3280eef0b0246c5"
+            },
+            {
+              "task_id": "lesson-d22f2824828911daba7935bc-task-03",
+              "revision": "9b6cd2f7f300e00efc22a96e4546010d53d0807754bad508bb15f6e864161b93"
+            },
+            {
+              "task_id": "lesson-d22f2824828911daba7935bc-task-04",
+              "revision": "2f97db2a9015f72bddf4ffc39b030e40093992e74a5e3e4f4164302c7f89d75a"
+            },
+            {
+              "task_id": "lesson-d22f2824828911daba7935bc-task-05",
+              "revision": "e4448ac2ec084a6418d90c05569e1dd47b012b4a371a6aa1a6b1cee9719d6427"
+            },
+            {
+              "task_id": "lesson-d22f2824828911daba7935bc-task-06",
+              "revision": "723306cb726c058a24dee4b2eec4fdca1283c5a42465146d8cc5f3ba4bfce7eb"
+            },
+            {
+              "task_id": "lesson-d22f2824828911daba7935bc-task-07",
+              "revision": "d79b2ec92903109c639b870ac1d7def349fd99ba65df86e75973da13c5ab2014"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-a56c247b8d58b2b55aa42450",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-10",
+          "source_file": "chapter_01/block_01/05 - Значение None в программе.md",
+          "tasks": [
+            {
+              "task_id": "lesson-a56c247b8d58b2b55aa42450-task-01",
+              "revision": "4b87d5983b614dca1fe4bf1fca6da2f50a6e302316d98609767e448685bc8269"
+            },
+            {
+              "task_id": "lesson-a56c247b8d58b2b55aa42450-task-02",
+              "revision": "722036caa5ab9389a1707fecb129822e0cfac4e7a218d19f46a87bc4079d9ea6"
+            },
+            {
+              "task_id": "lesson-a56c247b8d58b2b55aa42450-task-03",
+              "revision": "359ea3ca5ce92caac00514cea1c96b353879d9826b8f1e74abbf42d7371dd14f"
+            },
+            {
+              "task_id": "lesson-a56c247b8d58b2b55aa42450-task-04",
+              "revision": "b46c154484c58e1d909d7deb31b1afa8c31cb674cda2289f6fede3904d832d34"
+            },
+            {
+              "task_id": "lesson-a56c247b8d58b2b55aa42450-task-05",
+              "revision": "ac314bb4bdbe9af95b8f4b2dad09502d732fa698c4457d8f15e4b9548c2f16fc"
+            },
+            {
+              "task_id": "lesson-a56c247b8d58b2b55aa42450-task-06",
+              "revision": "a81ba9c176baf2b40c4f9ff284a38f8ddb9eeaa75774051c3ca9ba220a8369bf"
+            },
+            {
+              "task_id": "lesson-a56c247b8d58b2b55aa42450-task-07",
+              "revision": "4d4be8c8ae39682f5d17cb1a7579dc9a90eee6251dbba7214a155afb2010d0f8"
+            },
+            {
+              "task_id": "lesson-a56c247b8d58b2b55aa42450-task-08",
+              "revision": "e834a0ea34c011961655e83aea5d0e6aa2a33e2cc21c753c6816e26094613ec5"
+            },
+            {
+              "task_id": "lesson-a56c247b8d58b2b55aa42450-task-09",
+              "revision": "b75385b8487cdeb753a676364352805285e444c810ac12a2fdae81573c2ee7f7"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-7c2b1008872e9dad54de68ff",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-11",
+          "source_file": "chapter_01/block_01/05.1 - Пишем короткую программу.md",
+          "tasks": [
+            {
+              "task_id": "lesson-7c2b1008872e9dad54de68ff-task-01",
+              "revision": "5b088e3472593dca94acca4532055fe52ef0a318d6a8e39eea3cf001a044a57c"
+            },
+            {
+              "task_id": "lesson-7c2b1008872e9dad54de68ff-task-02",
+              "revision": "44f383d764eddee3c9295a632936c49080bdef650eaf54f4ea2682497e75f5e2"
+            },
+            {
+              "task_id": "lesson-7c2b1008872e9dad54de68ff-task-03",
+              "revision": "3cc35b06ed8afe15d354a881318d3c69673f7a4a49fca885e7cb43cf224c8216"
+            },
+            {
+              "task_id": "lesson-7c2b1008872e9dad54de68ff-task-04",
+              "revision": "d4e6121905170e7f6a955deeab92f1cf121215bdbf4c9856ab8950adafbd6214"
+            },
+            {
+              "task_id": "lesson-7c2b1008872e9dad54de68ff-task-05",
+              "revision": "2f30bc7bbc295ad831770fcf6093b799611c8c37ab10eeb4e835e4b6a00a1d70"
+            },
+            {
+              "task_id": "lesson-7c2b1008872e9dad54de68ff-task-06",
+              "revision": "6cc4ff8d9e9893ac85bfe441d258f77df40266b2f15d16cb585f58cb4765083c"
+            },
+            {
+              "task_id": "lesson-7c2b1008872e9dad54de68ff-task-07",
+              "revision": "082ee19729967d61f352056a4f794915e1fbfff208286c40c1b1010ce4d6cf87"
+            },
+            {
+              "task_id": "lesson-7c2b1008872e9dad54de68ff-task-08",
+              "revision": "bc01bdb1ef41a644687dd4c8d86f107947ce183b5a98cedd8d23d1deff93fdeb"
+            },
+            {
+              "task_id": "lesson-7c2b1008872e9dad54de68ff-task-09",
+              "revision": "e1dec0752eb47616fbdc5b775513521492fb3db75390a011010a06960c4441fe"
+            },
+            {
+              "task_id": "lesson-7c2b1008872e9dad54de68ff-task-10",
+              "revision": "ad4556eaaf78652100b112356a3c3b730c474a9c5eeb04c97b75c7d08b42f5fb"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-0cfd01bac3d263f49e50ab6c",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-12",
+          "source_file": "chapter_01/block_02/06 - Как работает ветвление.md",
+          "tasks": [
+            {
+              "task_id": "lesson-0cfd01bac3d263f49e50ab6c-task-01",
+              "revision": "33f5980779d4a53ee267a078d6403f815708d83550bcc6c63f1aa887e0465465"
+            },
+            {
+              "task_id": "lesson-0cfd01bac3d263f49e50ab6c-task-02",
+              "revision": "867d633f3ad54c174467c0c8925045afee18b07ca2d25244288d30bbb3be38f1"
+            },
+            {
+              "task_id": "lesson-0cfd01bac3d263f49e50ab6c-task-03",
+              "revision": "eab74acd4f53ec3f21ff4af97ccff1adc6e7547578c7dd451fe6a0546e4f8f7d"
+            },
+            {
+              "task_id": "lesson-0cfd01bac3d263f49e50ab6c-task-04",
+              "revision": "e3f201607013718738ea0eb0847a23dcaba937f7fa81ff4a4d94e4cadf81281f"
+            },
+            {
+              "task_id": "lesson-0cfd01bac3d263f49e50ab6c-task-05",
+              "revision": "62ee4449c1543f43592c0caf1b6ad763f80c08269dc16eb95f8164dfa5e47f2e"
+            },
+            {
+              "task_id": "lesson-0cfd01bac3d263f49e50ab6c-task-06",
+              "revision": "29080b55cd255ad8ffc0c04888f5735a2107de6f8ea019c38b5ba9e3a4d69e58"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-6e787407b0c8a72875b71fe3",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-13",
+          "source_file": "chapter_01/block_02/06.1 - Списки- чтение и изменение.md",
+          "tasks": [
+            {
+              "task_id": "lesson-6e787407b0c8a72875b71fe3-task-01",
+              "revision": "3874416cb98f72533ac6f8f9eea5252960db7e94b1ed48bdde8a9282b5456795"
+            },
+            {
+              "task_id": "lesson-6e787407b0c8a72875b71fe3-task-02",
+              "revision": "ddf0d8d81acde5ab42a327dc4d0b6f35f676b528271d7f2b9eb130f1dfb8b796"
+            },
+            {
+              "task_id": "lesson-6e787407b0c8a72875b71fe3-task-03",
+              "revision": "70904c8fcee8604a72650473891ebb22c1249976437067c4c84385223fb27a36"
+            },
+            {
+              "task_id": "lesson-6e787407b0c8a72875b71fe3-task-04",
+              "revision": "f28bab1239cf5d1bb3fd221e91f2644c96a88751285e51ff687aa24967e7b63d"
+            },
+            {
+              "task_id": "lesson-6e787407b0c8a72875b71fe3-task-05",
+              "revision": "31b764e35f2577e9471cf06597d8ef9b29eb2253e4d150c9c27537cdb74b43c0"
+            },
+            {
+              "task_id": "lesson-6e787407b0c8a72875b71fe3-task-06",
+              "revision": "b9ecc014942352219de4b59a33733e5ff7188037690a0319773d0e7bbf4bbf6c"
+            },
+            {
+              "task_id": "lesson-6e787407b0c8a72875b71fe3-task-07",
+              "revision": "c37e68eaa0b8253d0275dad5a671a3cb2b3a3ff34e5023582da3ecc2b0805b2d"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-90605df94a6a07e712481108",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-14",
+          "source_file": "chapter_01/block_02/07 - Общие ссылки и копии.md",
+          "tasks": [
+            {
+              "task_id": "lesson-90605df94a6a07e712481108-task-01",
+              "revision": "5c25c84e80e1ee6b49a31e5be9bddb0b7b0eec0f0a8dd3c6018af1350a908af8"
+            },
+            {
+              "task_id": "lesson-90605df94a6a07e712481108-task-02",
+              "revision": "868bbc1e8f4c532c1609ce17aab8e071416ec0d65cdd964942e925e61626b9e5"
+            },
+            {
+              "task_id": "lesson-90605df94a6a07e712481108-task-03",
+              "revision": "c6e2f7209f1913a40888c7ebf52bc6886d033e8755331673cc359fa29854441c"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-b6b4a34abf9045e1edfe31ba",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-15",
+          "source_file": "chapter_01/block_02/07.1 - Разделяем и соединяем текст.md",
+          "tasks": [
+            {
+              "task_id": "lesson-b6b4a34abf9045e1edfe31ba-task-01",
+              "revision": "6b5fa6c3d5e8a317fb5bfd23b47bab10b43ae8283cc7464653a415d7c0f92932"
+            },
+            {
+              "task_id": "lesson-b6b4a34abf9045e1edfe31ba-task-02",
+              "revision": "4a33ab8a22ba469ab93f75bb60ae1cc2b299b369c667863d9e13ea0fa1c0808a"
+            },
+            {
+              "task_id": "lesson-b6b4a34abf9045e1edfe31ba-task-03",
+              "revision": "b1bd6963d46418641df0e31d711988f3c3e86f63857d7caf2dcbf14c57e07bf1"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-2ac9a83f0a58cd1096841e27",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-16",
+          "source_file": "chapter_01/block_02/07.2 - Кортежи и множества.md",
+          "tasks": [
+            {
+              "task_id": "lesson-2ac9a83f0a58cd1096841e27-task-01",
+              "revision": "7e43594e228124e9e35f4f52116545dd9326e3d84373dbe6c68ed80e6472973e"
+            },
+            {
+              "task_id": "lesson-2ac9a83f0a58cd1096841e27-task-02",
+              "revision": "ac1cefa6d2671a0c4267f24f617ac2fef5a1d9859a9b7b5068f59be08be66ce3"
+            },
+            {
+              "task_id": "lesson-2ac9a83f0a58cd1096841e27-task-03",
+              "revision": "ef72a861bc09a178286cca972ae9a7625889a3f7327d7d152907106a28cd4ba7"
+            },
+            {
+              "task_id": "lesson-2ac9a83f0a58cd1096841e27-task-04",
+              "revision": "dc21e364c0d2a733604b9edc919e384e28f323e7e76d62e167eccd5f95f024e5"
+            },
+            {
+              "task_id": "lesson-2ac9a83f0a58cd1096841e27-task-05",
+              "revision": "36477fc044ded7f070b15c99e6b1065636074328ada0f014d6f1acbe3460274b"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-6d35b140bcace1c0e400832d",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-17",
+          "source_file": "chapter_01/block_02/08 - Словари- поля и значения.md",
+          "tasks": [
+            {
+              "task_id": "lesson-6d35b140bcace1c0e400832d-task-01",
+              "revision": "6d39a81504e17aad4d1fe725ce5f477618e6371c257a0093f1243d079b429b10"
+            },
+            {
+              "task_id": "lesson-6d35b140bcace1c0e400832d-task-02",
+              "revision": "6e2d62a45b032287da77b255c91608af09a00c6b0660aaf438029f59601baf8f"
+            },
+            {
+              "task_id": "lesson-6d35b140bcace1c0e400832d-task-03",
+              "revision": "d61f4354cc6b1a2e0585324469ba55af84a85e49d368276815e4a08a19d17773"
+            },
+            {
+              "task_id": "lesson-6d35b140bcace1c0e400832d-task-04",
+              "revision": "2f32527705d0ef64d33ee14922df2974a05252725b8c2609c9d7c22b170e276f"
+            },
+            {
+              "task_id": "lesson-6d35b140bcace1c0e400832d-task-05",
+              "revision": "ce3676451b4c6a95b4084fffbef4f00b246340c17d05cd88c6d87f281535c9cd"
+            },
+            {
+              "task_id": "lesson-6d35b140bcace1c0e400832d-task-06",
+              "revision": "2c0cbaf4ab73ef07677007f30801557fb1f941f51dd90e7c11b4ea3c488454ca"
+            },
+            {
+              "task_id": "lesson-6d35b140bcace1c0e400832d-task-07",
+              "revision": "6593ee7b5a9f7caaae1f02f28487f9798ed27b638bd8b8735470e96adcf2fc9a"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-a9a87f62cfb484f3d5c86178",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-18",
+          "source_file": "chapter_01/block_02/08.1 - Список записей и копии.md",
+          "tasks": [
+            {
+              "task_id": "lesson-a9a87f62cfb484f3d5c86178-task-01",
+              "revision": "fe9a0f32df59a3e2250f61607e8ce2d02146aea5a5d371c3c25ed67ccebbebb3"
+            },
+            {
+              "task_id": "lesson-a9a87f62cfb484f3d5c86178-task-02",
+              "revision": "2eb81fbb6e5914475eca63999f8b16f22a3d2990f1f0543553cb085d099ef8cf"
+            },
+            {
+              "task_id": "lesson-a9a87f62cfb484f3d5c86178-task-03",
+              "revision": "a344870bbf79cdfc7bc262bf5c0adabe16867ed18a05e9480d6beecff7010fdb"
+            },
+            {
+              "task_id": "lesson-a9a87f62cfb484f3d5c86178-task-04",
+              "revision": "5a1f3fda6df3650650817ccad55dd787b07904fc4128419e41bb9220e3192d37"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-f9681b980889ff3d7005d9b5",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-19",
+          "source_file": "chapter_01/block_02/09 - Цикл for и элементы данных.md",
+          "tasks": [
+            {
+              "task_id": "lesson-f9681b980889ff3d7005d9b5-task-01",
+              "revision": "30b606dc277ae94ff102e7d64a453cd9127264df40372362f891fd1bea8a40ec"
+            },
+            {
+              "task_id": "lesson-f9681b980889ff3d7005d9b5-task-02",
+              "revision": "331f3c70bce6b1fc83c89c37cf85e88a787689a22a25befe28b3745f817a0b89"
+            },
+            {
+              "task_id": "lesson-f9681b980889ff3d7005d9b5-task-03",
+              "revision": "2872dc461ead316ff95f9314da3e99642c00cafb50adddeb528fefb3f637c85c"
+            },
+            {
+              "task_id": "lesson-f9681b980889ff3d7005d9b5-task-04",
+              "revision": "7c51abf3ef8cd7f6088db107559e085c1e1b360cc46bdc3458237b972760310d"
+            },
+            {
+              "task_id": "lesson-f9681b980889ff3d7005d9b5-task-05",
+              "revision": "dd5b617340d1f59f9bc41ad85b232cae59cf36ee3a7559f76056e2bf80bb47ad"
+            },
+            {
+              "task_id": "lesson-f9681b980889ff3d7005d9b5-task-06",
+              "revision": "938b9ac826491dcefcce9570f80810a236bde916f3179c8f870f3b9ca357d0aa"
+            },
+            {
+              "task_id": "lesson-f9681b980889ff3d7005d9b5-task-07",
+              "revision": "327041520e61ebd283d7ebc750bd5d1451a4940d06cbc6e871b05389dbdaa3ab"
+            },
+            {
+              "task_id": "lesson-f9681b980889ff3d7005d9b5-task-08",
+              "revision": "7b131a88257f3b5f67254a2ba3d6b2dcafd6dc26eaa979354f56d154b44e8926"
+            },
+            {
+              "task_id": "lesson-f9681b980889ff3d7005d9b5-task-09",
+              "revision": "9dcf3822796a70b373d2992ec4ae7b601993fee018875b8663fa834cdee4f59f"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-6694e9d918a7e8ab69dc0a7b",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-20",
+          "source_file": "chapter_01/block_02/09.1 - Суммы, счётчики и максимум.md",
+          "tasks": [
+            {
+              "task_id": "lesson-6694e9d918a7e8ab69dc0a7b-task-01",
+              "revision": "02c6c20673b64eb7f6a4fad9c2a0e9a730b0885430bfe70aee4b109771978e42"
+            },
+            {
+              "task_id": "lesson-6694e9d918a7e8ab69dc0a7b-task-02",
+              "revision": "d4a486ac7405fe49011a03d8a19cd9acc997fbe420d553420309cf6d2a2df181"
+            },
+            {
+              "task_id": "lesson-6694e9d918a7e8ab69dc0a7b-task-03",
+              "revision": "9bb4a813d5698bae66d4ab9433eb7cfdc80f8fbe0d5eaab87adce2914dcfef1d"
+            },
+            {
+              "task_id": "lesson-6694e9d918a7e8ab69dc0a7b-task-04",
+              "revision": "1a09f8db26a2af1a309431fd96e40b80de992b2db35861e2c03f25fa64570a47"
+            },
+            {
+              "task_id": "lesson-6694e9d918a7e8ab69dc0a7b-task-05",
+              "revision": "051e1351b6f45ebd5bfe84b2ba8b011f3730c40b5818519e6451e5dcf68accd1"
+            },
+            {
+              "task_id": "lesson-6694e9d918a7e8ab69dc0a7b-task-06",
+              "revision": "25078ace74ada061ad770d739de8acdc9ca794defae77f9861ed6d0e80084281"
+            },
+            {
+              "task_id": "lesson-6694e9d918a7e8ab69dc0a7b-task-07",
+              "revision": "9301f4c76bf5e36e079ad9003986cfe41581d31ae4ecd9c2ec5b45e721d61ebb"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-5116c9a859670bea96d6465d",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-21",
+          "source_file": "chapter_01/block_02/10 - Управление циклом и поиск.md",
+          "tasks": [
+            {
+              "task_id": "lesson-5116c9a859670bea96d6465d-task-01",
+              "revision": "72f4c1159244992095870fdb2bdafd27d96c7269930e1918468ea013168fecc9"
+            },
+            {
+              "task_id": "lesson-5116c9a859670bea96d6465d-task-02",
+              "revision": "0d74b8ca069dc17760af1078d68316967406b1bc344298dffccf4468e06a33ac"
+            },
+            {
+              "task_id": "lesson-5116c9a859670bea96d6465d-task-03",
+              "revision": "5244b57270f852e12ba07de653e9a4d8568c31b371e849de27026b2956aad415"
+            },
+            {
+              "task_id": "lesson-5116c9a859670bea96d6465d-task-04",
+              "revision": "fbeeff0975fbad37806735e49145dabdf722fd85336546bee1827c3ceed259d7"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-b7dd5216e9340875edbd5a95",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-22",
+          "source_file": "chapter_01/block_02/10.1 - Цикл while и выход.md",
+          "tasks": [
+            {
+              "task_id": "lesson-b7dd5216e9340875edbd5a95-task-01",
+              "revision": "276d5b5257128fc17dbf7f0f403b9587c5642144cb2e58a2f7c196e5a5bc85f7"
+            },
+            {
+              "task_id": "lesson-b7dd5216e9340875edbd5a95-task-02",
+              "revision": "1ddd846a60ebb4ffcbc2ec38e366d9fb8f8e6ad21f869d96d8ebcb6b41cb74c8"
+            },
+            {
+              "task_id": "lesson-b7dd5216e9340875edbd5a95-task-03",
+              "revision": "870f5a1d2ba48e484bac6a3c41d588fff50c0f71bdfb1ccf999971081007c5d5"
+            },
+            {
+              "task_id": "lesson-b7dd5216e9340875edbd5a95-task-04",
+              "revision": "64d80fa985721673568bc0e5b960decc4b890c05a43cd4e5c58a3e9755e078af"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-b8d1835f6d6db7210692b9e9",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-23",
+          "source_file": "chapter_01/block_02/10.2 - Пишем программу с циклами.md",
+          "tasks": [
+            {
+              "task_id": "lesson-b8d1835f6d6db7210692b9e9-task-01",
+              "revision": "0455d3dce21bb515d045f5115c335fd8c94b08d8ebb6f666947297cc6d7900de"
+            },
+            {
+              "task_id": "lesson-b8d1835f6d6db7210692b9e9-task-02",
+              "revision": "c6b8d4ddb0ea1f831b7f04b1dca555b27b1aafe8fd0955a70134f7c650c474e9"
+            },
+            {
+              "task_id": "lesson-b8d1835f6d6db7210692b9e9-task-03",
+              "revision": "436eca8c9d88c81b89ea87d1f21b4124976ed0f936bb990746bf71efc1fe0351"
+            },
+            {
+              "task_id": "lesson-b8d1835f6d6db7210692b9e9-task-04",
+              "revision": "1d8a588113efa24cdf2c79d08b88a57251f3174d1942145a427591ac9c83ea86"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-6491b7db4538162f105d4f9e",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-24",
+          "source_file": "chapter_01/block_03/11 - Функции- вход и результат.md",
+          "tasks": [
+            {
+              "task_id": "lesson-6491b7db4538162f105d4f9e-task-01",
+              "revision": "7aa2b884a769dc4ba29390f717fa6ed8f961f73c849ba2df2f02fa8b194346d2"
+            },
+            {
+              "task_id": "lesson-6491b7db4538162f105d4f9e-task-02",
+              "revision": "919d2c83639c2c0dc3d5af2f8d5d73ac45fb0fa48e78414246a5d5c9a11a030f"
+            },
+            {
+              "task_id": "lesson-6491b7db4538162f105d4f9e-task-03",
+              "revision": "957060609f70ab717bc92dbcad0ee74d14c3de8003fb0eb225cbaa97efc6b25a"
+            },
+            {
+              "task_id": "lesson-6491b7db4538162f105d4f9e-task-04",
+              "revision": "257bbb1707e2ba5836b79a297ccba47e5d8c2b6e1898abab7cb9055c24fcecd7"
+            },
+            {
+              "task_id": "lesson-6491b7db4538162f105d4f9e-task-05",
+              "revision": "9ffa66719e26501005292639f6b22e48667a757eeb161ef3fa5173d30c44f50f"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-ff2f14a8b483c597fd3da2ed",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-25",
+          "source_file": "chapter_01/block_03/11.1 - Область видимости и данные.md",
+          "tasks": [
+            {
+              "task_id": "lesson-ff2f14a8b483c597fd3da2ed-task-01",
+              "revision": "e397eaf0e727a0a51bdd516023c9ed4035d339800d5d4fa5e5ee63d315c646c0"
+            },
+            {
+              "task_id": "lesson-ff2f14a8b483c597fd3da2ed-task-02",
+              "revision": "86a172a91cb1420dc3d7d3c096d0fe7092b6d41d842a3cddae4a7806b67165a8"
+            },
+            {
+              "task_id": "lesson-ff2f14a8b483c597fd3da2ed-task-03",
+              "revision": "77d9715fc14504199467020086337c1d7c65c302125eaca02cef55fa37fb50a8"
+            },
+            {
+              "task_id": "lesson-ff2f14a8b483c597fd3da2ed-task-04",
+              "revision": "a9ec5a570807960baf1c5c6ee3d47427aae8c25642e8029d1103c471c0031deb"
+            },
+            {
+              "task_id": "lesson-ff2f14a8b483c597fd3da2ed-task-05",
+              "revision": "a8868b6814b4c01077ab444316da35471e4cfe26b4a5e566cb30982292ac525f"
+            },
+            {
+              "task_id": "lesson-ff2f14a8b483c597fd3da2ed-task-06",
+              "revision": "83d8b88989085941aed9ad9d2ea7debb562865d4ce07e5bc9945b32f2c55fe05"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-eef6a7c5f6592ff8f168e818",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-26",
+          "source_file": "chapter_01/block_03/11.2 - Ошибки- ищем причину.md",
+          "tasks": [
+            {
+              "task_id": "lesson-eef6a7c5f6592ff8f168e818-task-01",
+              "revision": "b5e7df857bc427227d3e44ff7970447b12b65afe511ec7ec5bf784fad4a68971"
+            },
+            {
+              "task_id": "lesson-eef6a7c5f6592ff8f168e818-task-02",
+              "revision": "7e56f1fa32ce6393945fc4b3f0869f4f4bcc1ce3f622732e640f589a1d1f596a"
+            },
+            {
+              "task_id": "lesson-eef6a7c5f6592ff8f168e818-task-03",
+              "revision": "9d8279dc57d4abaf705db070afda623fb7f15ab582fe3d38366e3773adec13b5"
+            },
+            {
+              "task_id": "lesson-eef6a7c5f6592ff8f168e818-task-04",
+              "revision": "3087af1c1cd3a87ce741ac8c9ba178d1b437004550805c6c0383316128b19f72"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-0b0f0682f76a868fb8f44982",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-27",
+          "source_file": "chapter_01/block_03/12 - Настраиваем Python и VS Code.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-1191533ab9e1e58c46b10de3",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-28",
+          "source_file": "chapter_01/block_03/12.1 - Создаём проект и репозиторий.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-05813a83bf9931401bfa52bb",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-29",
+          "source_file": "chapter_01/block_03/13 - Первый коммит в Git.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-c3170a5423df70b79431ba73",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-30",
+          "source_file": "chapter_01/block_03/13.1 - Отправляем код на GitHub.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-af4e1ea169504f1b62cc2f39",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-31",
+          "source_file": "chapter_01/block_03/13.2 - Название задачи и Git.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-eccdfa299a8d3e7ccc23803a",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-32",
+          "source_file": "chapter_01/block_03/14 - Создаём задачу и карточку.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-14d9e74e51917b91c1fe913e",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-33",
+          "source_file": "chapter_01/block_03/14.1 - Соединяем готовые функции.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-924a4dec25ae296dfa47a452",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-34",
+          "source_file": "chapter_01/block_03/14.2 - Отладка своего проекта.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-244d10be460d6548476bdc04",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-35",
+          "source_file": "chapter_01/block_03/15 - Ввод и обработка ошибок.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-b1eeab0e62fd973fdc9e59f1",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-36",
+          "source_file": "chapter_01/block_03/15.1 - Передаём проект дальше.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-fdc8eaf9e0abbfb6ba938480",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-37",
+          "source_file": "chapter_01/block_04/16 - Запускаем каркас Planner.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-f20a878edc22b8a33ff3820a",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-38",
+          "source_file": "chapter_01/block_04/16.1 - Проверяем ввод задачи.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-3b1285436934242016a4565f",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-39",
+          "source_file": "chapter_01/block_04/17 - Добавляем первую задачу.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-7afab2884ee102e1a2c2637f",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-40",
+          "source_file": "chapter_01/block_04/17.1 - Показываем список задач.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-c5b9892f5728fc38b755c77a",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-41",
+          "source_file": "chapter_01/block_04/18 - Находим задачу по номеру.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-bb1de9d64b1f747a01b0f28f",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-42",
+          "source_file": "chapter_01/block_04/18.1 - Отмечаем задачу выполненной.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-b44f927903cacc84ef3b027f",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-43",
+          "source_file": "chapter_01/block_04/19 - Ищем задачи по названию.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-2a75ccfc0709aca403a7983c",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-44",
+          "source_file": "chapter_01/block_04/19.1 - Считаем статистику задач.md",
+          "tasks": [
+            {
+              "task_id": "lesson-2a75ccfc0709aca403a7983c-task-01",
+              "revision": "5a7a9a9274d9d567c7e26c2ea9a0af70692df536e74be62d930b99b33ff3167c"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-49bf96e93b38a6995e6dcb52",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-45",
+          "source_file": "chapter_01/block_04/20 - Проверяем работу Planner.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-fa661256326bd13784d1c88d",
+          "legacy_id": "Основы Python и мышление программиста 01.2-lesson-46",
+          "source_file": "chapter_01/block_04/20.1 - Проверяем чистую копию.md",
+          "tasks": []
+        }
+      ]
+    },
+    {
+      "track_id": "Python глубже, файлы и структура небольшого проекта",
+      "lessons": [
+        {
+          "lesson_id": "lesson-6a0566589ed4ebd7eaf3aea1",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-01",
+          "source_file": "chapter_02/block_00/План обучения.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-4e35c6caf92173c1cc1ab078",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-02",
+          "source_file": "chapter_02/block_05/21 - Переход от первого месяца, разбираем Console Planner.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-184d1efa5080ffaa14f8f857",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-03",
+          "source_file": "chapter_02/block_05/21.1 - Функция как контракт, вход, правило, результат.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-a0f2d8947403a62b73e48b7f",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-04",
+          "source_file": "chapter_02/block_05/21.2 - Позиционные, именованные аргументы и значения по умолчанию.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-80d8639ea42ef54f42ef3898",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-05",
+          "source_file": "chapter_02/block_05/22 - Область видимости и изменяемые объекты.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-0479daa0f274437b850a4f32",
+          "legacy_id": "lesson-0479daa0f274437b850a4f32",
+          "source_file": "chapter_02/block_05/22.1 - Состояние запуска и изменяемый default.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-e285a7629191bb35aa2ff627",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-06",
+          "source_file": "chapter_02/block_05/23 - args, kwargs и распаковка.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-53a2fe0480f6a524442839b7",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-07",
+          "source_file": "chapter_02/block_05/24 - Функция как значение, callbacks и замыкания.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-80d491c1d310702dcd745f04",
+          "legacy_id": "lesson-80d491c1d310702dcd745f04",
+          "source_file": "chapter_02/block_05/24.1 - Вложенная функция и замыкание.md",
+          "tasks": [
+            {
+              "task_id": "lesson-80d491c1d310702dcd745f04-task-01",
+              "revision": "2cf9f852ef7c55cced0fc8f401afe3a06f04d9689812ee32256084ab6da580af"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-605cb489f1b67cdf625442fd",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-08",
+          "source_file": "chapter_02/block_05/25 - Диагностическая обёртка существующей функции.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-6d32036d558562847db6ab60",
+          "legacy_id": "lesson-6d32036d558562847db6ab60",
+          "source_file": "chapter_02/block_05/25.1 - Синтаксис @ и границы применения.md",
+          "tasks": [
+            {
+              "task_id": "lesson-6d32036d558562847db6ab60-task-01",
+              "revision": "0ad220422f0f6492ccab8455f70a19d7472d541d949504fef718361ae4c209bd"
+            },
+            {
+              "task_id": "lesson-6d32036d558562847db6ab60-task-02",
+              "revision": "84a2787cd4e2bb0ac8e88e29b7ebe5c40c47b74f1f772c48b581ade4802d92a0"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-c41f8d59a6080ca3afb2f96c",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-09",
+          "source_file": "chapter_02/block_06/26 - Как возникает исключение и как читать traceback.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-6a20bcb81ce816b28fd0d18d",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-10",
+          "source_file": "chapter_02/block_06/26.1 - try и конкретные except.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-2a90569387bfec10a7d82c63",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-11",
+          "source_file": "chapter_02/block_06/27 - else, finally, raise и собственные исключения.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-3a8f07298c5b550b95bc5163",
+          "legacy_id": "lesson-3a8f07298c5b550b95bc5163",
+          "source_file": "chapter_02/block_06/27.1 - Собственная ошибка и обязательное получение задачи.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-578d1a0a43c80e58c88f7f9c",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-12",
+          "source_file": "chapter_02/block_06/28 - Модули, импорты и точка входа.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-b3d43dd16dc22e1068fad3ca",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-13",
+          "source_file": "chapter_02/block_06/28.1 - Пакеты, init.py и направление импортов.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-63588c9badc37008ad36eec9",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-14",
+          "source_file": "chapter_02/block_06/28.2 - Отделить CLI от сборки.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-c4637591b8018177fa55e465",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-15",
+          "source_file": "chapter_02/block_06/29 - Файл как ресурс, путь, режим, with и UTF-8.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-fbedb3ff48fe525c2a7d38c1",
+          "legacy_id": "lesson-fbedb3ff48fe525c2a7d38c1",
+          "source_file": "chapter_02/block_06/29.1 - JSON-представление настоящих задач.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-601bc24c6138143debca9db5",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-16",
+          "source_file": "chapter_02/block_06/30 - Подключить загрузку и сохранение после изменения.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-8ba8429ce924c3eec748f9f0",
+          "legacy_id": "lesson-8ba8429ce924c3eec748f9f0",
+          "source_file": "chapter_02/block_06/30.1 - Проверить форму восстановленного состояния.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-e5a01f955257bd0ce1491f5b",
+          "legacy_id": "lesson-e5a01f955257bd0ce1491f5b",
+          "source_file": "chapter_02/block_06/30.2 - Ошибки хранения и сохранность данных.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-3618ad8c5517bee07d4e4449",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-17",
+          "source_file": "chapter_02/block_07/31 - Класс, объект, init и self.md",
+          "tasks": [
+            {
+              "task_id": "lesson-3618ad8c5517bee07d4e4449-task-01",
+              "revision": "9daa5c958e2da15a668befc766b2709dced8a7aef37abe41b81bc5976c2b24c4"
+            },
+            {
+              "task_id": "lesson-3618ad8c5517bee07d4e4449-task-02",
+              "revision": "0a931bee8e2211c8b69fb14a8d409b4bb0d825690df14dbc49015603a5eed6f7"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-26117ffa66801bb42b061b8b",
+          "legacy_id": "lesson-26117ffa66801bb42b061b8b",
+          "source_file": "chapter_02/block_07/31.1 - Обычная Task в настоящем пакете.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-ebd020911494c461b0d5a2d1",
+          "legacy_id": "lesson-ebd020911494c461b0d5a2d1",
+          "source_file": "chapter_02/block_07/32 - Экземпляр, атрибут класса и общие ссылки.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-baa127ea27f930535bddb9c5",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-18",
+          "source_file": "chapter_02/block_07/32.1 - Атрибуты, методы и str.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-533cd5ead114eadb217b50b8",
+          "legacy_id": "lesson-533cd5ead114eadb217b50b8",
+          "source_file": "chapter_02/block_07/33 - Представление, инкапсуляция и вычисляемое property.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-787642e800db1d98178e11c8",
+          "legacy_id": "lesson-787642e800db1d98178e11c8",
+          "source_file": "chapter_02/block_07/33.1 - Task на границе словаря.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-ca7e2f6ad16f56cf1dc5bfca",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-19",
+          "source_file": "chapter_02/block_07/34 - Инкапсуляция, геттеры, сеттеры и property.md",
+          "tasks": [
+            {
+              "task_id": "lesson-ca7e2f6ad16f56cf1dc5bfca-task-01",
+              "revision": "ed67410d34d398216ba055081905dbb3324f092cdf4cfd656d5cbe0f277a6141"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-560335f6b7cd49782f57dfe4",
+          "legacy_id": "lesson-560335f6b7cd49782f57dfe4",
+          "source_file": "chapter_02/block_07/34.1 - Независимые tags и совместимость записи.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-be5b94e8513892577f358624",
+          "legacy_id": "lesson-be5b94e8513892577f358624",
+          "source_file": "chapter_02/block_07/35 - Выбор формы и базовая композиция.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-6a9d66aaaba4369e8262f247",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-20",
+          "source_file": "chapter_02/block_08/36 - Включить Task в существующий Planner.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-f08484c084536fd9fcd0a188",
+          "legacy_id": "lesson-f08484c084536fd9fcd0a188",
+          "source_file": "chapter_02/block_08/36.1 - JsonStorage вокруг готового хранения.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-1f2a2059c3ce248fdccf38d3",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-21",
+          "source_file": "chapter_02/block_08/37 - MemoryStorage и один договор.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-576a4843e3a8f415391ae92b",
+          "legacy_id": "lesson-576a4843e3a8f415391ae92b",
+          "source_file": "chapter_02/block_08/37.1 - PlannerService и перенос чтения.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-f01675cf44b7cb076cef7888",
+          "legacy_id": "lesson-f01675cf44b7cb076cef7888",
+          "source_file": "chapter_02/block_08/37.2 - Единое изменение и тонкий CLI.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-14a4b1312b6be6f181f1e945",
+          "legacy_id": "lesson-14a4b1312b6be6f181f1e945",
+          "source_file": "chapter_02/block_08/37.3 - Виртуальное окружение проекта.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-58f92927912701ac478065d0",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-22",
+          "source_file": "chapter_02/block_08/38 - Первые тесты через pytest.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-9315b946d3c1d5dba0edd176",
+          "legacy_id": "lesson-9315b946d3c1d5dba0edd176",
+          "source_file": "chapter_02/block_08/38.1 - Свежая fixture и параметризация.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-cc0822c938889aacf689a8a7",
+          "legacy_id": "lesson-cc0822c938889aacf689a8a7",
+          "source_file": "chapter_02/block_08/39 - Файловая интеграция через tmp_path.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-c44c12e8dbfb605aab5813b1",
+          "legacy_id": "lesson-c44c12e8dbfb605aab5813b1",
+          "source_file": "chapter_02/block_08/39.1 - SOLID и проверяемая граница CLI.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-51a9314a120ca143de25493a",
+          "legacy_id": "lesson-51a9314a120ca143de25493a",
+          "source_file": "chapter_02/block_08/39.2 - Регрессия команд, сохранений и безопасной сборки.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-09ad56ee70aee2a8e9dbba28",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-23",
+          "source_file": "chapter_02/block_08/40 - Финальный проект 2, модель, сервисы и хранение.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-d1316e5fad97c67f4f90b37e",
+          "legacy_id": "Python глубже, файлы и структура небольшого проекта-lesson-24",
+          "source_file": "chapter_02/block_08/40.1 - Финальный проект 3, тесты, README, GitHub Release и защита.md",
+          "tasks": []
+        }
+      ]
+    },
+    {
+      "track_id": "HTTP, API и FastAPI - Planner API",
+      "lessons": [
+        {
+          "lesson_id": "lesson-f4682177e2b1b9c127a188e6",
+          "legacy_id": "HTTP, API и FastAPI - Planner API-lesson-01",
+          "source_file": "chapter_03/block_00/План обучения.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-4c6361f47563341166c6b76b",
+          "legacy_id": "lesson-4c6361f47563341166c6b76b",
+          "source_file": "chapter_03/block_09/41 - Адрес и метод запроса.md",
+          "tasks": [
+            {
+              "task_id": "lesson-4c6361f47563341166c6b76b-task-01",
+              "revision": "4dc1a34b6be58eb1df52906eb7d24d6cab033234a3450813b2252b454f800b83"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-a6673eadca8c366aecb42f79",
+          "legacy_id": "lesson-a6673eadca8c366aecb42f79",
+          "source_file": "chapter_03/block_09/41.1 - Заголовки и тело запроса.md",
+          "tasks": [
+            {
+              "task_id": "lesson-a6673eadca8c366aecb42f79-task-01",
+              "revision": "90c12e9de4863a10653d0c82cd3042647c2d1822c617bb9b68625cdc634a6ea3"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-870940ef2850c51d63de0468",
+          "legacy_id": "lesson-870940ef2850c51d63de0468",
+          "source_file": "chapter_03/block_09/42 - Статус и результат запроса.md",
+          "tasks": [
+            {
+              "task_id": "lesson-870940ef2850c51d63de0468-task-01",
+              "revision": "2ed753c44d537795698c6c695c51e08a0aabab0ba080d00f284327214a6e874c"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-3dd1fbe942f074a8b118077d",
+          "legacy_id": "lesson-3dd1fbe942f074a8b118077d",
+          "source_file": "chapter_03/block_09/42.1 - Тело ответа и Content-Type.md",
+          "tasks": [
+            {
+              "task_id": "lesson-3dd1fbe942f074a8b118077d-task-01",
+              "revision": "7327e489865710f650cf74f8b7816d768a8acd0632b987e0f6cc6b79ec70a6f7"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-a89c65db71642f6efc7cdcfb",
+          "legacy_id": "HTTP, API и FastAPI - Planner API-lesson-05",
+          "source_file": "chapter_03/block_09/43 - Методы и изменение задачи.md",
+          "tasks": [
+            {
+              "task_id": "lesson-a89c65db71642f6efc7cdcfb-task-01",
+              "revision": "860a83ae55d27e28603e6f40a9c9d1e204d948970e96374d2a19b25682d42722"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-641e72de6bc69d1524c1872b",
+          "legacy_id": "HTTP, API и FastAPI - Planner API-lesson-06",
+          "source_file": "chapter_03/block_09/44 - Ресурс и адрес операции.md",
+          "tasks": [
+            {
+              "task_id": "lesson-641e72de6bc69d1524c1872b-task-01",
+              "revision": "a4148120af22afa342fa879b8d7a3413fc88a86d380f1b80f23ef56c262dc772"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-eed2714b0f0f432f1386fc62",
+          "legacy_id": "lesson-eed2714b0f0f432f1386fc62",
+          "source_file": "chapter_03/block_09/45 - Данные и договор запроса.md",
+          "tasks": [
+            {
+              "task_id": "lesson-eed2714b0f0f432f1386fc62-task-01",
+              "revision": "436c7f6ceacabc08f7d03d47e1bebea6d9acb1e409b1719bd20dfdee99be64d6"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-e8bc8b9f7e169a8349ef5e19",
+          "legacy_id": "lesson-e8bc8b9f7e169a8349ef5e19",
+          "source_file": "chapter_03/block_10/46 - Первый запрос в Postman.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-4b93be004ee819ba9ecb5512",
+          "legacy_id": "lesson-4b93be004ee819ba9ecb5512",
+          "source_file": "chapter_03/block_10/46.1 - JSON-запросы и коллекция.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-e09ebf10d1cb968778b1c246",
+          "legacy_id": "lesson-e09ebf10d1cb968778b1c246",
+          "source_file": "chapter_03/block_10/47 - FastAPI и первый маршрут.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-f7cba2b91aa1b3430b360ed0",
+          "legacy_id": "lesson-f7cba2b91aa1b3430b360ed0",
+          "source_file": "chapter_03/block_10/47.1 - Swagger и проверка запуска.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-28798d17e5e811edd62ab8a8",
+          "legacy_id": "lesson-28798d17e5e811edd62ab8a8",
+          "source_file": "chapter_03/block_10/48 - Чтение данных Planner.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-b6a1dec6f783e7822818ac84",
+          "legacy_id": "HTTP, API и FastAPI - Planner API-lesson-09",
+          "source_file": "chapter_03/block_10/54 - Path-параметры и поиск объекта.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-edd7263e9ff66984395982ea",
+          "legacy_id": "lesson-edd7263e9ff66984395982ea",
+          "source_file": "chapter_03/block_10/49 - Выборка внутри сервиса.md",
+          "tasks": [
+            {
+              "task_id": "lesson-edd7263e9ff66984395982ea-task-01",
+              "revision": "a1ccc6f56be77583f07611cf35f8cc7177485f5a59aefc7dfe9721fe17fdb039"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-7cb5f2c1a1bc8e0bb6896762",
+          "legacy_id": "lesson-7cb5f2c1a1bc8e0bb6896762",
+          "source_file": "chapter_03/block_10/49.1 - Query и границы выборки.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-82fbec32fcf95654eb8c5d84",
+          "legacy_id": "lesson-82fbec32fcf95654eb8c5d84",
+          "source_file": "chapter_03/block_10/50 - Модель входящего JSON.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-9ea43f40c7b144aa074f984f",
+          "legacy_id": "lesson-9ea43f40c7b144aa074f984f",
+          "source_file": "chapter_03/block_10/50.1 - Создание задачи через POST.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-3795384d9e6fccf65e6daded",
+          "legacy_id": "lesson-3795384d9e6fccf65e6daded",
+          "source_file": "chapter_03/block_11/51 - Очистка входной строки.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-c75ffe58ef0405d3f5a16ab8",
+          "legacy_id": "HTTP, API и FastAPI - Planner API-lesson-11",
+          "source_file": "chapter_03/block_11/57 - Pydantic-валидация и ошибка 422.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-6b2a263c5d559fd9a6098467",
+          "legacy_id": "lesson-6b2a263c5d559fd9a6098467",
+          "source_file": "chapter_03/block_11/52 - Схемы входа и ответа.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-8ee5fde5abee7f30c8eb922d",
+          "legacy_id": "lesson-8ee5fde5abee7f30c8eb922d",
+          "source_file": "chapter_03/block_11/52.1 - Сохранение и серверный id.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-ea48e700fc736acd32368d62",
+          "legacy_id": "lesson-ea48e700fc736acd32368d62",
+          "source_file": "chapter_03/block_11/53 - Полная замена в сервисе.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-277833732273b8db53035b47",
+          "legacy_id": "lesson-277833732273b8db53035b47",
+          "source_file": "chapter_03/block_11/53.1 - PUT и полная форма.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-2840ce02fb52f785c82ccfa6",
+          "legacy_id": "lesson-2840ce02fb52f785c82ccfa6",
+          "source_file": "chapter_03/block_11/54 - Частичное изменение задачи.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-43d7265789f6683bf2d78332",
+          "legacy_id": "lesson-43d7265789f6683bf2d78332",
+          "source_file": "chapter_03/block_11/54.1 - Пропуск поля в TaskPatch.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-67727c5c83c1bec3de49055c",
+          "legacy_id": "lesson-67727c5c83c1bec3de49055c",
+          "source_file": "chapter_03/block_11/54.2 - PATCH и сохранённый ответ.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-6a59c8cd506a70aefe6f7754",
+          "legacy_id": "lesson-6a59c8cd506a70aefe6f7754",
+          "source_file": "chapter_03/block_11/55 - Удаление и пустой ответ.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-c5f57edc5e0b3521e3fd5e84",
+          "legacy_id": "lesson-c5f57edc5e0b3521e3fd5e84",
+          "source_file": "chapter_03/block_11/55.1 - Проверка общего ядра.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-5ca480120555016af9335c31",
+          "legacy_id": "lesson-5ca480120555016af9335c31",
+          "source_file": "chapter_03/block_12/56 - Первый HTTP-тест.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-a9a2c69a6fdbeb01f8357e4b",
+          "legacy_id": "lesson-a9a2c69a6fdbeb01f8357e4b",
+          "source_file": "chapter_03/block_12/56.1 - Изоляция данных HTTP-теста.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-f593f0af7c2870b39412a3a9",
+          "legacy_id": "lesson-f593f0af7c2870b39412a3a9",
+          "source_file": "chapter_03/block_12/57 - Проверки операций API.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-a0cf9964923ab663badfc8e8",
+          "legacy_id": "lesson-a0cf9964923ab663badfc8e8",
+          "source_file": "chapter_03/block_12/57.1 - Маршруты в APIRouter.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-28c9ff754ae6f80300423f45",
+          "legacy_id": "lesson-28c9ff754ae6f80300423f45",
+          "source_file": "chapter_03/block_12/58 - Границы body и path.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-214977f0a6d4409a7549affc",
+          "legacy_id": "lesson-214977f0a6d4409a7549affc",
+          "source_file": "chapter_03/block_12/58.1 - Отказы без изменения данных.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-310f571fffb552f1aad9d62d",
+          "legacy_id": "lesson-310f571fffb552f1aad9d62d",
+          "source_file": "chapter_03/block_12/58.2 - Выборка и схема OpenAPI.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-211f4f484bc593738358aac9",
+          "legacy_id": "lesson-211f4f484bc593738358aac9",
+          "source_file": "chapter_03/block_12/59 - Проверка слоёв Planner.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-6437ce15b8fc387c97b23d97",
+          "legacy_id": "lesson-6437ce15b8fc387c97b23d97",
+          "source_file": "chapter_03/block_12/59.1 - Жизненный цикл одной задачи.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-b5a921cf4bb698df78bf686a",
+          "legacy_id": "lesson-b5a921cf4bb698df78bf686a",
+          "source_file": "chapter_03/block_12/60 - Чистая установка проекта.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-0ca515d3aa41dbe78a2b8066",
+          "legacy_id": "lesson-0ca515d3aa41dbe78a2b8066",
+          "source_file": "chapter_03/block_12/60.1 - README и проверенная версия.md",
+          "tasks": []
+        }
+      ]
+    },
+    {
+      "track_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API",
+      "lessons": [
+        {
+          "lesson_id": "lesson-fbf7c7abb8cf77f0c95d946b",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-01",
+          "source_file": "chapter_04/block_00/План обучения.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-d438792e0b20b056865121c2",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-02",
+          "source_file": "chapter_04/block_13/61 - Путь HTTP-запроса внутри FastAPI.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-fa803d31a77d5cb090ee19f5",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-03",
+          "source_file": "chapter_04/block_13/62 - Окружение и .env.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-21af84be662ab431322a27e2",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-04",
+          "source_file": "chapter_04/block_13/62.1 - Централизованные настройки.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-c9198aef312ff777073f9191",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-05",
+          "source_file": "chapter_04/block_13/63 - Depends — получение готового сервиса.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-a47be9475c5312cbde17009d",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-06",
+          "source_file": "chapter_04/block_13/63.1 - Заголовки, cookies и Response.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-aaca6af71bca62419e58a534",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-07",
+          "source_file": "chapter_04/block_13/64 - Middleware и CORS.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-91397bc595142f136b0d98be",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-08",
+          "source_file": "chapter_04/block_13/65 - Headers и Response.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-399a6e34a03544bbd0844bae",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-09",
+          "source_file": "chapter_04/block_13/65.1 - Cookie-настройка представления.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-b5d7b23858669f037891b010",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-10",
+          "source_file": "chapter_04/block_13/65.2 - Границы доверия и безопасность cookie.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-af71dba4333c5c9c260509d0",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-11",
+          "source_file": "chapter_04/block_14/66 - Почему одного JSON становится мало.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-f5193aeda62d2acb47ef0ea9",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-12",
+          "source_file": "chapter_04/block_14/66.1 - SQLite и минимальный SQL.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-e4f11f77b8cc75613259c3d0",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-13",
+          "source_file": "chapter_04/block_14/67 - Engine и адрес базы.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-b84803d6d929a9a5702f1e9d",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-14",
+          "source_file": "chapter_04/block_14/67.1 - ORM-модель и исходная схема.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-52f2ee321da8eaacd8374031",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-15",
+          "source_file": "chapter_04/block_14/68 - Session — первая сохранённая запись.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-ab0c922cfe3c21be3cf77269",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-16",
+          "source_file": "chapter_04/block_14/68.1 - Транзакция, отмена и закрытие.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-1c3efe1c67d4dea24d3622dd",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-17",
+          "source_file": "chapter_04/block_14/68.2 - SELECT и преобразование результата.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-0573e2213a9183f287ccca25",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-18",
+          "source_file": "chapter_04/block_14/69 - Новая граница хранения — чтение.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-9cfec0837a5316f8d49bc7df",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-19",
+          "source_file": "chapter_04/block_14/69.1 - Новая граница хранения — изменения.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-c4878f92ca23a93b777d9fa8",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-20",
+          "source_file": "chapter_04/block_14/70 - SQL-репозиторий чтения.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-9770b9dad477e6f1de445e9d",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-21",
+          "source_file": "chapter_04/block_14/70.1 - Ресурс на запрос и ресурс на команду.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-d2718adb26807676f460fc98",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-22",
+          "source_file": "chapter_04/block_14/70.2 - Однократный перенос прежних задач.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-64c9d597a164bbdb4f145d5a",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-23",
+          "source_file": "chapter_04/block_15/71 - Создание и серверный id из базы.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-6fba6a4aadfbd60afad41707",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-24",
+          "source_file": "chapter_04/block_15/71.1 - PUT — замена без потери внутренних данных.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-7cc77c89e9b728736cecb4ff",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-25",
+          "source_file": "chapter_04/block_15/72 - PATCH — только переданные изменения.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-b098ede7bff903dc17251a8e",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-26",
+          "source_file": "chapter_04/block_15/72.1 - Завершение и удаление.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-4d0e92d5a45c9a88004f2f6e",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-27",
+          "source_file": "chapter_04/block_15/73 - Выборка и статистика запросами.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-ae74df09d7d35d88a34f52c0",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-28",
+          "source_file": "chapter_04/block_15/73.1 - Поиск в базе без смены его смысла.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-41523ca5ae49d3525b9ca066",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-29",
+          "source_file": "chapter_04/block_15/74 - CLI — отдельный ресурс на команду.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-9cee7e8928cda7f5550a3f6d",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-30",
+          "source_file": "chapter_04/block_15/74.1 - Готовность к переключению.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-b8a449709e7fe7cf344312b4",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-31",
+          "source_file": "chapter_04/block_15/75 - Единое переключение JSON → SQLite.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-68a97f28ebcb4f5e7776430b",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-32",
+          "source_file": "chapter_04/block_15/75.1 - Удаление JSON-backend и проверка независимости.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-95b574372e3e051bc6d8781f",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-33",
+          "source_file": "chapter_04/block_16/76 - Ошибка БД и граница ответственности.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-d2f4f5206c199ede6641d41c",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-34",
+          "source_file": "chapter_04/block_16/76.1 - Проверки отказов и восстановление работы.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-d9fe108a4aa647f485491ad4",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-35",
+          "source_file": "chapter_04/block_16/77 - Какие SQL-запросы делает Planner.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-37cee89307c04b52620eaaa3",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-36",
+          "source_file": "chapter_04/block_16/78 - Обоснованное улучшение запросов.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-c6beca9892147bed6dec3d4b",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-37",
+          "source_file": "chapter_04/block_16/79 - Сквозная проверка готового продукта.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-ff63f70a4af3a9cd62790ec6",
+          "legacy_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API-lesson-38",
+          "source_file": "chapter_04/block_16/80 - Передача работающего DB Planner.md",
+          "tasks": []
+        }
+      ]
+    },
+    {
+      "track_id": "Аутентификация, сессии, токены и завершение FastAPI - Personal StudyHub API",
+      "lessons": [
+        {
+          "lesson_id": "lesson-1b60c9f0d3dda552ae481a16",
+          "legacy_id": "lesson-1b60c9f0d3dda552ae481a16",
+          "source_file": "chapter_05/block_00/План обучения.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-252746d29145389459e23957",
+          "legacy_id": "lesson-252746d29145389459e23957",
+          "source_file": "chapter_05/block_17/81 - Проверяем SQL Planner.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-cf461fcb268d053ccc07be33",
+          "legacy_id": "lesson-cf461fcb268d053ccc07be33",
+          "source_file": "chapter_05/block_17/81.1 - Сверяем реальную схему.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-2c72a2e8f15b3d99765d3a4d",
+          "legacy_id": "lesson-2c72a2e8f15b3d99765d3a4d",
+          "source_file": "chapter_05/block_17/82 - Получаем согласованный снимок.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-79ad20d8bad8ea5e8682a7ce",
+          "legacy_id": "lesson-79ad20d8bad8ea5e8682a7ce",
+          "source_file": "chapter_05/block_17/82.1 - Проверяем восстановление.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-6c737a081d63ade3dea5fb1b",
+          "legacy_id": "lesson-6c737a081d63ade3dea5fb1b",
+          "source_file": "chapter_05/block_17/83 - История схемы и настройка Alembic.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-a63726516955a18a16be6c0d",
+          "legacy_id": "lesson-a63726516955a18a16be6c0d",
+          "source_file": "chapter_05/block_17/83.1 - Создаём baseline для новой базы.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-0df09001e79b8b3a9b510600",
+          "legacy_id": "lesson-0df09001e79b8b3a9b510600",
+          "source_file": "chapter_05/block_17/84 - Проверяем baseline заполненной базы.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-967649f2c2d8bf79af5323ee",
+          "legacy_id": "lesson-967649f2c2d8bf79af5323ee",
+          "source_file": "chapter_05/block_17/84.1 - Готовим и применяем расширение схемы.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-1a05a796c41e8e68de3f6f63",
+          "legacy_id": "lesson-1a05a796c41e8e68de3f6f63",
+          "source_file": "chapter_05/block_17/85 - Ошибка миграции и безопасное восстановление.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-11a71cec9cc9732c9e2c852e",
+          "legacy_id": "lesson-11a71cec9cc9732c9e2c852e",
+          "source_file": "chapter_05/block_17/85.1 - Регрессия и передача истории.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-d2fd1547dde2d27108f5af74",
+          "legacy_id": "lesson-d2fd1547dde2d27108f5af74",
+          "source_file": "chapter_05/block_18/86 - Идентичность и границы доступа.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-ebca85b6ae4cc5f3b5d03427",
+          "legacy_id": "lesson-ebca85b6ae4cc5f3b5d03427",
+          "source_file": "chapter_05/block_18/86.1 - Договор данных пользователя.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-c5597af4286aa5f6de00eccd",
+          "legacy_id": "lesson-c5597af4286aa5f6de00eccd",
+          "source_file": "chapter_05/block_18/87 - Модель пользователя и миграция.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-0576d7e8df944d238cbb79e4",
+          "legacy_id": "lesson-0576d7e8df944d238cbb79e4",
+          "source_file": "chapter_05/block_18/87.1 - Уникальность и конфликт.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-0c36fd078731625e06f2ca84",
+          "legacy_id": "lesson-0c36fd078731625e06f2ca84",
+          "source_file": "chapter_05/block_18/88 - Пароль и адаптивный хеш.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-79e5342d8656199d1fc92ee8",
+          "legacy_id": "lesson-79e5342d8656199d1fc92ee8",
+          "source_file": "chapter_05/block_18/88.1 - Проверка credentials.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-faf83590f448fa1b4967ce96",
+          "legacy_id": "lesson-faf83590f448fa1b4967ce96",
+          "source_file": "chapter_05/block_18/89 - Сервис регистрации.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-b6b8b15ef665f1d2c2805584",
+          "legacy_id": "lesson-b6b8b15ef665f1d2c2805584",
+          "source_file": "chapter_05/block_18/89.1 - HTTP-регистрация.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-cbc8a8b558160c1aa7200612",
+          "legacy_id": "lesson-cbc8a8b558160c1aa7200612",
+          "source_file": "chapter_05/block_18/90 - Первый администратор.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-5b2afc1ac6cb0a7fbb8bec5d",
+          "legacy_id": "lesson-5b2afc1ac6cb0a7fbb8bec5d",
+          "source_file": "chapter_05/block_18/90.1 - Сквозная проверка и передача.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-17513a8a2cad072d88ead8f1",
+          "legacy_id": "lesson-17513a8a2cad072d88ead8f1",
+          "source_file": "chapter_05/block_19/91 - Клиент, сервер и cookie.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-aaf78ccb4caaeca508f8a4f8",
+          "legacy_id": "lesson-aaf78ccb4caaeca508f8a4f8",
+          "source_file": "chapter_05/block_19/91.1 - Секрет, подпись и серверная сессия.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-7efb77cae93f707257898f9b",
+          "legacy_id": "lesson-7efb77cae93f707257898f9b",
+          "source_file": "chapter_05/block_19/92 - Запись сессии и миграция.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-b7d3b0a14b62c3e65b638261",
+          "legacy_id": "lesson-b7d3b0a14b62c3e65b638261",
+          "source_file": "chapter_05/block_19/92.1 - Секрет сессии и проверочный digest.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-5fc0a71974e59bb20aa34f0e",
+          "legacy_id": "lesson-5fc0a71974e59bb20aa34f0e",
+          "source_file": "chapter_05/block_19/93 - Вход и выпуск cookie.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-033663632142c3f16e645d2c",
+          "legacy_id": "lesson-033663632142c3f16e645d2c",
+          "source_file": "chapter_05/block_19/93.1 - Текущий пользователь из серверной сессии.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-2f56a69b30309a4f89337eb7",
+          "legacy_id": "lesson-2f56a69b30309a4f89337eb7",
+          "source_file": "chapter_05/block_19/94 - Срок действия и отзыв.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-e73f079fceab7565dccef1e9",
+          "legacy_id": "lesson-e73f079fceab7565dccef1e9",
+          "source_file": "chapter_05/block_19/94.1 - Выход и независимые клиенты.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-34c1d52dcc226d3dfc67bc41",
+          "legacy_id": "lesson-34c1d52dcc226d3dfc67bc41",
+          "source_file": "chapter_05/block_19/95 - CSRF и токен своей сессии.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-8f9154b1a486b715aea9de00",
+          "legacy_id": "lesson-8f9154b1a486b715aea9de00",
+          "source_file": "chapter_05/block_19/95.1 - Origin до входа.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-b3c3d96b7bb0862b4e7267db",
+          "legacy_id": "lesson-b3c3d96b7bb0862b4e7267db",
+          "source_file": "chapter_05/block_19/95.2 - Итоговый сценарий и передача.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-e54178f912e09cc171b887a4",
+          "legacy_id": "lesson-e54178f912e09cc171b887a4",
+          "source_file": "chapter_05/block_20/96 - Граница владельца.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-a6674beb0af86a23f44b8384",
+          "legacy_id": "lesson-a6674beb0af86a23f44b8384",
+          "source_file": "chapter_05/block_20/96.1 - Связь задачи с пользователем.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-427c671a75442699b25684de",
+          "legacy_id": "lesson-427c671a75442699b25684de",
+          "source_file": "chapter_05/block_20/97 - Резерв и подготовка поля владельца.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-efe6464bc0e3d238539c27a8",
+          "legacy_id": "lesson-efe6464bc0e3d238539c27a8",
+          "source_file": "chapter_05/block_20/97.1 - Явный перенос прежних задач.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-cde9b74c91a7416c0b0cb372",
+          "legacy_id": "lesson-cde9b74c91a7416c0b0cb372",
+          "source_file": "chapter_05/block_20/98 - Обязательный владелец и целостность.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-466b35727d4a0ac282037e30",
+          "legacy_id": "lesson-466b35727d4a0ac282037e30",
+          "source_file": "chapter_05/block_20/98.1 - Чтение и статистика по владельцу.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-9223d093cd56ae0a066c7a59",
+          "legacy_id": "lesson-9223d093cd56ae0a066c7a59",
+          "source_file": "chapter_05/block_20/99 - Защищённые изменения через API.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-7a597f62f5f2c332b576b7a3",
+          "legacy_id": "lesson-7a597f62f5f2c332b576b7a3",
+          "source_file": "chapter_05/block_20/99.1 - Подтверждённая личность в CLI.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-637658c98c76153a9ba271a8",
+          "legacy_id": "lesson-637658c98c76153a9ba271a8",
+          "source_file": "chapter_05/block_20/100 - Два пользователя и передача Planner.md",
+          "tasks": []
+        }
+      ]
+    },
+    {
+      "track_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub",
+      "lessons": [
+        {
+          "lesson_id": "lesson-56c30595b302e9ced04331aa",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-01",
+          "source_file": "chapter_06/block_00/План обучения.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-48f596c445bba76278d0675b",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-02",
+          "source_file": "chapter_06/block_21/117 - Реляционная модель и SQL под ORM.md",
+          "tasks": [
+            {
+              "task_id": "lesson-48f596c445bba76278d0675b-task-01",
+              "revision": "ab8cf045eb545759492ea7aa44375b57bb5f248732a0017889773523cac9238f"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-5e81fecde4f96fbb0db51dbb",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-03",
+          "source_file": "chapter_06/block_21/118 - CREATE TABLE и ограничения данных.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-d9e7abf8a3249c66395a50e6",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-04",
+          "source_file": "chapter_06/block_21/119 - INSERT и безопасные параметры.md",
+          "tasks": [
+            {
+              "task_id": "lesson-d9e7abf8a3249c66395a50e6-task-01",
+              "revision": "c10ded8755ac204e1ca2c1df639480cbc6968eb13eb576ab7d6623c504ab46b6"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-fb8f2a3d3964352a76b205eb",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-05",
+          "source_file": "chapter_06/block_21/120 - SELECT, WHERE, ORDER BY, LIMIT и OFFSET.md",
+          "tasks": [
+            {
+              "task_id": "lesson-fb8f2a3d3964352a76b205eb-task-01",
+              "revision": "8661ce71c4f9256facda87892ce3e08c378f023892e549741a4baab5825c2900"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-5df08efb45ea7f97c6ea020a",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-06",
+          "source_file": "chapter_06/block_21/121 - UPDATE и DELETE без опасных ошибок.md",
+          "tasks": [
+            {
+              "task_id": "lesson-5df08efb45ea7f97c6ea020a-task-01",
+              "revision": "11dedd9c22a90b68c80ac49c3dabedc2ab9b2de707699ec3acbf1b9c79f4db1d"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-d004aa4dd9b83e53af89336e",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-07",
+          "source_file": "chapter_06/block_21/122 - SQL и SQLAlchemy, две формы одного запроса.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-9da79e0574f7b2d1e7cd2a2a",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-08",
+          "source_file": "chapter_06/block_22/123 - PostgreSQL, сервер, база, схема и подключение.md",
+          "tasks": [
+            {
+              "task_id": "lesson-9da79e0574f7b2d1e7cd2a2a-task-01",
+              "revision": "7c9b3e0acbfd41164de539a80355a7570cc18c299ca776bcb61b4a8327a01e5b"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-a8978bda878a7cf200b3a11d",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-09",
+          "source_file": "chapter_06/block_22/124 - Установка, psql и первая база.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-2bb9b205efb91eae9401e4c7",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-10",
+          "source_file": "chapter_06/block_22/125 - Roles, ownership и минимальные права.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-d220e758e105c60f2686ae88",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-11",
+          "source_file": "chapter_06/block_22/126 - DATABASE_URL и SQLAlchemy Engine для PostgreSQL.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-513fb0a89816387132c69432",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-12",
+          "source_file": "chapter_06/block_22/127 - Alembic на чистой PostgreSQL-базе.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-b5cdaaaa182d07b106dfc826",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-13",
+          "source_file": "chapter_06/block_22/128 - Перенос данных и проверка неизменного API.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-6747e93f0221b048cf3895ee",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-14",
+          "source_file": "chapter_06/block_23/129 - INNER JOIN и связанные строки.md",
+          "tasks": [
+            {
+              "task_id": "lesson-6747e93f0221b048cf3895ee-task-01",
+              "revision": "af5ef3b5fe7c0ae7479b4f9367e541710b95159cfa368f1be8879c7d92aca2a3"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-2bccfb5f85477d949564f915",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-15",
+          "source_file": "chapter_06/block_23/130 - LEFT JOIN и отсутствующие связи.md",
+          "tasks": [
+            {
+              "task_id": "lesson-2bccfb5f85477d949564f915-task-01",
+              "revision": "0280ba4ec4d9a5d7cf7d754ac736c31e538a933d20fe75fd43de62c59f056ef7"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-4e52f207d7f8ebab874c41e4",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-16",
+          "source_file": "chapter_06/block_23/131 - Many-to-many через таблицу связи.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-a34c621cc707501aa03c4ad3",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-17",
+          "source_file": "chapter_06/block_23/132 - COUNT, GROUP BY и статистика StudyHub.md",
+          "tasks": [
+            {
+              "task_id": "lesson-a34c621cc707501aa03c4ad3-task-01",
+              "revision": "11a602f2e0969b9c5ccbf3114339d880fc2dc475e49a8bcd84b067d8ee06da89"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-ffa776c4092dfa2c9f8e0ea7",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-18",
+          "source_file": "chapter_06/block_23/133 - HAVING, EXISTS и подзапросы.md",
+          "tasks": [
+            {
+              "task_id": "lesson-ffa776c4092dfa2c9f8e0ea7-task-01",
+              "revision": "927a75c9eecfd2ac1ec351dba6a5f571289f3b659a3e15d17859eeea9a7e5b51"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-301dbd2f1160c5237ce82756",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-19",
+          "source_file": "chapter_06/block_23/134 - Транзакция из нескольких изменений.md",
+          "tasks": [
+            {
+              "task_id": "lesson-301dbd2f1160c5237ce82756-task-01",
+              "revision": "7d63ad5449c1e7b85226aac02f919354b17c502df9ef68bb5b4d898f828253ac"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-ce6c8012922b0cf2205f685f",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-20",
+          "source_file": "chapter_06/block_24/135 - Почему запрос становится медленным.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-9695cd8bf8e0fa53bc1d4d6b",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-21",
+          "source_file": "chapter_06/block_24/136 - Одиночные и составные индексы.md",
+          "tasks": [
+            {
+              "task_id": "lesson-9695cd8bf8e0fa53bc1d4d6b-task-01",
+              "revision": "bf3cdc611d323af24cc17a7077f6cb75d58b04d087f3f02d82da74cdd7476f25"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-0e3d481b269084bcaa7eb117",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-22",
+          "source_file": "chapter_06/block_24/137 - EXPLAIN и EXPLAIN ANALYZE без магии.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-79fd448651a6b026c9cc9b0a",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-23",
+          "source_file": "chapter_06/block_24/138 - Backup, restore и проверка восстановления.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-a3c59ff749d4e339e0a2567a",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-24",
+          "source_file": "chapter_06/block_24/139 - MongoDB и документная модель.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-20fa059e68ff9746cbab4d12",
+          "legacy_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub-lesson-25",
+          "source_file": "chapter_06/block_24/140 - Redis, TTL и итоговый аудит хранилищ.md",
+          "tasks": []
+        }
+      ]
+    },
+    {
+      "track_id": "Асинхронность и производительность backend - Async StudyHub",
+      "lessons": [
+        {
+          "lesson_id": "lesson-2e28edec95189bfdee4355a1",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-01",
+          "source_file": "chapter_07/block_00/План обучения.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-017f06963cc0abefe37da201",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-02",
+          "source_file": "chapter_07/block_25/141 - Блокирующее выполнение, CPU и I,O.md",
+          "tasks": [
+            {
+              "task_id": "lesson-017f06963cc0abefe37da201-task-01",
+              "revision": "281e815b11c4078a1485125e6ab65cd627cd5dfd49fc675c7ea39be406fb6283"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-919f70b8500fab67067a212b",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-03",
+          "source_file": "chapter_07/block_25/142 - async def и coroutine object.md",
+          "tasks": [
+            {
+              "task_id": "lesson-919f70b8500fab67067a212b-task-01",
+              "revision": "4e0977664217882a9ca6c8ac2ed212e3a5c2458f49fbe3c8555887aa073c309a"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-85467c4eea84376658b03bfc",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-04",
+          "source_file": "chapter_07/block_25/143 - asyncio.run, event loop и первый await.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-f6aa6767d34012b021fb1fa7",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-05",
+          "source_file": "chapter_07/block_25/144 - Последовательные await и иллюзия асинхронности.md",
+          "tasks": [
+            {
+              "task_id": "lesson-f6aa6767d34012b021fb1fa7-task-01",
+              "revision": "e58c498da5da7c86fda2f8111211ba55802a9c34b662ea0672210cbbccc6486c"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-d42f3c436fca999b3472ee8a",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-06",
+          "source_file": "chapter_07/block_25/145 - Ошибки async-кода, забытый await и блокировка loop.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-076598ee4bc81c64667eed0f",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-07",
+          "source_file": "chapter_07/block_25/146 - Мини-проект, трассировка асинхронного загрузчика.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-b43826bb2e0d04ebb6a56017",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-08",
+          "source_file": "chapter_07/block_26/147 - asyncio.create_task и жизненный цикл Task.md",
+          "tasks": [
+            {
+              "task_id": "lesson-b43826bb2e0d04ebb6a56017-task-01",
+              "revision": "efa6e61562bde4208326a67f615c54526a3345a5b1bb54618b72753b59049cbb"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-b4a449c1b171d2e80b25caa1",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-09",
+          "source_file": "chapter_07/block_26/148 - asyncio.gather и сбор результатов.md",
+          "tasks": [
+            {
+              "task_id": "lesson-b4a449c1b171d2e80b25caa1-task-01",
+              "revision": "3b495dc1c1f88f56b615ed3fc054084b81ebe6dd92cc56316ff79e2d33e29b7d"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-0d33f20bc55a7b10321c53bf",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-10",
+          "source_file": "chapter_07/block_26/149 - Timeout через asyncio.wait_for.md",
+          "tasks": [
+            {
+              "task_id": "lesson-0d33f20bc55a7b10321c53bf-task-01",
+              "revision": "a9a2cc660dc6bd3609e2ec9f77f335d5c5517b5d270a7d2500cb1ae2301403db"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-f8336c265335536cb53baa5f",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-11",
+          "source_file": "chapter_07/block_26/150 - Cancellation и обязательная очистка.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-778d0e9c7542451af13265d7",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-12",
+          "source_file": "chapter_07/block_26/151 - Semaphore и ограничение concurrency.md",
+          "tasks": [
+            {
+              "task_id": "lesson-778d0e9c7542451af13265d7-task-01",
+              "revision": "0b1f5ef83a8d5c351f686f85bfdcce553025c7a64505ee7c6d696dfab95778cc"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-aeea64e0e42eb763c7d9d4f7",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-13",
+          "source_file": "chapter_07/block_26/152 - Частичные ошибки и итоговый async-агрегатор.md",
+          "tasks": [
+            {
+              "task_id": "lesson-aeea64e0e42eb763c7d9d4f7-task-01",
+              "revision": "176db1841e3f80e892a7ed10ce30e89d1820a4a22013a6a94ead9b7e58525195"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-43d259c4ea094e72510dfc9d",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-14",
+          "source_file": "chapter_07/block_27/153 - def и async def внутри FastAPI.md",
+          "tasks": [
+            {
+              "task_id": "lesson-43d259c4ea094e72510dfc9d-task-01",
+              "revision": "125d3c28dab05465c7f3645e32c26481d2ac78e1956d47b60df2d86fc8b13879"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-5ba1abb0abe2ab288f4bfcec",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-15",
+          "source_file": "chapter_07/block_27/154 - Первый запрос через httpx.AsyncClient.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-0d1ccfc541932ce7bc2ab1db",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-16",
+          "source_file": "chapter_07/block_27/155 - HTTP timeout, network errors и безопасный response.md",
+          "tasks": [
+            {
+              "task_id": "lesson-0d1ccfc541932ce7bc2ab1db-task-01",
+              "revision": "db271fd3ba0acc7d1adb130f4dbe545a55070d7f08968dd89612989b3f2a7d9e"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-033815b662067add01fa5eb9",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-17",
+          "source_file": "chapter_07/block_27/156 - Dependency для внешнего клиента.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-dee908f2ea193d51b9a60e92",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-18",
+          "source_file": "chapter_07/block_27/157 - Lifespan и переиспользование AsyncClient.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-f4f1b3dba0bb7eb0fbd24076",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-19",
+          "source_file": "chapter_07/block_27/158 - Агрегирующий endpoint и mock внешнего API.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-ed0ab42b62747a00b95e4a5a",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-20",
+          "source_file": "chapter_07/block_28/159 - AsyncEngine и async driver PostgreSQL.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-e29e9998469c6fa6cc774b9b",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-21",
+          "source_file": "chapter_07/block_28/160 - async_sessionmaker и get_db.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-535511df6d1a03fce754f63a",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-22",
+          "source_file": "chapter_07/block_28/161 - Асинхронный SELECT и CRUD.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-b5d61f3ccbae30b8f7e7e020",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-23",
+          "source_file": "chapter_07/block_28/162 - Асинхронные транзакции и rollback.md",
+          "tasks": [
+            {
+              "task_id": "lesson-b5d61f3ccbae30b8f7e7e020-task-01",
+              "revision": "e9862c541fc3e99a4f40de0dff6d461f330b4fbae0c525204f25a1565e4ea745"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-9913c893c08d222f309ba809",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-24",
+          "source_file": "chapter_07/block_28/163 - Связи, N+1 и connection pool.md",
+          "tasks": [
+            {
+              "task_id": "lesson-9913c893c08d222f309ba809-task-01",
+              "revision": "f5dee28d2541db3520cbf9041f8b23292cfc1da8a1bfca9c00fa374af500dfc8"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-cee90b3aaf4ac1ea1f30e118",
+          "legacy_id": "Асинхронность и производительность backend - Async StudyHub-lesson-25",
+          "source_file": "chapter_07/block_28/164 - Нагрузочная проверка и финальный Async StudyHub.md",
+          "tasks": []
+        }
+      ]
+    },
+    {
+      "track_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub",
+      "lessons": [
+        {
+          "lesson_id": "lesson-9316e2e09c21fd428bdf558e",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-01",
+          "source_file": "chapter_08/block_00/План обучения.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-61b01fc9920a68bbe7b4dff1",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-02",
+          "source_file": "chapter_08/block_29/165 - Linux-путь проекта и базовая навигация.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-1e467609171d69f1652788df",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-03",
+          "source_file": "chapter_08/block_29/166 - Процессы, PID, порты и сигналы.md",
+          "tasks": [
+            {
+              "task_id": "lesson-1e467609171d69f1652788df-task-01",
+              "revision": "d2340c7a0e333b7158279213156641028747b0f40a723516dc7819d54411111d"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-eb54adb9a4da4d78ae05eb44",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-04",
+          "source_file": "chapter_08/block_29/167 - Environment variables и конфигурация окружений.md",
+          "tasks": [
+            {
+              "task_id": "lesson-eb54adb9a4da4d78ae05eb44-task-01",
+              "revision": "a672ab9bfaf13a9917fdd38a98389d9f0c4e672dd9584d5507b9630a8bbfa079"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-63136188f27e236a450b989c",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-05",
+          "source_file": "chapter_08/block_29/168 - stdout, stderr и структурированные логи.md",
+          "tasks": [
+            {
+              "task_id": "lesson-63136188f27e236a450b989c-task-01",
+              "revision": "0d41b2df02d8e654268f5e1afa4044215ffdfe5b64f795be140652800604d79a"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-e17a998e240b84a028c08726",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-06",
+          "source_file": "chapter_08/block_29/169 - Healthcheck, readiness и graceful shutdown.md",
+          "tasks": [
+            {
+              "task_id": "lesson-e17a998e240b84a028c08726-task-01",
+              "revision": "9cebd2ed4dd5e3d21afa84c459ec8d6ce5a73935c42fd4daca398ebfd86e2737"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-f772bd24af76dc19e20dff5f",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-07",
+          "source_file": "chapter_08/block_29/170 - Linux-runbook и диагностика запуска StudyHub.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-55642e0f242031d19fe58af3",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-08",
+          "source_file": "chapter_08/block_30/171 - Image, container и изоляция процесса.md",
+          "tasks": [
+            {
+              "task_id": "lesson-55642e0f242031d19fe58af3-task-01",
+              "revision": "978887c152f5f775c1b0a282a5c34d6a01e6b602030ae04fb180117b6cfbaa33"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-9a49be8f5671752260817556",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-09",
+          "source_file": "chapter_08/block_30/172 - Первый Dockerfile для FastAPI.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-13d5a83f7a29ae872dd78c9a",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-10",
+          "source_file": "chapter_08/block_30/173 - Build context, layers и кеш сборки.md",
+          "tasks": [
+            {
+              "task_id": "lesson-13d5a83f7a29ae872dd78c9a-task-01",
+              "revision": "0a1528abb297ae675ec70a2dbe76f88aa296bc064e737c4bbfbf5300685d202f"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-3734bf724df04edb6b0b9fc6",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-11",
+          "source_file": "chapter_08/block_30/174 - Ports, environment и файловое состояние container.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-8caea07d520f0684747f905e",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-12",
+          "source_file": "chapter_08/block_30/175 - dockerignore, непривилегированный пользователь и чистый image.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-c36f1e7ba83412d95e4b67bc",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-13",
+          "source_file": "chapter_08/block_30/176 - Диагностика container и релизный Dockerfile.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-ec97be4ef9baccec8b4bf144",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-14",
+          "source_file": "chapter_08/block_31/177 - Compose services и внутренняя сеть.md",
+          "tasks": [
+            {
+              "task_id": "lesson-ec97be4ef9baccec8b4bf144-task-01",
+              "revision": "04d9b78f705c30f1bb3502214fb4180849e11088ab85a559765feacc08208ea2"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-0bfb7661b44731ae66b46420",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-15",
+          "source_file": "chapter_08/block_31/178 - PostgreSQL service и DATABASE_URL внутри Compose.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-878b54d821daf55e015dbac8",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-16",
+          "source_file": "chapter_08/block_31/179 - Volumes и постоянные данные PostgreSQL.md",
+          "tasks": [
+            {
+              "task_id": "lesson-878b54d821daf55e015dbac8-task-01",
+              "revision": "d3e329df8a14107336267bce6be5354e70f167d7839026aca93ffc6125e582c5"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-fb5ed7db86b1de35c6c2e361",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-17",
+          "source_file": "chapter_08/block_31/180 - Readiness, healthcheck и запуск migrations.md",
+          "tasks": [
+            {
+              "task_id": "lesson-fb5ed7db86b1de35c6c2e361-task-01",
+              "revision": "e41bdd5ee9f1da2a2bf330c9722ae6772488e87e2157bbcdcfd56cb91201ec86"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-a56ac3ec76d5236f0a89778f",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-18",
+          "source_file": "chapter_08/block_31/181 - Redis service как будущая инфраструктура.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-31a6ad0babde8ae5669f593b",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-19",
+          "source_file": "chapter_08/block_31/182 - Полный local stack и сценарии восстановления.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-5702b412ce251d1dd8d69714",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-20",
+          "source_file": "chapter_08/block_32/183 - Continuous Integration и quality gates.md",
+          "tasks": [
+            {
+              "task_id": "lesson-5702b412ce251d1dd8d69714-task-01",
+              "revision": "bd3e0c0ec99dd51fb1b4fa198c2507cc485e740fc0ba6739daee9c2455d16c00"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-342e199643dcfe219faf7cd1",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-21",
+          "source_file": "chapter_08/block_32/184 - Первый workflow GitHub Actions.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-3c7c2e4faee565db883daa1c",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-22",
+          "source_file": "chapter_08/block_32/185 - PostgreSQL service и migrations в CI.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-e67c5015149ea0ad945f77a9",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-23",
+          "source_file": "chapter_08/block_32/186 - Автоматическая сборка и tagging Docker image.md",
+          "tasks": [
+            {
+              "task_id": "lesson-e67c5015149ea0ad945f77a9-task-01",
+              "revision": "456e6d5a416ef0becefd727d220ea1d5e65b6a9c7c221083eddb2c5990f823a9"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-9a527d3370d4502adba96f68",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-24",
+          "source_file": "chapter_08/block_32/187 - Deployment, secrets и production configuration.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-d0539a203f4e270c70f6bc42",
+          "legacy_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub-lesson-25",
+          "source_file": "chapter_08/block_32/188 - Smoke test, rollback и Release StudyHub.md",
+          "tasks": [
+            {
+              "task_id": "lesson-d0539a203f4e270c70f6bc42-task-01",
+              "revision": "1c51a225b3d9e4b616b3cc2ea976651e6419f523b904fe8a25da70cb12d62d8a"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "track_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release",
+      "lessons": [
+        {
+          "lesson_id": "lesson-e1124278e8b8eb1e130efaf9",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-01",
+          "source_file": "chapter_09/block_00/План обучения.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-8e5781a54d0f936978df8dee",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-02",
+          "source_file": "chapter_09/block_33/189 - От Planner к LMS, требования и границы MVP.md",
+          "tasks": [
+            {
+              "task_id": "lesson-8e5781a54d0f936978df8dee-task-01",
+              "revision": "7a4da3cd1d601fd67f65984653e3c27a2bf13c1739b246763032afb6a75d27c3"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-baf920f16e3a57f0fe5a7297",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-03",
+          "source_file": "chapter_09/block_33/190 - Course, Module и Lesson, структура учебного контента.md",
+          "tasks": [
+            {
+              "task_id": "lesson-baf920f16e3a57f0fe5a7297-task-01",
+              "revision": "85003d5820f9c5efef77c38b948103f8fab4af808415d009c85f61a430447362"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-13ef055ddd1b51f94e610844",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-04",
+          "source_file": "chapter_09/block_33/191 - Enrollment как отдельная сущность связи.md",
+          "tasks": [
+            {
+              "task_id": "lesson-13ef055ddd1b51f94e610844-task-01",
+              "revision": "42888935d05189600fcd452340972f33b3da3f77d6c162da830771c4cf21b50e"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-21bbb8e18d1124c50dee1537",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-05",
+          "source_file": "chapter_09/block_33/192 - Progress и инварианты прохождения.md",
+          "tasks": [
+            {
+              "task_id": "lesson-21bbb8e18d1124c50dee1537-task-01",
+              "revision": "10d41d68c4efe7ebc4c2accd8f98db1a6a78a78d8e22205e6fef4a19ccfcf34f"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-4a653eb9d89d06eb4f4a9998",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-06",
+          "source_file": "chapter_09/block_33/193 - Ownership, роли и permissions matrix.md",
+          "tasks": [
+            {
+              "task_id": "lesson-4a653eb9d89d06eb4f4a9998-task-01",
+              "revision": "f36d799b0ce3a699ce4e580ad96008345d4ac1ae65056b77e46901391d5209c5"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-13e6b49558e07b8c4136e3c0",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-07",
+          "source_file": "chapter_09/block_33/194 - API contract, ER-диаграмма и migration plan.md",
+          "tasks": [
+            {
+              "task_id": "lesson-13e6b49558e07b8c4136e3c0-task-01",
+              "revision": "2123e687a66d1fdb177ebdfe4cba9df3666cfce8cb35430d799aa88874c173f1"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-50d5418febd919dc5ea7ec6b",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-08",
+          "source_file": "chapter_09/block_34/195 - Teacher создаёт и редактирует Course.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-df9d54ca1c0d5fe0c91f9c5b",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-09",
+          "source_file": "chapter_09/block_34/196 - Modules, Lessons и устойчивый порядок.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-f99510b8429a9ec74ae267f6",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-10",
+          "source_file": "chapter_09/block_34/197 - Draft, publish и публичный каталог курсов.md",
+          "tasks": [
+            {
+              "task_id": "lesson-f99510b8429a9ec74ae267f6-task-01",
+              "revision": "825d329845b215ab5d6ae997aa9d61af72860ebb2baae1ae160162f9f4a645df"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-6bcb55fdafa42ecb92d98d5c",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-11",
+          "source_file": "chapter_09/block_34/198 - Enrollment и защита от повторной записи.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-53ca1c53c00b9e764f015be4",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-12",
+          "source_file": "chapter_09/block_34/199 - Завершение Lesson и расчёт Progress.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-c05ec69eaa574e6765d0d439",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-13",
+          "source_file": "chapter_09/block_34/200 - End-to-end LMS flow и отрицательные тесты.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-2dfd529e62fed2e19c962475",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-14",
+          "source_file": "chapter_09/block_35/201 - Redis key,value, TTL и source of truth.md",
+          "tasks": [
+            {
+              "task_id": "lesson-2dfd529e62fed2e19c962475-task-01",
+              "revision": "6c0bc8920febed1045f983c982eaa6772f7d16a238391abb9ff6bcc4b252eb89"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-b8880d507abf484d5da9469e",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-15",
+          "source_file": "chapter_09/block_35/202 - Cache-aside для каталога курсов.md",
+          "tasks": [
+            {
+              "task_id": "lesson-b8880d507abf484d5da9469e-task-01",
+              "revision": "08f1d75479a08b9fbc9c8964cd9ae375b5487bfebe4556b3da0382549e15a33e"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-232491d3b51cb05907776b6b",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-16",
+          "source_file": "chapter_09/block_35/203 - Cache invalidation после изменения курса.md",
+          "tasks": [
+            {
+              "task_id": "lesson-232491d3b51cb05907776b6b-task-01",
+              "revision": "d40634d664b50c050fbcf45acd13a542a395fdf24e3edbcd8fa65f8e52102ee0"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-7ad747a80f4dd6d9b5911a71",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-17",
+          "source_file": "chapter_09/block_35/204 - Простой rate limit через Redis.md",
+          "tasks": [
+            {
+              "task_id": "lesson-7ad747a80f4dd6d9b5911a71-task-01",
+              "revision": "1537913ed570cd5ae5cc6f2c8c7b7ae647283ea13da056ab5c61c8e273dd58a7"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-c32375d77f5f2273e77ccd87",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-18",
+          "source_file": "chapter_09/block_35/205 - BackgroundTasks и действие после response.md",
+          "tasks": [
+            {
+              "task_id": "lesson-c32375d77f5f2273e77ccd87-task-01",
+              "revision": "32a2e7e526708de84428da9c92111c78910e788b422ac1f60b5b24f963cb5b71"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-845d158b82b0b2a94b874dbe",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-19",
+          "source_file": "chapter_09/block_35/206 - Тестирование кеша, rate limit и фоновых ошибок.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-a7289f5f3a0ba6d977b9e9c5",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-20",
+          "source_file": "chapter_09/block_36/207 - Единый API error contract и versioning.md",
+          "tasks": [
+            {
+              "task_id": "lesson-a7289f5f3a0ba6d977b9e9c5-task-01",
+              "revision": "97a721f2bc06783c7e1e297f1b0cf8224e443acbb39fa3ea11c9fd19058ec734"
+            }
+          ]
+        },
+        {
+          "lesson_id": "lesson-a9351565f43d83fbbe4fd89d",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-21",
+          "source_file": "chapter_09/block_36/208 - Аудит безопасности и производительности.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-e2de31c48177b60df2178c88",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-22",
+          "source_file": "chapter_09/block_36/209 - Финальный test suite и quality gate.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-52797d6809d690ebd8b8fbaa",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-23",
+          "source_file": "chapter_09/block_36/210 - README, ER-диаграмма и архитектурный рассказ.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-70669d8cefbb47b38f18d1c1",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-24",
+          "source_file": "chapter_09/block_36/211 - Interview lab, Python, SQL, API и code review.md",
+          "tasks": []
+        },
+        {
+          "lesson_id": "lesson-314abd3dab09ab057ee4b3de",
+          "legacy_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release-lesson-25",
+          "source_file": "chapter_09/block_36/212 - StudyHub LMS Release и финальная защита.md",
+          "tasks": []
+        }
+      ]
+    }
+  ]
+}

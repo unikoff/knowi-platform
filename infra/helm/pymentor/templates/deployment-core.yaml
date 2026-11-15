@@ -1,0 +1,144 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pymentor.fullname" . }}-core
+  labels:
+    {{- include "pymentor.labels" . | nindent 4 }}
+    app.kubernetes.io/component: core
+spec:
+  replicas: {{ .Values.core.replicaCount }}
+  revisionHistoryLimit: 2
+  progressDeadlineSeconds: 300
+  strategy:
+    # Stateless API; readiness gates a replacement against managed PG/Redis.
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      {{- include "pymentor.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: core
+  template:
+    metadata:
+      labels:
+        {{- include "pymentor.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: core
+    spec:
+      serviceAccountName: {{ .Values.core.serviceAccountName }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: {{ .Values.core.terminationGracePeriodSeconds }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      {{- if .Values.runner.enabled }}
+      initContainers:
+        - name: prepare-runner-lock
+          image: {{ include "pymentor.imageReference" .Values.images.core | quote }}
+          imagePullPolicy: {{ .Values.images.core.pullPolicy }}
+          command:
+            - python
+            - -c
+            - from pathlib import Path; p = Path('/runner-lock/.runner.lock'); p.touch(); p.chmod(0o660)
+          resources:
+            {{- toYaml .Values.core.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: runner-lock
+              mountPath: /runner-lock
+      {{- end }}
+      containers:
+        - name: core
+          image: {{ include "pymentor.imageReference" .Values.images.core | quote }}
+          imagePullPolicy: {{ .Values.images.core.pullPolicy }}
+          command: [uvicorn, pymentor_core.app.asgi:create_app, --factory, --host, "0.0.0.0", --port, {{ .Values.core.port | quote }}]
+          ports:
+            - name: http
+              containerPort: {{ .Values.core.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "pymentor.fullname" . }}-runtime
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.runtimeSecret.name }}
+                  key: {{ .Values.runtimeSecret.databaseUrlKey }}
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.runtimeSecret.name }}
+                  key: {{ .Values.runtimeSecret.redisUrlKey }}
+            - name: PYMENTOR_REDIS_PREFIX
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.runtimeSecret.name }}
+                  key: {{ .Values.runtimeSecret.redisPrefixKey }}
+            - name: PYMENTOR_LOGIN_RECOVERY_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.runtimeSecret.name }}
+                  key: {{ .Values.runtimeSecret.loginRecoveryKeyKey }}
+            - name: PYMENTOR_LANDING_BOT_CREDENTIALS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.runtimeSecret.name }}
+                  key: {{ .Values.runtimeSecret.landingBotCredentialsKey | default "PYMENTOR_LANDING_BOT_CREDENTIALS" }}
+                  optional: true
+          startupProbe:
+            httpGet:
+              path: /health/startup
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 24
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.core.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- if .Values.runner.enabled }}
+            - name: runner-lock
+              mountPath: /app/.runner.lock
+              subPath: .runner.lock
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
+        {{- if .Values.runner.enabled }}
+        - name: runner-lock
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi
+        {{- end }}

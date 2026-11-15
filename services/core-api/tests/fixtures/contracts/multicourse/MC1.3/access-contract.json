@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "accepted_decision": "One shared account subscription; separate course progress",
+  "course_ids": [
+    "backend",
+    "backend_copy"
+  ],
+  "nested_track_ids": "preserve all nine original track IDs independently of product IDs",
+  "clock": "2026-11-14T12:00:00+00:00",
+  "source_policy": "pymentor_core.modules.learning.access.get_lesson_access",
+  "actors": [
+    {
+      "id": "guest",
+      "user": false,
+      "until": null,
+      "free": true,
+      "registered": false,
+      "subscription": false
+    },
+    {
+      "id": "registered_no_subscription",
+      "user": true,
+      "until": null,
+      "free": true,
+      "registered": true,
+      "subscription": false
+    },
+    {
+      "id": "active_subscriber",
+      "user": true,
+      "until": "2026-12-14T12:00:00+00:00",
+      "free": true,
+      "registered": true,
+      "subscription": true
+    },
+    {
+      "id": "expired_subscriber",
+      "user": true,
+      "until": "2026-11-13T12:00:00+00:00",
+      "free": true,
+      "registered": true,
+      "subscription": false
+    },
+    {
+      "id": "revoked_subscriber",
+      "user": true,
+      "until": null,
+      "free": true,
+      "registered": true,
+      "subscription": false
+    },
+    {
+      "id": "admin_without_subscription",
+      "user": true,
+      "admin": true,
+      "until": null,
+      "free": true,
+      "registered": true,
+      "subscription": false
+    },
+    {
+      "id": "admin_with_subscription",
+      "user": true,
+      "admin": true,
+      "until": "2026-12-14T12:00:00+00:00",
+      "free": true,
+      "registered": true,
+      "subscription": true
+    }
+  ],
+  "resource_policy": {
+    "unknown_or_disabled_course": "deny before lesson policy; no fallback",
+    "same_local_task_id_in_different_courses": "independent completion under composite course,user,task key",
+    "cross_user_progress": "deny",
+    "private_tests_reference_code_personal_settings": "server only; not granted by subscription",
+    "indefinite_subscription": "No existing indefinite flag found. NULL subscription_until is not lifetime. Preserve any confirmed original legacy behavior; do not invent grants.",
+    "mentoring_tutoring": "Existing personal service/booking behavior unchanged; no new entitlement model"
+  },
+  "progress_migration": {
+    "existing_rows_course": "backend",
+    "copy_initial_rows": 0,
+    "retain": [
+      "lesson_id",
+      "task_id",
+      "task_revision",
+      "completed_at"
+    ],
+    "preserve_on_expiry": true,
+    "preserve_on_config_rollback": true,
+    "account_deletion": "existing account deletion removes both course histories"
+  },
+  "implementation_owners": {
+    "contract": "CORP-482",
+    "shared_access": "CORP-204",
+    "progress_schema": "CORP-203",
+    "api_integration": "CORP-481",
+    "frontend": "CORP-485"
+  }
+}

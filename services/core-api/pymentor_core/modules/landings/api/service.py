@@ -74,6 +74,10 @@ def enqueue_landing_event(
     )
 
 
+def submit_course_consultation(db, slug: str, event_id: str, payload: dict):
+    return _call("submit_course_consultation", db, slug, event_id, payload)
+
+
 def landing_event_status(
     db: Session, landing_id: str, event_id: str
 ) -> models.LandingNotificationOutbox:

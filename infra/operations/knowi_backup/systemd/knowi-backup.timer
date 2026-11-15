@@ -1,0 +1,9 @@
+[Unit]
+Description=Knowi backup Monday and Thursday 03:00 Moscow
+[Timer]
+OnCalendar=Mon,Thu *-*-* 03:00:00 Europe/Moscow
+AccuracySec=30s
+Persistent=true
+Unit=knowi-backup.service
+[Install]
+WantedBy=timers.target

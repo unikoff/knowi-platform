@@ -1,0 +1,25 @@
+# Configuration scaffold only. Multiple API replicas require separate CORP-250/252
+# load/capacity acceptance; this sprint keeps a single PostgreSQL/Redis API replica.
+profile: future-production-ha
+global:
+  host: pymentor-ha.example.invalid
+  cookieSecure: true
+ingress:
+  tls:
+    enabled: true
+    secretName: pymentor-ha-tls
+ingressController:
+  configureBundledK3sTraefik: false
+  replicas: 3
+core:
+  replicaCount: 1
+frontend:
+  replicaCount: 3
+  topologySpread: true
+quota:
+  pods: "24"
+  requestsCpu: "6"
+  requestsMemory: 8Gi
+  limitsCpu: "12"
+  limitsMemory: 16Gi
+  requestsStorage: 20Gi

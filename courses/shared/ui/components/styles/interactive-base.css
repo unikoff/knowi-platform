@@ -1,0 +1,154 @@
+/* ==================== Интерактивные блоки уроков ==================== */
+
+.choice-response { min-width: 0; }
+
+.choice-feedback {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: grid-template-rows 320ms cubic-bezier(0.2, 0.7, 0.2, 1), opacity 240ms ease, transform 320ms ease;
+}
+
+.choice-feedback.is-visible {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.choice-feedback-inner { min-height: 0; overflow: hidden; }
+
+.choice-feedback .quiz-explanation,
+.choice-feedback .interactive-feedback {
+  margin-top: 14px;
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quiz-card * {
+    animation: none !important;
+    transition: none !important;
+  }
+  .quiz-card .quiz-option,
+  .choice-feedback { transform: none !important; }
+}
+
+.sequence-card,
+.recall-card,
+.match-card,
+.slice-card,
+.branch-card,
+.flip-section {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--card);
+}
+
+.interactive-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.interactive-heading svg {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.interactive-heading span {
+  display: block;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+}
+
+.interactive-heading h3 {
+  margin: 2px 0 0;
+  font-size: 1.08rem;
+}
+
+.interactive-prompt {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.interactive-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.interactive-primary,
+.interactive-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.interactive-primary {
+  border: 1px solid var(--border-tint-accent);
+  background: var(--brand);
+  color: var(--brand-contrast);
+}
+
+.interactive-secondary {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.interactive-primary:hover:not(:disabled),
+.interactive-secondary:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.interactive-primary:disabled,
+.interactive-secondary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.interactive-feedback {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-soft);
+  background: var(--surface);
+  line-height: 1.55;
+}
+
+.interactive-feedback svg {
+  flex-shrink: 0;
+}
+
+.interactive-feedback.is-correct {
+  --feedback-color: var(--accent);
+}
+
+.interactive-feedback.is-wrong {
+  --feedback-color: var(--negative);
+}
+
+.interactive-feedback:is(.is-correct, .is-wrong) {
+  border-color: color-mix(in srgb, var(--feedback-color) 32%, transparent);
+  background: color-mix(in srgb, var(--feedback-color) 9%, var(--surface));
+  color: var(--text);
+}
+
+.interactive-feedback:is(.is-correct, .is-wrong) svg {
+  color: var(--feedback-color);
+}

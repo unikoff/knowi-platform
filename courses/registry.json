@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "courses": [
+    {
+      "course_id": "backend",
+      "enabled": true,
+      "manifest": "backend/course.yaml"
+    },
+    {
+      "course_id": "backend_copy",
+      "enabled": true,
+      "manifest": "backend_copy/course.yaml"
+    }
+  ]
+}

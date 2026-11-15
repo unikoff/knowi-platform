@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Core course package manifest v2",
+  "description": "Public course identity and safe package-relative layout metadata. Does not authorize execution or publication.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "course_id", "slug", "title", "content_version", "layout", "frontend", "tracks"],
+  "properties": {
+    "schema_version": {"const": 2},
+    "course_id": {"type": "string", "maxLength": 64, "pattern": "^[a-z0-9]+(?:_[a-z0-9]+)*$"},
+    "slug": {"type": "string", "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$"},
+    "title": {"type": "string", "minLength": 1},
+    "content_version": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "layout": {
+      "type": "object", "additionalProperties": false,
+      "required": ["plans", "practice", "frontend"],
+      "properties": {
+        "plans": {"$ref": "#/$defs/relativePath"},
+        "practice": {"$ref": "#/$defs/relativePath"},
+        "frontend": {"$ref": "#/$defs/relativePath"}
+      }
+    },
+    "frontend": {
+      "type": "object", "additionalProperties": false,
+      "required": ["course", "personal_landing", "course_landing"],
+      "properties": {
+        "course": {"$ref": "#/$defs/relativePath"},
+        "personal_landing": {"$ref": "#/$defs/relativePath"},
+        "course_landing": {"$ref": "#/$defs/relativePath"}
+      }
+    },
+    "tracks": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["track_id", "title", "order", "source_dirs"],
+        "properties": {
+          "track_id": {"type": "string", "minLength": 1},
+          "title": {"type": "string", "minLength": 1},
+          "order": {"type": "integer", "minimum": 1},
+          "source_dirs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/relativePath"}}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "relativePath": {
+      "type": "string", "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*:)(?!.*\\\\)(?!.*[\\u0000-\\u001f\\u007f])(?!.*[. ](?:/|$))(?!.*(?:^|/)(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Nn][Ii][Nn]\\$|[Cc][Oo][Nn][Oo][Uu][Tt]\\$|[Cc][Oo][Mm][1-9¹²³]|[Ll][Pp][Tt][1-9¹²³])(?:\\.[^/]*)?(?:/|$))(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*(?:^|/)\\.(?:/|$))(?!.*//).+$"
+    }
+  }
+}

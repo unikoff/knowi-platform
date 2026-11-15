@@ -1,0 +1,78 @@
+/* One answer control across lesson interactions. Component CSS owns layout only. */
+.answer-options { gap: 12px; }
+
+.answer-option {
+  appearance: none;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: 500 1rem/1.5 var(--font-body);
+  text-align: start;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  box-shadow: none;
+  transform: none;
+  transition: border-color 150ms ease, background-color 150ms ease, opacity 150ms ease;
+}
+
+.answer-option > span { min-width: 0; }
+.answer-option > svg { flex: 0 0 auto; margin-top: 3px; }
+
+@media (hover: hover) {
+  .answer-option:not(:disabled):hover:not(:where(.is-picked, .is-active, .is-selected, .is-correct, .is-wrong, .is-matched, [aria-pressed="true"])) {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+    background: color-mix(in srgb, var(--accent) 4%, var(--surface-2));
+  }
+}
+
+.answer-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.answer-option:is(.is-picked, .is-active, .is-selected, .is-correct, .is-matched, .is-wrong, [aria-pressed="true"]) {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--line));
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+}
+
+.answer-option:is(.is-correct, .is-matched) {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--line));
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface-2));
+}
+
+.answer-option.is-wrong {
+  border-color: color-mix(in srgb, var(--negative) 60%, var(--line));
+  background: color-mix(in srgb, var(--negative) 9%, var(--surface-2));
+}
+
+.answer-option:is(.is-correct, .is-matched, .is-wrong) { opacity: 1; }
+
+.answer-option:disabled { cursor: default; }
+.answer-option:disabled:not(:is(.is-picked, .is-active, .is-selected, .is-correct, .is-matched, .is-wrong, [aria-pressed="true"])) {
+  opacity: 0.55;
+}
+
+.answer-option-marker {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .answer-option { transition: none; }
+}

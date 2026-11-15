@@ -1,0 +1,32 @@
+.lesson-table-card {
+  container: lesson-table / inline-size;
+  min-width: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 18px;
+  background: var(--surface);
+}
+.lesson-table-heading { display: grid; gap: 8px; padding: 20px; }
+.lesson-table-heading h3 { margin: 0; font-size: 1.05rem; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.lesson-table-scroll { max-width: 100%; overflow: auto; border-radius: 0 0 18px 18px; }
+.lesson-interactive-table { width: 100%; min-width: var(--lesson-table-min-width); border-collapse: separate; border-spacing: 0; text-align: start; font-size: 0.94rem; line-height: 1.6; }
+.lesson-interactive-table :is(th, td) { padding: 16px 20px; border-top: 1px solid var(--line-soft); vertical-align: top; text-align: start; overflow-wrap: anywhere; }
+.lesson-interactive-table :is(th, td):not(:first-child) { text-align: center; vertical-align: middle; }
+.lesson-interactive-table thead th { color: var(--muted); font-size: 0.82rem; font-weight: 500; background: var(--surface-2); }
+.lesson-interactive-table tbody th { font-weight: 500; }
+.lesson-interactive-table td { color: var(--reading); }
+.lesson-interactive-table :is(th, td) code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.lesson-interactive-table tbody :is(th, td) { transition: background-color 120ms ease; }
+.lesson-table-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+@media (hover: hover) {
+  .lesson-interactive-table tbody tr:hover > :is(th, td) { background: color-mix(in srgb, var(--accent) 8%, var(--surface-2)); }
+}
+
+@container lesson-table (max-width: 600px) {
+  .lesson-table-heading { padding: 16px; }
+  .lesson-interactive-table :is(th, td) { padding: 14px 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lesson-interactive-table tbody :is(th, td) { transition: none; }
+}

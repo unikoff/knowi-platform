@@ -1,0 +1,163 @@
+.lesson-diagram--vertical.lesson16-1-reader-diagram {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+}
+
+.lesson16-1-reader-flow {
+  display: grid;
+  gap: 0;
+  width: 100%;
+}
+
+.lesson16-1-reader-step {
+  display: grid;
+  gap: var(--diagram-space-sm);
+  padding: var(--diagram-space);
+  border: 1px solid var(--diagram-node-border);
+  border-radius: var(--diagram-radius);
+  background: var(--diagram-data-bg);
+}
+
+.lesson16-1-reader-step--check {
+  background: var(--diagram-decision-bg);
+}
+
+.lesson16-1-reader-step-label {
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.lesson16-1-reader-step strong {
+  font-size: 1.05rem;
+}
+
+.lesson16-1-reader-arrow {
+  display: grid;
+  justify-self: center;
+  padding: var(--diagram-space-xs) var(--diagram-space-sm);
+  font-size: 0;
+}
+
+.lesson16-1-reader-arrow::after {
+  width: var(--diagram-arrow-width);
+  height: var(--diagram-arrow-length);
+  background: var(--accent);
+  clip-path: polygon(40% 0, 60% 0, 60% calc(100% - 9px), 100% calc(100% - 9px), 50% 100%, 0 calc(100% - 9px), 40% calc(100% - 9px));
+  content: "";
+}
+
+.lesson16-1-reader-branches {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--diagram-space);
+  padding-top: var(--diagram-arrow-length);
+}
+
+.lesson16-1-reader-branch {
+  position: relative;
+  padding: var(--diagram-space);
+  border: 1px solid var(--diagram-node-border);
+  border-radius: var(--diagram-radius);
+  background: var(--diagram-group-bg);
+}
+
+.lesson16-1-reader-branch::before {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  width: 1px;
+  height: var(--diagram-arrow-length);
+  background: var(--accent);
+  content: "";
+}
+
+.lesson16-1-reader-branch strong {
+  color: var(--accent);
+}
+
+.lesson16-1-reader-branch p {
+  margin: var(--diagram-space-sm) 0 0;
+}
+
+.lesson16-1-reader-outcome {
+  color: var(--muted);
+}
+
+.lesson16-1-reader-boundary {
+  margin-top: var(--diagram-space);
+  padding: var(--diagram-space);
+  border-inline-start: 3px solid var(--diagram-detail-line);
+  border-radius: 8px;
+  background: var(--diagram-group-bg);
+}
+
+.lesson16-1-priority-path {
+  position: relative;
+  display: grid;
+  gap: var(--diagram-space-sm);
+  margin: 1.5rem 0;
+  padding: 0 0 0 1.4rem;
+  list-style: none;
+}
+
+.lesson16-1-priority-path::before {
+  position: absolute;
+  top: 1.4rem;
+  bottom: 1.4rem;
+  left: 0.25rem;
+  width: 1px;
+  background: var(--line-soft);
+  content: "";
+}
+
+.lesson16-1-priority-path li {
+  position: relative;
+  padding: var(--diagram-space);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--diagram-radius);
+  background: color-mix(in srgb, var(--surface-2) 62%, transparent);
+}
+
+.lesson16-1-priority-path li::before {
+  position: absolute;
+  top: 1.4rem;
+  left: -1.44rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--accent);
+  content: "";
+}
+
+.lesson16-1-priority-path strong {
+  color: var(--accent);
+}
+
+.lesson16-1-priority-path p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+@container lesson-diagram (max-width: 540px) {
+  .lesson16-1-reader-branches {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--diagram-space);
+    padding-top: var(--diagram-arrow-length);
+  }
+
+  .lesson16-1-reader-branches::before {
+    color: var(--muted);
+    content: "↓ Два возможных результата";
+    font-size: 0.85rem;
+    text-align: center;
+  }
+
+  .lesson16-1-reader-branch::before {
+    display: none;
+    height: var(--diagram-arrow-length);
+  }
+}

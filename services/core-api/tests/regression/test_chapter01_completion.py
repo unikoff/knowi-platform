@@ -6,15 +6,13 @@ import unittest
 from copy import deepcopy
 from unittest.mock import patch
 
+import pytest
 from fastapi import FastAPI
-from sqlalchemy import create_engine
-from sqlalchemy.pool import StaticPool
-from sqlalchemy.orm import sessionmaker
+from pg_business_support import runtime_db, attach_identity, PatchedContent
 
 from pymentor_core.adapters.course_local.catalog import find_track as catalog_find_track
 from pymentor_core.adapters.course_local.catalog import get_tracks_summary as catalog_get_tracks_summary
 from pymentor_core.adapters.sql import models
-from pymentor_core.app.database import Base
 from pymentor_core.adapters.sql import administration as admin_service
 from pymentor_core.modules.learning.api import service
 from pymentor_core.modules.learning.api.router import learning_router
@@ -81,20 +79,16 @@ class FixedResultExecutor:
 
 
 class ChapterOneCompletionTests(unittest.IsolatedAsyncioTestCase):
+    @pytest.fixture(autouse=True)
+    def postgres_fixture(self, runtime_db):
+        self.sessions = runtime_db
+
     def setUp(self):
-        self.engine = create_engine(
-            "sqlite://",
-            connect_args={"check_same_thread": False},
-            poolclass=StaticPool,
-        )
-        Base.metadata.create_all(self.engine)
-        self.sessions = sessionmaker(bind=self.engine)
         with self.sessions() as db:
             user = models.User(username="completion-test", email="completion@example.test", password="$2b$test")
             db.add(user)
             db.flush()
             self.user_id = user.id
-            db.add(models.Session(user_id=user.id, session_token="chapter01-completion-test"))
             db.commit()
 
         self.tasks = {TASK_A["id"]: deepcopy(TASK_A), TASK_B["id"]: deepcopy(TASK_B)}
@@ -104,6 +98,7 @@ class ChapterOneCompletionTests(unittest.IsolatedAsyncioTestCase):
             "title": "Completion test",
             "access": "free",
             "source_file": "chapter_01/block_01/completion-test.md",
+            "progress_policy": {"completion": "cards", "revision_tracked": True},
             "tasks": [self.tasks[TASK_A["id"]], self.tasks[TASK_B["id"]]],
             "manual_practice": [],
             "self_check": {"questions": ["fixed check"]},
@@ -112,12 +107,14 @@ class ChapterOneCompletionTests(unittest.IsolatedAsyncioTestCase):
         self.track = {"id": self.track_id, "lessons": [self.lesson]}
         self.executor = FixedResultExecutor()
         self.app = FastAPI()
+        attach_identity(self.app, {"chapter01-completion-test": self.user_id})
         self.app.include_router(learning_router, prefix="/learning")
 
         def get_summary():
             return [{"id": self.track_id, "countable_lesson_ids": [self.lesson["id"]]}]
 
         self.patches = [
+            patch.object(service, "_LocalContent", PatchedContent(service)),
             patch.dict(os.environ, {service.RUNNER_ENABLED_ENV: "1"}),
             patch.object(service, "SessionLocal", self.sessions),
             patch('pymentor_core.app.dependencies.SessionLocal', self.sessions),
@@ -135,7 +132,6 @@ class ChapterOneCompletionTests(unittest.IsolatedAsyncioTestCase):
     def tearDown(self):
         for item in reversed(self.patches):
             item.stop()
-        self.engine.dispose()
 
     async def submit(self, task_id: str, revision: str, result: str = "success"):
         return await asgi_request(
@@ -174,6 +170,7 @@ class ChapterOneCompletionTests(unittest.IsolatedAsyncioTestCase):
     async def test_overview_is_complete_immediately_in_catalog_and_admin(self):
         self.lesson.update(
             module="00 Обзор", source_file="chapter_01/block_00/План обучения.md",
+            progress_policy={"overview": True, "completion": "cards", "revision_tracked": True},
             tasks=[], manual_practice=[], self_check=False,
         )
         for cookie in (False, True):
@@ -260,7 +257,7 @@ class ChapterOneCompletionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(5, len(lesson["tasks"]))
         self.assertEqual("lesson-b504d05e6763add4db882bfe-task-05", lesson["tasks"][4]["id"])
         self.assertTrue(all(service.progress.is_task_required(task) for task in lesson["tasks"][:4]))
-        self.assertFalse(service.progress.is_task_required(lesson["tasks"][4]))
+        self.assertEqual(lesson["tasks"][:4], service.progress.required_lesson_tasks(lesson))
         self.assertTrue(service.progress.is_task_required({"id": "chapter02-task"}))
 
     async def test_optional_card_does_not_block_or_revoke_chapter_one_completion(self):
@@ -278,6 +275,7 @@ class ChapterOneCompletionTests(unittest.IsolatedAsyncioTestCase):
         self.lesson.update(
             id=lesson_id,
             source_file="chapter_01/block_01/01.1 - variables.md",
+            progress_policy={"completion": "cards", "revision_tracked": True, "optional_task_ids": [optional_task["id"]]},
             tasks=[*required_tasks, optional_task],
         )
 
@@ -370,6 +368,7 @@ class ChapterOneCompletionTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_other_chapter_keeps_legacy_single_card_behavior(self):
         self.lesson["source_file"] = "chapter_02/block_05/legacy.md"
+        self.lesson["progress_policy"] = {"completion": "lesson", "revision_tracked": False}
         status, response, _ = await self.submit(TASK_A["id"], REVISION_A)
         self.assertEqual(200, status)
         self.assertTrue(response["ok"])

@@ -1,0 +1,19 @@
+[Unit]
+Description=Knowi container log age and aggregate size retention
+After=k3s.service
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/bin/python3 /usr/local/lib/knowi-backup/logs.py
+Environment=PYTHONDONTWRITEBYTECODE=1
+UMask=0077
+TimeoutStartSec=5min
+Nice=19
+IOSchedulingClass=idle
+CPUQuota=10%
+MemoryMax=128M
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=read-only
+ProtectSystem=strict
+ReadWritePaths=/var/log/pods /var/log/knowi-archives /var/lib/knowi-logs

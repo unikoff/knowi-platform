@@ -24,17 +24,16 @@ import pytest
 from pydantic import BaseModel
 from pydantic import TypeAdapter
 from pydantic import ValidationError
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from pymentor_core.adapters.course_local.catalog import find_track
 from pymentor_core.adapters.course_local.catalog import get_tracks_summary
 from pymentor_core.app.dependencies import get_db
 from pymentor_core.shared.api_contracts import LegacyErrorResponse
 from pymentor_core.adapters.sql import models
-from pymentor_core.app.database import Base
-from main import app
+from test_c2_1_4_auth_legacy import runtime_db
+import test_c2_1_4_auth_legacy as http
+app = None
 from pymentor_core.modules.identity.api.schemas import ActivityCalendarResponse
 from pymentor_core.modules.identity.api.schemas import ActivitySummaryResponse
 from pymentor_core.modules.identity.api.schemas import ActivityVisitResponse
@@ -100,42 +99,27 @@ FRONTEND_OPERATIONS = {
 }
 
 
+@pytest.fixture(autouse=True)
+def contract_app(runtime_db):
+    global app
+    app = http._client.app
+
+
 @pytest.fixture
-def clients(monkeypatch):
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(engine)
-    from pymentor_core.adapters.legacy_sqlite.account_lifecycles import ensure_sqlite_account_lifecycles
-    ensure_sqlite_account_lifecycles(engine)
-    sessions = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-    def override_get_db():
-        with sessions() as db:
-            yield db
-
-    monkeypatch.setitem(app.dependency_overrides, get_db, override_get_db)
+def clients(monkeypatch, runtime_db):
+    global app
+    app = http._client.app
+    sessions = runtime_db
     monkeypatch.setattr(course_service, "SessionLocal", sessions)
     monkeypatch.setenv("PYMENTOR_PUBLIC_RUNNER_ENABLED", "1")
-
     with sessions() as db:
-        admin = models.User(
-            username="Core Contract Admin",
-            email="c2-1-3-admin@example.test",
-            password="Core-contract-admin-password",
-            is_admin=True,
-        )
-        db.add(admin)
-        db.flush()
-        db.add(models.Session(user_id=admin.id, session_token=ADMIN_SESSION_TOKEN))
+        db.add(models.User(username="Core Contract Admin", email="c2-1-3-admin@example.test",
+                           password="Core-contract-admin-password", is_admin=True))
         db.commit()
-
-    try:
-        yield RawASGIClient(), RawASGIClient({"session": ADMIN_SESSION_TOKEN}), sessions
-    finally:
-        engine.dispose()
+    admin = RawASGIClient()
+    response = admin.post("/api/user/login", json={"email": "c2-1-3-admin@example.test", "password": "Core-contract-admin-password"})
+    assert response.status_code == 200
+    yield RawASGIClient(), admin, sessions
 
 
 class RawASGIResponse:
@@ -170,59 +154,13 @@ class RawASGIClient:
         return self.request("DELETE", path, params=params, cookies=cookies)
 
     def request(self, method, path, *, json=None, params=None, cookies=None):
-        body = json_module.dumps(json, ensure_ascii=False).encode("utf-8") if json is not None else b""
-        query_string = urlencode(params or {}).encode("ascii")
-        headers = [
-            (b"host", b"testserver"),
-            (b"content-length", str(len(body)).encode("ascii")),
-        ]
-        if json is not None:
-            headers.append((b"content-type", b"application/json"))
-        merged_cookies = {**self.cookies, **(cookies or {})}
-        if merged_cookies:
-            cookie_header = "; ".join(f"{key}={value}" for key, value in merged_cookies.items())
-            headers.append((b"cookie", cookie_header.encode("latin-1")))
-
-        messages = []
-        delivered = False
-
-        async def receive():
-            nonlocal delivered
-            if delivered:
-                return {"type": "http.disconnect"}
-            delivered = True
-            return {"type": "http.request", "body": body, "more_body": False}
-
-        async def send(message):
-            messages.append(message)
-
-        scope = {
-            "type": "http",
-            "asgi": {"version": "3.0", "spec_version": "2.4"},
-            "http_version": "1.1",
-            "method": method,
-            "scheme": "http",
-            "path": path,
-            "raw_path": path.encode("utf-8"),
-            "root_path": "",
-            "query_string": query_string,
-            "headers": headers,
-            "server": ("testserver", 80),
-            "client": ("127.0.0.1", 12345),
-        }
-        asyncio.run(app(scope, receive, send))
-        start = next(message for message in messages if message["type"] == "http.response.start")
-        response_body = b"".join(
-            message.get("body", b"")
-            for message in messages
-            if message["type"] == "http.response.body"
-        )
-        response_headers = {
-            key.decode("latin-1").lower(): value.decode("latin-1")
-            for key, value in start["headers"]
-        }
-        response_json = json_module.loads(response_body) if response_body else None
-        response = RawASGIResponse(start["status"], response_headers, response_json)
+        query = urlencode(params or {})
+        if query: path += "?" + query
+        merged = {**self.cookies, **(cookies or {})}
+        headers = {"Cookie": "; ".join(f"{key}={value}" for key, value in merged.items())} if merged else {}
+        if path == "/api/user/login": headers["Idempotency-Key"] = str(uuid4())
+        reply = http.call(method, path, body=json, headers=headers)
+        response = RawASGIResponse(reply.status, dict(reply.headers), reply.data)
         self.cookies.update(response.cookies)
         return response
 
@@ -333,6 +271,8 @@ def _response_fixture(response, *, catalog: bool = False, track_id: str | None =
         body = json_module.loads(json_module.dumps(body, ensure_ascii=False))
     if isinstance(body, dict) and "user" in body:
         body["user"]["id"] = "<synthetic-user-id>"
+        # Historical fixture predates the additive email verification flag.
+        body["user"].pop("verified", None)
         if body["user"].get("subscription_until") is not None:
             body["user"]["subscription_until"] = "<utc-iso8601>"
     return {"status": response.status_code, "headers": safe_headers, "body": body}
@@ -342,13 +282,23 @@ def _without_content_revision(response_fixture: dict[str, Any]) -> dict[str, Any
     comparable = json_module.loads(json_module.dumps(response_fixture, ensure_ascii=False))
     if isinstance(comparable.get("body"), dict):
         comparable["body"].pop("content_revision", None)
+        # These aggregates follow the evolving live curriculum, not the API contract.
+        track = comparable["body"].get("track")
+        if isinstance(track, dict):
+            assert 0 <= track["lessons_completed"] <= track["lessons_countable"]
+            track.pop("lessons_completed")
+            track.pop("lessons_countable")
+            for block in track.get("blocks", []):
+                assert 0 <= block["completed"] <= block["total"]
+                block.pop("completed")
+                block.pop("total")
     return comparable
 
 
 def test_frontend_route_inventory_and_openapi_compatibility():
     baseline_path = (
-        Path(__file__).resolve().parents[4]
-        / "docs"
+        Path(__file__).resolve().parents[1]
+        / "fixtures" / "contracts"
         / "stage-02-core"
         / "c2-1-3-openapi-baseline.json"
     )
@@ -373,7 +323,7 @@ def test_frontend_route_inventory_and_openapi_compatibility():
         # The fallback is / when no frontend exists; with a built frontend the
         # same root is served by the SPA catch-all instead (see test_web_fallback).
         if path == "/" and "/{full_path}" in current["paths"]:
-            assert (Path(__file__).resolve().parents[4] / "frontend" / "dist" / "index.html").is_file()
+            assert (Path(__file__).resolve().parents[4] / "apps" / "web" / "dist" / "index.html").is_file()
             continue
         assert path in current["paths"]
         new_path_item = current["paths"][path]
@@ -383,6 +333,11 @@ def test_frontend_route_inventory_and_openapi_compatibility():
             new_operation = new_path_item[method]
             assert new_operation["operationId"] == old_operation["operationId"]
             parameters = new_operation.get("parameters", [])
+            if path.startswith(("/learning/", "/api/learning/")):
+                course_parameters = [p for p in parameters if p.get("name") == "course_id"]
+                assert len(course_parameters) == 1
+                assert course_parameters[0]["in"] == "query" and course_parameters[0]["required"] is False
+                parameters = [p for p in parameters if p.get("name") != "course_id"]
             if method == "post" and path in {"/user/login", "/api/user/login"}:
                 retry_headers = [p for p in parameters if p.get("name") == "Idempotency-Key"]
                 assert len(retry_headers) == 1
@@ -425,6 +380,16 @@ def test_frontend_route_inventory_and_openapi_compatibility():
     assert validation_schema["$ref"] == "#/components/schemas/HTTPValidationError"
 
 
+def test_email_actions_have_explicit_success_and_error_contracts():
+    schema = app.openapi()
+    for suffix in ("email-verification/request", "email-verification/confirm", "password-change/request", "password-reset/confirm"):
+        operation = schema["paths"][f"/api/user/{suffix}"]["post"]
+        assert operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"] == "#/components/schemas/EmailActionResponse"
+    reset = schema["paths"]["/api/user/password-reset/request"]["post"]
+    assert reset["responses"]["202"]["content"]["application/json"]["schema"]["$ref"] == "#/components/schemas/EmailActionResponse"
+    assert "400" in schema["paths"]["/api/user/password-reset/confirm"]["post"]["responses"]
+
+
 def test_all_frontend_operations_asgi_contracts_and_legacy_errors(clients):
     client, admin, sessions = clients
     observed_baseline_responses = {}
@@ -462,8 +427,9 @@ def test_all_frontend_operations_asgi_contracts_and_legacy_errors(clients):
     assert registered["user"]["subscription_plan"] is None
     assert set(registered["user"]) == {
         "id", "username", "email", "subscription_until", "subscription_plan",
-        "has_active_subscription", "is_admin",
+        "has_active_subscription", "is_admin", "verified",
     }
+    assert registered["user"]["verified"] is False
     _validate(AuthResponse, registered)
     student_id = registered["user"]["id"]
 
@@ -752,8 +718,8 @@ def test_all_frontend_operations_asgi_contracts_and_legacy_errors(clients):
     _validate(DeletedIdResponse, response.json())
 
     historical_path = (
-        Path(__file__).resolve().parents[4]
-        / "docs"
+        Path(__file__).resolve().parents[1]
+        / "fixtures" / "contracts"
         / "stage-01-k3s"
         / "reference"
         / "core-baseline-responses.json"
@@ -761,6 +727,12 @@ def test_all_frontend_operations_asgi_contracts_and_legacy_errors(clients):
     historical = json_module.loads(historical_path.read_text(encoding="utf-8"))
     for name, actual in observed_baseline_responses.items():
         expected = historical[name]
+        if name == "code_submit":
+            # MC2.5 keeps the response shape but deliberately hides judge data.
+            expected = json_module.loads(json_module.dumps(expected))
+            for index, result in enumerate(expected["body"]["tests"], start=1):
+                assert result["passed"] is True
+                result.update(name=f"Проверка {index}", expected=None, actual=None, error=None)
         if name in {"catalog_before", "catalog_after"}:
             assert _without_content_revision(actual) == _without_content_revision(expected)
         else:
@@ -770,7 +742,7 @@ def test_all_frontend_operations_asgi_contracts_and_legacy_errors(clients):
 def test_landing_admin_openapi_responses_are_unchanged():
     """The Core contract update must not alter the unrelated landing API."""
     baseline_path = (
-        Path(__file__).resolve().parents[4] / "docs" / "stage-02-core"
+        Path(__file__).resolve().parents[1] / "fixtures" / "contracts" / "stage-02-core"
         / "c2-1-3-openapi-baseline.json"
     )
     baseline = json_module.loads(baseline_path.read_text(encoding="utf-8"))

@@ -5,6 +5,16 @@ from contextlib import AsyncExitStack
 from contextlib import asynccontextmanager
 
 
+async def warm_course_snapshots():
+    """Keep cold trusted authoring imports out of learner requests."""
+    from pymentor_core.adapters.course_local.runtime import default_runtime
+
+    courses = default_runtime()
+    for entry in courses.registry.entries.values():
+        if entry.enabled:
+            await asyncio.to_thread(courses.snapshot, entry.course_id)
+
+
 @asynccontextmanager
 async def postgres_resources(app, settings):
     from pymentor_core.adapters.runtime import RuntimeAsyncDatabase
@@ -15,8 +25,9 @@ async def postgres_resources(app, settings):
     from sqlalchemy import text
     from pymentor_core.app.database import engine
     from pymentor_core.app.database import matches_database_identity
-    from pymentor_core.app.schema_policy import DUAL_LOCAL_REQUIRED_TABLES
-    from pymentor_core.app.schema_policy import DUAL_LOCAL_SCHEMA_REVISION
+    from pymentor_core.app.schema_policy import REQUIRED_TABLES
+    from pymentor_core.app.schema_policy import SCHEMA_REVISION
+    from pymentor_core.app.schema_policy import compatible_schema_revision
 
     # Check only. Alembic must have been run by a separate migration operation.
     with engine.connect() as connection:
@@ -28,8 +39,8 @@ async def postgres_resources(app, settings):
         ).scalar_one()
         if (
             not matches_database_identity(identity, engine.url)
-            or revision != DUAL_LOCAL_SCHEMA_REVISION
-            or not set(DUAL_LOCAL_REQUIRED_TABLES).issubset(
+            or not compatible_schema_revision(revision, SCHEMA_REVISION)
+            or not set(REQUIRED_TABLES).issubset(
                 inspect(connection).get_table_names()
             )
         ):
@@ -59,9 +70,10 @@ async def postgres_resources(app, settings):
         await sessions.check_async_database()
         if not await store.ping():
             raise RuntimeError("Configured Redis is not ready")
-        app.state.local_async_identity = (
-            sessions  # temporary compatibility with existing HTTP use cases
-        )
+        await warm_course_snapshots()
+        app.state.identity_sessions = sessions
+        # Compatibility for existing lab tools; both names reference the same PG service.
+        app.state.local_async_identity = sessions
         task = asyncio.create_task(cleanup_loop(database, store))
 
         async def stop_cleanup():
@@ -75,6 +87,7 @@ async def postgres_resources(app, settings):
         try:
             yield
         finally:
+            app.state.identity_sessions = None
             app.state.local_async_identity = None
 
 
@@ -97,61 +110,27 @@ def build_default_composition() -> CompositionRoot:
     )
 
 
-def identity_repository(database, uow=None, *, legacy_sessions=False):
-    # Selection is wiring; business modules never import the legacy adapter.
-    if legacy_sessions:
-        from pymentor_core.adapters.legacy_sqlite.sessions import SqlSessionRepository
-
-        return SqlSessionRepository(database, uow)
+def identity_repository(database, uow=None):
     from pymentor_core.adapters.sql.accounts import AccountReader
 
     return AccountReader(database, uow)
 
 
 def ensure_notification_schema(engine):
-    from pymentor_core.app.schema_policy import should_run_legacy_bootstrap
-    import os
-
-    if should_run_legacy_bootstrap(
-        engine.dialect.name, os.getenv("PYMENTOR_SCHEMA_MODE")
-    ):
-        from pymentor_core.adapters.legacy_sqlite.bootstrap import (
-            ensure_notification_tables,
-        )
-
-        ensure_notification_tables(engine)
-        return
-    from pymentor_core.adapters.sql import models
+    if engine.dialect.name != "postgresql":
+        raise RuntimeError("Notification worker requires PostgreSQL")
     from sqlalchemy import inspect
+    from sqlalchemy import text
+    from pymentor_core.app.database import matches_database_identity
+    from pymentor_core.app.schema_policy import REQUIRED_TABLES, SCHEMA_REVISION, compatible_schema_revision
 
-    required = {
-        models.BookingNotificationOutbox.__tablename__,
-        models.BookingNotificationDeliveryState.__tablename__,
-        models.Landing.__tablename__,
-        models.LandingTelegramConfig.__tablename__,
-        models.LandingNotificationOutbox.__tablename__,
-        models.LandingNotificationDeliveryState.__tablename__,
-    }
-    missing = required.difference(inspect(engine).get_table_names())
-    if missing:
-        raise RuntimeError(
-            "Database migration required before starting notification worker"
-        )
-    return
-
-
-def initialize_legacy_schema():
-    """Explicit legacy startup, also used by the HTTP-only WSGI adapter."""
-    from pymentor_core.app.database import engine
-    from pymentor_core.app.schema_policy import should_run_legacy_bootstrap
-    import os
-
-    if should_run_legacy_bootstrap(
-        engine.dialect.name, os.getenv("PYMENTOR_SCHEMA_MODE")
-    ):
-        from pymentor_core.adapters.legacy_sqlite.bootstrap import ensure_schema
-
-        ensure_schema()
+    with engine.connect() as connection:
+        identity = connection.execute(text("SELECT current_database(), current_user")).one()
+        revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+        if (not matches_database_identity(identity, engine.url)
+                or not compatible_schema_revision(revision, SCHEMA_REVISION)
+                or not set(REQUIRED_TABLES).issubset(inspect(connection).get_table_names())):
+            raise RuntimeError("Database migration required before starting notification worker")
 
 
 def configure_bindings():
@@ -168,6 +147,7 @@ def configure_bindings():
         landings,
         landing_requests,
         notification_outbox,
+        email_auth,
     )
 
     from pymentor_core.adapters.telegram import transport
@@ -185,5 +165,6 @@ def configure_bindings():
             landing_requests=landing_requests,
             notifications=notification_outbox,
             telegram=transport,
+            email_auth=email_auth,
         )
     )

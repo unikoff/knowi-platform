@@ -1,0 +1,353 @@
+/* ---- MatchPairs: one prompt, two compact columns and quiet feedback. ---- */
+.match-card {
+  display: block;
+  min-width: 0;
+  padding: 22px 24px;
+  border-color: var(--line-soft);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.match-header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.match-prompt { min-width: 0; margin: 12px 0 0; color: var(--text); font-size: 1.02rem; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.match-progress { flex-shrink: 0; color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.match-count { display: inline-block; animation: match-mark-in 200ms ease both; }
+
+.match-card .match-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.match-col { display: grid; min-width: 0; gap: 8px; align-content: start; }
+.match-col-title { color: var(--muted); font-size: 0.78rem; font-weight: 500; line-height: 1.5; }
+
+.match-card .match-item {
+  align-items: center;
+  gap: 10px;
+  transition: border-color 220ms ease, background-color 220ms ease, transform 160ms ease;
+}
+
+.match-card .match-item:not(:disabled):active { transform: scale(0.99); }
+.match-item-label { flex: 1; }
+
+.match-mark {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 16px;
+  height: 16px;
+  color: var(--accent);
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity 180ms ease, transform 220ms ease;
+}
+
+.match-item:is(.is-active, .is-matched, .is-wrong) .match-mark { opacity: 1; transform: scale(1); }
+.match-item.is-matched .match-mark { color: var(--accent); }
+.match-item.is-wrong .match-mark { color: var(--negative); }
+.match-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.match-item.is-active .match-dot { animation: match-mark-in 220ms ease both; }
+
+.match-item.is-matched .match-mark svg {
+  stroke-dasharray: 24;
+  animation: match-check-draw 260ms ease both;
+}
+
+.match-item.is-matched { animation: match-connect 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+.match-card .match-feedback {
+  margin: 14px 0 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.match-feedback.is-correct { color: var(--accent); }
+.match-feedback.is-wrong { color: var(--negative); }
+.match-feedback > span { display: inline-block; animation: match-feedback-in 220ms ease both; }
+
+@keyframes match-feedback-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes match-mark-in {
+  from { opacity: 0; transform: translateY(2px) scale(0.85); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes match-check-draw {
+  from { stroke-dashoffset: 24; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes match-connect {
+  0% { transform: scale(0.99); }
+  60% { transform: scale(1.005); }
+  100% { transform: scale(1); }
+}
+
+@media (max-width: 480px) {
+  .match-card { padding: 18px; }
+  .match-card .match-grid { gap: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .match-card *,
+  .match-card *::before,
+  .match-card *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .match-card .match-item,
+  .match-card .match-mark,
+  .match-card .choice-feedback { transform: none !important; }
+}
+
+/* ---- Исследователь срезов (SliceExplorer) ---- */
+.slice-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.slice-char {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  min-width: 34px;
+  padding: var(--space-2) var(--space-1) var(--space-1);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.slice-char.is-selected {
+  border-color: var(--border-tint-accent);
+  background: var(--accent-soft);
+}
+
+.slice-char--edge {
+  opacity: 0.5;
+  border-style: dashed;
+}
+
+.slice-symbol {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.slice-index {
+  font-size: 0.7rem;
+  color: var(--faint);
+}
+
+.slice-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.slice-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+}
+
+.slice-stepper > span {
+  color: var(--muted);
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 0.85rem;
+}
+
+.slice-stepper strong {
+  min-width: 20px;
+  text-align: center;
+  color: var(--accent);
+  font-family: "JetBrains Mono", Consolas, monospace;
+}
+
+.slice-stepper button {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.slice-stepper button:hover {
+  border-color: var(--border-tint-accent);
+}
+
+.slice-result {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--code-bg);
+  font-family: "JetBrains Mono", Consolas, monospace;
+}
+
+.slice-result code {
+  color: var(--code-text);
+}
+
+.slice-output {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.slice-result svg {
+  color: var(--faint);
+}
+
+.slice-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+/* ---- Исследователь ветвлений (BranchExplorer) ---- */
+.branch-scenarios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.branch-code {
+  padding: var(--space-4) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--code-bg);
+  overflow-x: auto;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 0.9rem;
+}
+
+.branch-line {
+  padding: 2px var(--space-2);
+  border-radius: 6px;
+  color: var(--code-text);
+  white-space: pre;
+  transition: background 160ms ease;
+}
+
+.rich-lesson .branch-code .branch-line > code {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: inherit;
+}
+
+.branch-line.is-active {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.branch-output {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.branch-output span {
+  color: var(--faint);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.branch-output code {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* ---- Карточки-перевёртыши (FlipCards) ---- */
+.flip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: var(--space-3);
+}
+
+.flip-card {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 120px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  text-align: inherit;
+  transition: transform 180ms ease, background-color 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
+  touch-action: manipulation;
+}
+
+.flip-card.is-flipped {
+  background: var(--accent-soft);
+  border-color: var(--border-tint-accent);
+}
+
+.flip-inner {
+  display: grid;
+  min-height: 120px;
+  height: 100%;
+}
+
+.flip-face {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: var(--space-4);
+  text-align: center;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  animation: flip-content-in 240ms cubic-bezier(0.22, 0.7, 0.18, 1);
+}
+
+.flip-front { font-weight: 600; }
+.flip-back { font-size: 0.9rem; }
+
+@keyframes flip-content-in {
+  from { opacity: 0.25; transform: translateY(4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (hover: hover) {
+  .flip-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+    box-shadow: 0 5px 16px color-mix(in srgb, var(--accent) 6%, transparent);
+  }
+}
+
+.flip-card:active { transform: scale(0.985); }
+
+.flip-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-card { transition: none !important; transform: none !important; }
+  .flip-face { animation: none !important; }
+}

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="560" viewBox="0 0 1000 560">
+  <title>Демонстрация результата программы</title>
+  <rect width="1000" height="560" rx="20" fill="#202120"/>
+  <rect x="1" y="1" width="998" height="558" rx="19" fill="none" stroke="#3c3e39" stroke-width="2"/>
+  <path d="M0 68h1000" stroke="#3c3e39"/>
+  <text x="28" y="43" fill="#ededeb" font-family="Segoe UI, sans-serif" font-size="24">Вывод программы</text>
+  <g font-family="Consolas, monospace" font-size="30">
+    <text x="38" y="144" fill="#999d91">$ python demo.py</text>
+    <text x="38" y="205" fill="#ededeb">Привет!</text>
+  </g>
+  <rect x="28" y="435" width="944" height="72" rx="12" fill="#2a3223"/>
+  <circle cx="64" cy="471" r="10" fill="#b0f55c"/>
+  <text x="94" y="480" fill="#c5d9b1" font-family="Segoe UI, sans-serif" font-size="24">Программа завершена</text>
+</svg>

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Course Practice"
+  short_description: "Практика по изученным темам без утечки решений"
+  default_prompt: "Используй $course-practice: проверь эту практику по предпосылкам урока, условиям, скрытым тестам и границам раскрытия ответа."

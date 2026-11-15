@@ -9,7 +9,9 @@ import unittest
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
-from content.materials.chapter_02.block_06.manual import MANUAL_PRACTICE
+from pymentor_core.adapters.course_local.runtime import default_runtime as _course_runtime
+_authoring = _course_runtime().context("backend").get_authoring
+MANUAL_PRACTICE = getattr(_authoring("chapter_02.block_06.manual"), "MANUAL_PRACTICE")
 
 
 class JsonLessonContractTests(unittest.TestCase):

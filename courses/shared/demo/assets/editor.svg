@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="560" viewBox="0 0 1000 560">
+  <title>Демонстрация редактора кода</title>
+  <rect width="1000" height="560" rx="20" fill="#202120"/>
+  <rect x="1" y="1" width="998" height="558" rx="19" fill="none" stroke="#3c3e39" stroke-width="2"/>
+  <path d="M0 68h1000" stroke="#3c3e39"/>
+  <circle cx="30" cy="34" r="6" fill="#9bdc45"/>
+  <text x="52" y="42" fill="#ededeb" font-family="Segoe UI, sans-serif" font-size="24">demo.py</text>
+  <rect x="790" y="17" width="182" height="36" rx="8" fill="#b0f55c"/>
+  <text x="817" y="42" fill="#202120" font-family="Segoe UI, sans-serif" font-size="20">▶ Запустить</text>
+  <g font-family="Consolas, monospace" font-size="30">
+    <text x="38" y="144" fill="#74776e">1</text>
+    <text x="38" y="198" fill="#74776e">2</text>
+    <text x="96" y="144" fill="#e5e6e0">message = <tspan fill="#b0e690">"Привет!"</tspan></text>
+    <text x="96" y="198" fill="#e5e6e0"><tspan fill="#eac177">print</tspan>(message)</text>
+  </g>
+  <path d="M96 232h790" stroke="#353730"/>
+  <text x="96" y="288" fill="#999d91" font-family="Segoe UI, sans-serif" font-size="23">Измените сообщение и запустите программу.</text>
+</svg>

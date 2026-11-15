@@ -28,7 +28,7 @@ from pymentor_core.modules.identity import activity
 from pymentor_core.modules.bookings import public as bookings
 from pymentor_core.modules.learning import progress
 from pymentor_core.modules.learning.progress_policy import is_countable_lesson
-from pymentor_core.modules.learning.progress_policy import is_overview_lesson
+from pymentor_core.modules.learning.progress_policy import is_overview_lesson, uses_persisted_task_progress, uses_card_completion
 from pymentor_core.modules.learning.catalog import find_track
 from pymentor_core.modules.learning.catalog import get_tracks_summary
 from pymentor_core.modules.bookings.api.schemas import SlotCreate
@@ -42,25 +42,23 @@ def _serialize_account(user: models.User, completed_lessons: int) -> dict:
     return data
 
 
-def _build_learning_progress(user_id: int, db: Session) -> tuple[list[dict], int]:
+def _build_learning_progress(user_id: int, db: Session, *, content=None) -> tuple[list[dict], int]:
     """Собирает компактное дерево треков, блоков, уроков и заданий для админки."""
     completed_ids = progress.get_completed_lesson_ids(user_id, db)
     tracked_tasks = [
         task
-        for track_summary in get_tracks_summary()
-        if (track := find_track(track_summary["id"])) is not None
+        for track_summary in (content.get_tracks_summary() if content is not None else get_tracks_summary())
+        if (track := (content.find_track(track_summary["id"]) if content is not None else find_track(track_summary["id"]))) is not None
         for lesson in track["lessons"]
-        if str(lesson.get("source_file", "")).startswith(
-            ("foundations/block_03/", "chapter_01/")
-        )
+        if uses_persisted_task_progress(lesson)
         for task in lesson.get("tasks", [])
     ]
     chapter_one_self_checks = [
         lesson
-        for track_summary in get_tracks_summary()
-        if (track := find_track(track_summary["id"])) is not None
+        for track_summary in (content.get_tracks_summary() if content is not None else get_tracks_summary())
+        if (track := (content.find_track(track_summary["id"]) if content is not None else find_track(track_summary["id"]))) is not None
         for lesson in track["lessons"]
-        if str(lesson.get("source_file", "")).startswith("chapter_01/")
+        if uses_card_completion(lesson)
         and lesson.get("self_check")
         and (lesson.get("manual_practice") or not lesson.get("tasks"))
     ]
@@ -75,8 +73,8 @@ def _build_learning_progress(user_id: int, db: Session) -> tuple[list[dict], int
     )
     tracks: list[dict] = []
     completed_lessons = 0
-    for track_summary in get_tracks_summary():
-        track = find_track(track_summary["id"])
+    for track_summary in (content.get_tracks_summary() if content is not None else get_tracks_summary()):
+        track = (content.find_track(track_summary["id"]) if content is not None else find_track(track_summary["id"]))
         if track is None:
             continue
         track_id = track["id"]
@@ -95,11 +93,8 @@ def _build_learning_progress(user_id: int, db: Session) -> tuple[list[dict], int
                 },
             )
             lesson_completed = is_overview_lesson(lesson) or lesson["id"] in completed_ids
-            source_file = str(lesson.get("source_file", ""))
-            is_chapter_one = source_file.startswith("chapter_01/")
-            is_revision_tracked = is_chapter_one or source_file.startswith(
-                "foundations/block_03/"
-            )
+            is_chapter_one = uses_card_completion(lesson)
+            is_revision_tracked = uses_persisted_task_progress(lesson)
             countable = is_countable_lesson(lesson)
             tasks = []
             for task in lesson.get("tasks", []):
@@ -120,9 +115,8 @@ def _build_learning_progress(user_id: int, db: Session) -> tuple[list[dict], int
                 )
             if is_chapter_one:
                 if not lesson_completed:
-                    required_tasks = [
-                        task for task in tasks if progress.is_task_required(task)
-                    ]
+                    required_ids = {task["id"] for task in progress.required_lesson_tasks(lesson)}
+                    required_tasks = [task for task in tasks if task["id"] in required_ids]
                     all_tasks_complete = all(
                         (task["completed"] for task in required_tasks)
                     )
@@ -582,6 +576,27 @@ def delete_user(
     user_db = target_user_query.first()
     if user_db is None:
         raise ApplicationError(status_code=404, detail="User not found")
+    if expected_account_ref is None and db.scalar(text(
+        "SELECT EXISTS (SELECT 1 FROM account_deletion_events WHERE user_id=:uid)"
+    ), {"uid": user_id}):
+        # A legacy retry cannot distinguish this replacement from its old target.
+        raise ApplicationError(status_code=409, detail="Account changed; reload its profile")
+    if db.bind is not None and db.bind.dialect.name == "postgresql":
+        # Serialize the history check with claims and legacy outbox inserts.
+        # SQLite's account UPDATE above already holds its writer lock.
+        db.execute(text("LOCK TABLE booking_notification_outbox IN EXCLUSIVE MODE"))
+    unresolved_history = db.scalar(text("""
+        SELECT EXISTS (
+            SELECT 1 FROM booking_notification_outbox event
+            LEFT JOIN booking_notification_subjects subject ON subject.outbox_id=event.id
+            WHERE subject.outbox_id IS NULL
+        )
+    """))
+    if unresolved_history:
+        raise ApplicationError(status_code=409, detail=(
+            "Сначала требуется сверить историю уведомлений. "
+            "Удаление аккаунта пока не выполнено."
+        ))
     account_ref = db.scalar(
         text("SELECT lifecycle_id FROM account_lifecycles WHERE user_id=:uid"),
         {"uid": user_id},
@@ -702,6 +717,7 @@ def _build_student_profile(
     db: Session,
     *,
     account_ref: str | None = None,
+    content=None,
 ) -> dict:
     start_date, end_date = bookings.month_bounds(year, month)
     booking_rows = (
@@ -743,7 +759,7 @@ def _build_student_profile(
         .scalar()
         or 0
     )
-    learning_progress, completed_lessons = _build_learning_progress(user.id, db)
+    learning_progress, completed_lessons = _build_learning_progress(user.id, db, content=content)
     data = _serialize_account(user, completed_lessons=completed_lessons)
     if account_ref is not None:
         data["account_ref"] = account_ref
@@ -812,16 +828,16 @@ def _guarded_profile_user(db: Session, user_id: int):
     return result
 
 
-def student_profile(user_id: int, actor: Principal, year: int, month: int, db: Session):
+def student_profile(user_id: int, actor: Principal, year: int, month: int, db: Session, *, content=None):
     user_db, account_ref = _guarded_profile_user(db, user_id)
     return {
         "profile": _build_student_profile(
-            user_db, year, month, db, account_ref=account_ref
+            user_db, year, month, db, account_ref=account_ref, content=content
         )
     }
 
 
-def change_quota(user_id: int, payload: QuotaChange, actor: Principal, db: Session):
+def change_quota(user_id: int, payload: QuotaChange, actor: Principal, db: Session, *, content=None):
     user_db = db.query(models.User).filter(models.User.id == user_id).first()
     if user_db is None:
         raise ApplicationError(status_code=404, detail="User not found")
@@ -832,4 +848,4 @@ def change_quota(user_id: int, payload: QuotaChange, actor: Principal, db: Sessi
         amount=payload.add,
         db=db,
     )
-    return {"profile": _build_student_profile(user_db, payload.year, payload.month, db)}
+    return {"profile": _build_student_profile(user_db, payload.year, payload.month, db, content=content)}

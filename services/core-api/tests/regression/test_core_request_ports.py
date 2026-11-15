@@ -9,27 +9,31 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from pg_business_support import runtime_db, attach_identity
 from fastapi import FastAPI
-from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from pymentor_core.app.context import CompositionRoot
 from pymentor_core.app.dependencies import get_db
 from pymentor_core.adapters.sql import models
-from pymentor_core.app.database import Base
-from tools.lab.storage.fakes import FakeClock
-from tools.lab.storage.fakes import FakeExternalAPI
-from tools.lab.storage.fakes import FakePermissions
-from tools.lab.storage.fakes import FakeQueue
+from support_fakes import FakeClock
+from support_fakes import FakeExternalAPI
+from support_fakes import FakePermissions
+from support_fakes import FakeQueue
 from pymentor_core.adapters.sql.unit_of_work import SqlAlchemyUnitOfWork
 from pymentor_core.modules.identity.api.router import user_router
 from pymentor_core.modules.administration.api.router import admin_router
 from pymentor_core.modules.learning import progress
 from pymentor_core.modules.learning.api import service as courses
 from pymentor_core.modules.learning.api.router import learning_router
+from pg_business_support import PatchedContent
+
+
+@pytest.fixture(autouse=True)
+def patched_course_content(monkeypatch):
+    monkeypatch.setattr(courses, "_LocalContent", PatchedContent(courses))
 
 
 def make_root(factory):
@@ -74,11 +78,12 @@ async def request(app, method, path, *, cookie=None, payload=None):
 @pytest.fixture
 def repository_app():
     app = FastAPI()
+    attach_identity(app, {"admin": 1, "student": 2})
     app.include_router(user_router, prefix="/user")
     app.include_router(admin_router, prefix="/admin")
     app.include_router(learning_router, prefix="/learning")
     student = SimpleNamespace(
-        id=2, username="Student", email="student@example.test", is_admin=False,
+        id=2, username="Student", email="student@example.test", is_admin=False, verified=False,
         subscription_until=datetime.now(timezone.utc) + timedelta(days=2), subscription_plan="pro",
     )
     administrator = SimpleNamespace(id=1, is_admin=True)
@@ -154,6 +159,7 @@ def test_http_completion_uses_substituted_repositories_and_rolls_back_race(repos
     h = repository_app
     lesson = {
         "id": "lesson-stable", "access": "free", "source_file": "legacy/lesson.md",
+        "progress_policy": {"completion": "lesson", "revision_tracked": False},
         "self_check": True, "tasks": [], "manual_practice": [],
     }
     monkeypatch.setattr(courses, "find_lesson", lambda _lesson_id: lesson)
@@ -168,7 +174,8 @@ def test_http_completion_uses_substituted_repositories_and_rolls_back_race(repos
         assert (added.user_id, added.lesson_id) == (2, "lesson-stable")
         h.uows[-1].commit.assert_called_once_with()
 
-        lesson.update(source_file="chapter_01/block_01/lesson.md", manual_practice=[{"title": "check"}])
+        lesson.update(source_file="chapter_01/block_01/lesson.md", manual_practice=[{"title": "check"}],
+                      progress_policy={"completion": "cards", "revision_tracked": True})
         existing = SimpleNamespace(task_revision="old", completed_at=None)
         task_repo = h.repositories[models.UserTaskProgress]
         task_repo.find_one.side_effect = [None, existing]
@@ -186,16 +193,14 @@ def test_http_completion_uses_substituted_repositories_and_rolls_back_race(repos
     asyncio.run(exercise())
 
 
-def test_http_admin_failed_commit_rolls_back_on_session_close():
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    Base.metadata.create_all(engine)
-    sessions = sessionmaker(bind=engine, autoflush=False)
+def test_http_admin_failed_commit_rolls_back_on_session_close(runtime_db):
+    sessions = runtime_db
+    engine = runtime_db.kw["bind"]
     with sessions() as db:
         db.add_all([
             models.User(id=1, username="Admin", email="admin@example.test", _password_hash="test", is_admin=True),
             models.User(id=2, username="Student", email="student@example.test", _password_hash="test",
                         subscription_until=datetime(2099, 1, 1, tzinfo=timezone.utc), subscription_plan="pro"),
-            models.Session(user_id=1, session_token="admin"),
         ])
         db.commit()
     closed = []
@@ -207,6 +212,7 @@ def test_http_admin_failed_commit_rolls_back_on_session_close():
 
     failing_sessions = sessionmaker(bind=engine, class_=FailingSession, autoflush=False)
     app = FastAPI()
+    attach_identity(app, {"admin": 1, "student": 2})
     app.include_router(admin_router, prefix="/admin")
     app.state.composition_root = make_root(SqlAlchemyUnitOfWork)
 
@@ -218,26 +224,22 @@ def test_http_admin_failed_commit_rolls_back_on_session_close():
                 closed.append(db)
 
     app.dependency_overrides[get_db] = override_db
-    try:
-        with pytest.raises(RuntimeError, match="forced commit failure"):
-            asyncio.run(request(
-                app, "PATCH", "/admin/users/2/subscription", cookie="admin", payload={"days": None}
-            ))
-        assert len(closed) == 1
-        with sessions() as db:
-            user = db.query(models.User).filter_by(id=2).one()
-            assert user.subscription_until is not None and user.subscription_plan == "pro"
-    finally:
-        engine.dispose()
+    with pytest.raises(RuntimeError, match="forced commit failure"):
+        asyncio.run(request(
+            app, "PATCH", "/admin/users/2/subscription", cookie="admin", payload={"days": None}
+        ))
+    assert len(closed) == 1
+    with sessions() as db:
+        user = db.query(models.User).filter_by(id=2).one()
+        assert user.subscription_until is not None and user.subscription_plan == "pro"
 
 
-def test_http_duplicate_completion_rolls_back_the_request_session(monkeypatch):
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    Base.metadata.create_all(engine)
-    sessions = sessionmaker(bind=engine, autoflush=False)
+def test_http_duplicate_completion_rolls_back_the_request_session(monkeypatch, runtime_db):
+    sessions = runtime_db
+    engine = runtime_db.kw["bind"]
     with sessions() as db:
         db.add(models.User(id=2, username="Student", email="student@example.test", _password_hash="test"))
-        db.add(models.Session(user_id=2, session_token="student"))
+        db.flush()
         db.add(models.UserLessonProgress(user_id=2, lesson_id="lesson-stable"))
         db.commit()
     rollbacks = []
@@ -248,6 +250,7 @@ def test_http_duplicate_completion_rolls_back_the_request_session(monkeypatch):
             super().rollback()
 
     app = FastAPI()
+    attach_identity(app, {"admin": 1, "student": 2})
     app.include_router(learning_router, prefix="/learning")
     app.state.composition_root = make_root(TrackingUow)
 
@@ -259,28 +262,24 @@ def test_http_duplicate_completion_rolls_back_the_request_session(monkeypatch):
     app.dependency_overrides[get_db] = override_db
     monkeypatch.setattr(courses, "find_lesson", lambda _: {
         "id": "lesson-stable", "access": "free", "source_file": "legacy/lesson.md",
+        "progress_policy": {"completion": "lesson", "revision_tracked": False},
         "self_check": True, "tasks": [], "manual_practice": [],
     })
-    try:
-        status, body = asyncio.run(request(
-            app, "POST", "/learning/lessons/lesson-stable/complete", cookie="student"
-        ))
-        assert status == 200 and body["completed"] is True
-        assert len(rollbacks) == 1
-        with sessions() as db:
-            assert db.query(models.UserLessonProgress).count() == 1
-            assert db.query(models.BookingQuota).count() == 0
-    finally:
-        engine.dispose()
+    status, body = asyncio.run(request(
+        app, "POST", "/learning/lessons/lesson-stable/complete", cookie="student"
+    ))
+    assert status == 200 and body["completed"] is True
+    assert len(rollbacks) == 1
+    with sessions() as db:
+        assert db.query(models.UserLessonProgress).count() == 1
+        assert db.query(models.BookingQuota).count() == 0
 
 
-def test_http_submit_uses_a_fresh_worker_session_and_substituted_task_repository(monkeypatch):
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    Base.metadata.create_all(engine)
-    sessions = sessionmaker(bind=engine, autoflush=False)
+def test_http_submit_uses_a_fresh_worker_session_and_substituted_task_repository(monkeypatch, runtime_db):
+    sessions = runtime_db
+    engine = runtime_db.kw["bind"]
     with sessions() as db:
         db.add(models.User(id=2, username="Student", email="student@example.test", _password_hash="test"))
-        db.add(models.Session(user_id=2, session_token="student"))
         db.commit()
     active, opened, writers, repositories, commits = [], [], [], [], []
 
@@ -312,6 +311,7 @@ def test_http_submit_uses_a_fresh_worker_session_and_substituted_task_repository
     task = {"id": "task-stable", "revision": "a" * 64}
     lesson = {
         "id": "lesson-stable", "access": "registered", "source_file": "chapter_01/block_01/lesson.md",
+        "progress_policy": {"completion": "cards", "revision_tracked": True},
         "tasks": [task], "manual_practice": [{"title": "manual"}],
     }
     monkeypatch.setattr(courses, "SessionLocal", Scope)
@@ -328,52 +328,50 @@ def test_http_submit_uses_a_fresh_worker_session_and_substituted_task_repository
 
     monkeypatch.setattr(courses, "_execute_task", execute)
     app = FastAPI()
+    attach_identity(app, {"admin": 1, "student": 2})
     app.include_router(learning_router, prefix="/learning")
     app.state.composition_root = make_root(TrackingUow)
-    try:
-        async def exercise():
-            body = {"code": "pass", "task_revision": task["revision"]}
-            assert (await request(app, "POST", "/learning/tasks/task-stable/submit", payload=body))[0] == 403
-            assert executions == [] and writers == []
-            status, response = await request(
-                app, "POST", "/learning/tasks/task-stable/submit", cookie="student", payload=body
-            )
-            assert status == 200 and response["ok"] is True
-            status, response = await request(
-                app, "POST", "/learning/tasks/task-stable/submit", cookie="student", payload=body
-            )
-            assert status == 200 and response["ok"] is True
-            state.success = False
-            status, response = await request(
-                app, "POST", "/learning/tasks/task-stable/submit", cookie="student", payload=body
-            )
-            assert status == 200 and response["ok"] is False
-            state.success = True
-            task.update(id="second-task", revision="b" * 64)
-            lesson.update(source_file="foundations/block_03/lesson.md", manual_practice=[])
-            status, response = await request(
-                app, "POST", "/learning/tasks/second-task/submit", cookie="student",
-                payload={"code": "pass", "task_revision": task["revision"]},
-            )
-            assert status == 200 and response["ok"] is True
-
-        asyncio.run(exercise())
-        assert len(opened) == 8 and len(writers) == 3
-        assert writers[0] is opened[2] and opened[1] is not opened[2]
-        assert writers[1] is opened[4] and opened[3] is not opened[4]
-        assert writers[2] is opened[7] and opened[6] is not opened[7]
-        assert commits == [writers[0], writers[2], writers[2]]
-        assert active == []
-        assert [kind for kind, _ in repositories] == [
-            models.UserTaskProgress, models.UserTaskProgress,
-            models.UserTaskProgress, models.UserLessonProgress,
-        ]
-        repositories[0][1].find_one.assert_called_once_with(user_id=2, task_id="task-stable")
-        repositories[0][1].add.assert_called_once()
-        repositories[1][1].add.assert_not_called()
-        with sessions() as db:
-            saved = {row.task_id: row.task_revision for row in db.query(models.UserTaskProgress).all()}
-            assert saved == {"task-stable": "a" * 64, "second-task": "b" * 64}
-            assert db.query(models.UserLessonProgress).filter_by(user_id=2, lesson_id="lesson-stable").count() == 1
-    finally:
-        engine.dispose()
+    async def exercise():
+        body = {"code": "pass", "task_revision": task["revision"]}
+        assert (await request(app, "POST", "/learning/tasks/task-stable/submit", payload=body))[0] == 403
+        assert executions == [] and writers == []
+        status, response = await request(
+            app, "POST", "/learning/tasks/task-stable/submit", cookie="student", payload=body
+        )
+        assert status == 200 and response["ok"] is True
+        status, response = await request(
+            app, "POST", "/learning/tasks/task-stable/submit", cookie="student", payload=body
+        )
+        assert status == 200 and response["ok"] is True
+        state.success = False
+        status, response = await request(
+            app, "POST", "/learning/tasks/task-stable/submit", cookie="student", payload=body
+        )
+        assert status == 200 and response["ok"] is False
+        state.success = True
+        task.update(id="second-task", revision="b" * 64)
+        lesson.update(source_file="foundations/block_03/lesson.md", manual_practice=[],
+                      progress_policy={"completion": "lesson", "revision_tracked": True})
+        status, response = await request(
+            app, "POST", "/learning/tasks/second-task/submit", cookie="student",
+            payload={"code": "pass", "task_revision": task["revision"]},
+        )
+        assert status == 200 and response["ok"] is True
+    asyncio.run(exercise())
+    assert len(opened) == 8 and len(writers) == 3
+    assert writers[0] is opened[2] and opened[1] is not opened[2]
+    assert writers[1] is opened[4] and opened[3] is not opened[4]
+    assert writers[2] is opened[7] and opened[6] is not opened[7]
+    assert commits == [writers[0], writers[2], writers[2]]
+    assert active == []
+    assert [kind for kind, _ in repositories] == [
+        models.UserTaskProgress, models.UserTaskProgress,
+        models.UserTaskProgress, models.UserLessonProgress,
+    ]
+    repositories[0][1].find_one.assert_called_once_with(user_id=2, task_id="task-stable", course_id="backend")
+    repositories[0][1].add.assert_called_once()
+    repositories[1][1].add.assert_not_called()
+    with sessions() as db:
+        saved = {row.task_id: row.task_revision for row in db.query(models.UserTaskProgress).all()}
+        assert saved == {"task-stable": "a" * 64, "second-task": "b" * 64}
+        assert db.query(models.UserLessonProgress).filter_by(user_id=2, lesson_id="lesson-stable").count() == 1

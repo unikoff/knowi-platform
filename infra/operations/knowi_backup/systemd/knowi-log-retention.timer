@@ -1,0 +1,9 @@
+[Unit]
+Description=Knowi container log retention checks
+[Timer]
+OnCalendar=*-*-* *:00/10:00
+AccuracySec=30s
+Persistent=true
+Unit=knowi-log-retention.service
+[Install]
+WantedBy=timers.target

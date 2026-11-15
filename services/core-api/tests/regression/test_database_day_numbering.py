@@ -6,8 +6,10 @@ from pathlib import Path
 from urllib.parse import unquote
 
 from pymentor_core.adapters.course_local import catalog as content
-from content.materials import chapter_04 as course
-from content.materials.chapter_04.numbering import LESSON_NUMBERS
+from pymentor_core.adapters.course_local.runtime import default_runtime as _course_runtime
+_authoring = _course_runtime().context("backend").get_authoring
+course = _authoring("chapter_04")
+LESSON_NUMBERS = getattr(_authoring("chapter_04.numbering"), "LESSON_NUMBERS")
 
 
 NUMBERS = ["61","62","62.1","63","63.1","64","65","65.1","65.2","66","66.1","67","67.1","68","68.1","68.2","69","69.1","70","70.1","70.2","71","71.1","72","72.1","73","73.1","74","74.1","75","75.1","76","76.1","77","78","79","80"]
@@ -54,7 +56,7 @@ class DatabaseDayNumberingTests(unittest.TestCase):
         self.assertFalse(any(course.CODE_TASKS.values()))
 
     def test_frontend_pages_and_markdown_are_bound_once(self):
-        root = self.repo / "frontend/src/lessons/chapter_04"
+        root = self.repo / "courses/backend/frontend/course/chapter_04"
         entries = dict(re.findall(r'"([^"]+\.md)": "([^"]+)"', (root / "index.ts").read_text(encoding="utf-8")))
         self.assertEqual(len(entries), 38)
         self.assertEqual(len(set(entries.values())), 38)
@@ -78,7 +80,7 @@ class DatabaseDayNumberingTests(unittest.TestCase):
         self.assertEqual(list(LESSON_NUMBERS.values()), NUMBERS)
 
     def test_handoff_references_use_the_actual_predecessor(self):
-        root = self.repo / "frontend/src/lessons/chapter_04"
+        root = self.repo / "courses/backend/frontend/course/chapter_04"
         for page, required in (
             ("block_14/Lesson70_1.tsx", "B70"),
             ("block_15/Lesson74_1.tsx", "B74"),

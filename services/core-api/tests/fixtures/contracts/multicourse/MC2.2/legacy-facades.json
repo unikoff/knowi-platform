@@ -1,0 +1,826 @@
+{
+  "canonical": "courses/backend/backend/practice",
+  "restoration": "Copy canonical Python back to the same legacy relative paths only inside this isolated copy",
+  "files": [
+    {
+      "path": "__init__.py",
+      "authoring_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "facade_sha256": "220a5083e675763bfd35a361793b2d39d1c8e7763abefd6e5c9849fe96beea75"
+    },
+    {
+      "path": "chapter_01/__init__.py",
+      "authoring_sha256": "5b0bbc6ccc8f75648115f9694945c44ad14a7c48ba6aa15f3bec722ce7b3c3db",
+      "facade_sha256": "95bacde2da951cf902008be8471fc1692e4fca784a278d69b423bc4b3079014d"
+    },
+    {
+      "path": "chapter_01/block_00/__init__.py",
+      "authoring_sha256": "62893c55e322598c34f9d936f8d9cd08b657c9b55928deb649bcc97bcaf329d8",
+      "facade_sha256": "7943541685fdf08d64fc55c81a627ac24d0ff8176f62834c92be986824a6b722"
+    },
+    {
+      "path": "chapter_01/block_00/manual.py",
+      "authoring_sha256": "589d2b10ed67ab3e92380ed9147c73a5accbd597ad59b84c69c4cee97c8bf772",
+      "facade_sha256": "c3c4a0356ac87173cee301d44028f0d73ec95f3fefc0636e96bce42f879dfd3d"
+    },
+    {
+      "path": "chapter_01/block_01/__init__.py",
+      "authoring_sha256": "027498f7d182d0207d89684f910d61b91ab141be144bc0abe981e8254a395634",
+      "facade_sha256": "b09fd55b84f06c24780bbf08edd1cdcde632dfbe63fa7c254c41e2a0322907fc"
+    },
+    {
+      "path": "chapter_01/block_01/code_tasks.py",
+      "authoring_sha256": "1a521ec40135815b0d20b84f880c5d694438e21ce7c2520b02955d906357af4a",
+      "facade_sha256": "2951ee4d679a3302bd976930b7b1e1a4e6447ff838f48bbce7c792c058d29339"
+    },
+    {
+      "path": "chapter_01/block_01/manual.py",
+      "authoring_sha256": "0b2a46ac89e655ff5133a2fbc1d23c7ded5a675ac346336915388be22e32fe59",
+      "facade_sha256": "10f065579c7e6b62ffafacf3630edf4d758e3ab7ba98cd699d44de3b0d743ded"
+    },
+    {
+      "path": "chapter_01/block_02/__init__.py",
+      "authoring_sha256": "79c74b804bc87e97ed824116c7db1657da5d8e8a62b95aebd2b667131c62a0e3",
+      "facade_sha256": "8187a4f0e5e962db9c75e75fa0577b840533c4804bd48f9d7500ef8849b8939d"
+    },
+    {
+      "path": "chapter_01/block_02/code_tasks.py",
+      "authoring_sha256": "c8297e31c64a05b86e75a500d6f8e7e08147dd9d06ea74e3738e9c88a031b860",
+      "facade_sha256": "73b1aaab3843d4830de6e10b0ac50b30b2f8b1a89afc197638e4cdc7197946d9"
+    },
+    {
+      "path": "chapter_01/block_02/manual.py",
+      "authoring_sha256": "d1a9b2b46fbc044ed33aa2e6991ac20935422db5396c1839217337049a832e6d",
+      "facade_sha256": "91a7776ffe2bc3e261f751541384038e5564f8cab8704d869406a27353986dff"
+    },
+    {
+      "path": "chapter_01/block_03/__init__.py",
+      "authoring_sha256": "cd44e674fd6a7359a3ddf4c1b5adb2e9f658a63afdbe5ff55aaca38731ee2617",
+      "facade_sha256": "1695bf642eeb7b72f6b170fcff5f45a13f299f327b288654d6d41ef83b54fc06"
+    },
+    {
+      "path": "chapter_01/block_03/code_tasks.py",
+      "authoring_sha256": "9a64dbd3894e71a81f11571c307e1addd413b137f9609e53e363e7d49cdd0da1",
+      "facade_sha256": "eebbff0077e32c27f43d52dddac134b27f44b3b6d412181e9b34cdec39f2e946"
+    },
+    {
+      "path": "chapter_01/block_03/manual.py",
+      "authoring_sha256": "ae129603ace411ab5a662c4abd8a8adc49d7520043244f255166b7ae471e106f",
+      "facade_sha256": "2bb8f09b88ca8ec8f38b2f9b9dc125678651ded4e8b888ddbdfd776ef83f33dc"
+    },
+    {
+      "path": "chapter_01/block_04/__init__.py",
+      "authoring_sha256": "e34e9c0621e275e125e1ec736165542c3321aa29e4656467c7ec953bab90082c",
+      "facade_sha256": "b57acf3da2d03c8d8dc1c6f5fc310453fd19618a9d1398c434bf830d5620f3e5"
+    },
+    {
+      "path": "chapter_01/block_04/code_tasks.py",
+      "authoring_sha256": "a59d43767ae776e9871c20460c8e5e3463633bdc4c5c3dcec74c4efa0571be57",
+      "facade_sha256": "e055290b289424ca1f1ab6f4300b1d665a1c758455316a72ee1010a78f85d806"
+    },
+    {
+      "path": "chapter_01/block_04/manual.py",
+      "authoring_sha256": "c4a1cc1e24ef9cd71d4b720352c184e63f97295b312fde7e6822d8063e6951ab",
+      "facade_sha256": "01b426cb5d14f35cfb8043cef12049d14d27dbfa6b07651ce81b72c711bdad7d"
+    },
+    {
+      "path": "chapter_01/numbering.py",
+      "authoring_sha256": "1fceba6bffac5409627dd9a293b7ef1572eade5c51c3b965053ec9738a0c65c9",
+      "facade_sha256": "92d378270e221268d9c75cacc349eeaac4695f18516736e4eefa79c8cd66f0b1"
+    },
+    {
+      "path": "chapter_01_archive/__init__.py",
+      "authoring_sha256": "98f39eab05dcfe4f86b58cf81899f951aa208f6bf29fcffdb72fa03f7ecd0149",
+      "facade_sha256": "3fcdd75b3a0a5ac8fc314ed6ee22c73008a2d6ecb3facf7f28fd42207ec0d775"
+    },
+    {
+      "path": "chapter_01_archive/block_00/__init__.py",
+      "authoring_sha256": "62893c55e322598c34f9d936f8d9cd08b657c9b55928deb649bcc97bcaf329d8",
+      "facade_sha256": "2c99848135213be84f86dcc67194cf15eaba9e0ae2ac46c141581d440292abaf"
+    },
+    {
+      "path": "chapter_01_archive/block_00/manual.py",
+      "authoring_sha256": "589d2b10ed67ab3e92380ed9147c73a5accbd597ad59b84c69c4cee97c8bf772",
+      "facade_sha256": "d24bd12742e5a9ac1680120ddf7cda33e96eb73cf7f570ba945cc028bafe7c7f"
+    },
+    {
+      "path": "chapter_01_archive/block_01/__init__.py",
+      "authoring_sha256": "027498f7d182d0207d89684f910d61b91ab141be144bc0abe981e8254a395634",
+      "facade_sha256": "97a04299b6df1ef9d88cc3b29c78114e7cd72247d3b3aaa93b2839f18e56708d"
+    },
+    {
+      "path": "chapter_01_archive/block_01/code_tasks.py",
+      "authoring_sha256": "d6ba9298d38f2ed509e927d6954d15b22f209f998e37ee8604436f3096a78cd7",
+      "facade_sha256": "5ab76476b60948d84fbe77e792aa6e70bc4ea69d6f7f80117d4c2aafc05f8f37"
+    },
+    {
+      "path": "chapter_01_archive/block_01/manual.py",
+      "authoring_sha256": "bab3521ae7f1c086fcb0cb6e34fb437b5467156103defbf7c029b6c8bccbbbf8",
+      "facade_sha256": "e41aee8e535e8e4f72211616fc01bdcaed128c4bb294b4e5d70c0a9945576c82"
+    },
+    {
+      "path": "chapter_01_archive/block_02/__init__.py",
+      "authoring_sha256": "79c74b804bc87e97ed824116c7db1657da5d8e8a62b95aebd2b667131c62a0e3",
+      "facade_sha256": "712f4ed4a19d5a97f9c024d8f77189b150da03fb1f1fe204b5245a0b5058bece"
+    },
+    {
+      "path": "chapter_01_archive/block_02/code_tasks.py",
+      "authoring_sha256": "da1d7f4736bb14a69a9c0003e1daf73c8ff897f9eb12184c511e1f2ee82c369f",
+      "facade_sha256": "f4ba11c8befcfb6c446e783a1a5d60ff1b0506186d7184449b7a16c5f688606c"
+    },
+    {
+      "path": "chapter_01_archive/block_02/manual.py",
+      "authoring_sha256": "3f0111780bec855003448050a21caaf76be39b48450a3fb0cb983ba4d4b5dbec",
+      "facade_sha256": "33cb2d2330c030db7c6edb84ed5a95cd75330e46c8e33215a7e12eee06894acb"
+    },
+    {
+      "path": "chapter_01_archive/block_03/__init__.py",
+      "authoring_sha256": "cd44e674fd6a7359a3ddf4c1b5adb2e9f658a63afdbe5ff55aaca38731ee2617",
+      "facade_sha256": "13b1f4740c48059ab8956c82f558c5428769b67481aba8d54304e4ba49f02a36"
+    },
+    {
+      "path": "chapter_01_archive/block_03/code_tasks.py",
+      "authoring_sha256": "ed39860f9f6139d6a63980e3cdb68c6d9c9511ce76dedafd69e66586c70f4695",
+      "facade_sha256": "92a1d8906a0b08bce58e28606489097a0b2d14d72ce7c69f1b6f413ec01000dd"
+    },
+    {
+      "path": "chapter_01_archive/block_03/manual.py",
+      "authoring_sha256": "d0144674aa9ca3950c4dd3f2e5d6838ea4f8ed6bde3da67b365e4d75cd80e845",
+      "facade_sha256": "ae0d6ec30c0f9a095f3406fa19f683cca7ac962af7da52036f2b2a1a710b74a6"
+    },
+    {
+      "path": "chapter_01_archive/block_04/__init__.py",
+      "authoring_sha256": "e34e9c0621e275e125e1ec736165542c3321aa29e4656467c7ec953bab90082c",
+      "facade_sha256": "1e7c5fa1722191ef73f967f578a3a55e09c04f79d3c0a94145c606489c74e405"
+    },
+    {
+      "path": "chapter_01_archive/block_04/code_tasks.py",
+      "authoring_sha256": "97e61aadf676c5ca276bd703ecc42f02120b3cd9cc20e8418005557469de3ca2",
+      "facade_sha256": "0f33b988f40a2b11f647eee89092509295d1d6a5c9b526a8a08c09bbe4bf5509"
+    },
+    {
+      "path": "chapter_01_archive/block_04/manual.py",
+      "authoring_sha256": "290e5bd37bfd7ee0736f00e23c4f510aad287f9c5992ad4223dc3ce896e4e033",
+      "facade_sha256": "7959dce71c8358d972631d1b3e66a0b9807a242de6c5e50ece8c4c9ee987f61c"
+    },
+    {
+      "path": "chapter_02/__init__.py",
+      "authoring_sha256": "0fbd922ee33daf2326298ef5948ae44f8f505a68662e1308074665c7a0fa2955",
+      "facade_sha256": "0f3362cfa0706d7b3d728e1538edfd9cd4d995a3037cd0779191ac317a01f72b"
+    },
+    {
+      "path": "chapter_02/block_00/__init__.py",
+      "authoring_sha256": "62893c55e322598c34f9d936f8d9cd08b657c9b55928deb649bcc97bcaf329d8",
+      "facade_sha256": "7259d334e1410918fe2d3076696791d11b176c2c1f1581ec525fd31a8450a8f4"
+    },
+    {
+      "path": "chapter_02/block_00/manual.py",
+      "authoring_sha256": "589d2b10ed67ab3e92380ed9147c73a5accbd597ad59b84c69c4cee97c8bf772",
+      "facade_sha256": "c0ef5bd6e2f069841fdf35d639091d7a10d73c1a83308ce15afd92c562289f21"
+    },
+    {
+      "path": "chapter_02/block_05/__init__.py",
+      "authoring_sha256": "71509e6dfdb2fd3ce27c12d74a6b4ba86771661a24f32a91faace38f6adb8818",
+      "facade_sha256": "4c5159191a37abb0618399f5c05a79fa438651dee3edd7b6a5ccbfcef511dcf6"
+    },
+    {
+      "path": "chapter_02/block_05/code_tasks.py",
+      "authoring_sha256": "271bfc689798846c31565a0ffd01590887e460b93d741859887209457d6cede9",
+      "facade_sha256": "54eba332a145b05821090c15df66a839de8e0d7e6344c3ec6d7229eb9a949aa6"
+    },
+    {
+      "path": "chapter_02/block_05/manual.py",
+      "authoring_sha256": "4a50fc4d150a476f552098c35c694abfbadadbe8a5a78951c2439f481d35c688",
+      "facade_sha256": "6835140b4ff875c3229e101cc95ac484b9d15f2af6e1eb23ae09198c6554f022"
+    },
+    {
+      "path": "chapter_02/block_06/__init__.py",
+      "authoring_sha256": "199a0fef6555974374ca53ab65d61463d50a98272ef04aad7dc566d0b6f1870b",
+      "facade_sha256": "ed658809ed166c72c6723a720f5dcd4fcbe600b550a2d4c29c54e15506a7ee9a"
+    },
+    {
+      "path": "chapter_02/block_06/code_tasks.py",
+      "authoring_sha256": "b108a44f7e07e615550dc699f1fbfe53ae998e02a29d879ecca9a2c863375921",
+      "facade_sha256": "bf72675d040f0440deda7767495a7b5c8368c5b399affc527938e7b725e2746c"
+    },
+    {
+      "path": "chapter_02/block_06/manual.py",
+      "authoring_sha256": "df43d617ae065ec64bdb0d13c6b5111015c8b622343403b8469c29427dc09a53",
+      "facade_sha256": "0654a19ea653869b13fed1fda59c8fa1b5c6c3a602dbc0b76dc297f2324e94c0"
+    },
+    {
+      "path": "chapter_02/block_07/__init__.py",
+      "authoring_sha256": "89c8b1abcabca9916523524fd8dad6dfb4953b371886743e317484fa9fdcd203",
+      "facade_sha256": "166fbf62ec7836967be0fefdd1dc44d7ec19ea97462a22900ce98968d8277167"
+    },
+    {
+      "path": "chapter_02/block_07/code_tasks.py",
+      "authoring_sha256": "0e2a174156e3bfae934fdac4d4c9cba91cbad679193fedfcba5b22a8ad4b0959",
+      "facade_sha256": "8befc211d31808ab45c84d28bcbdb1470b2c6e40b6248d7e2e6bfabc281994a9"
+    },
+    {
+      "path": "chapter_02/block_07/manual.py",
+      "authoring_sha256": "41de3da5d62fc1d388e8ab71125cf8872ae7391186f3e4203e525edee28d7040",
+      "facade_sha256": "9fa97984f824675a9ab14ccbcfd6d8a2f306e200ff0e2e045e0bccaf5e60b8df"
+    },
+    {
+      "path": "chapter_02/block_08/__init__.py",
+      "authoring_sha256": "1a0e0a58532172dd3a17e9b7d33f42ab630606825f899bcaf820bd30ff9ec2d0",
+      "facade_sha256": "18fe950729930670c7712d270fa72b7625d5c9f8526a59d7ca9abb07db5253ec"
+    },
+    {
+      "path": "chapter_02/block_08/code_tasks.py",
+      "authoring_sha256": "04900d50d8c625d88cf35b75eb2b2c79cb09bfaa9ea59286369590b394d37691",
+      "facade_sha256": "7334963d81dd079f4db80960c8a448cc6ccf004ddebb9163c1d350e8c04943f4"
+    },
+    {
+      "path": "chapter_02/block_08/manual.py",
+      "authoring_sha256": "e93b93fb5412fdc4a74502f3b9f81f39023bb74263db8164346d2472023e8204",
+      "facade_sha256": "d331bcf5b5cc08d5cec6880d85486c6b32b6ad95894df1b0e2b50f07bb371118"
+    },
+    {
+      "path": "chapter_02/numbering.py",
+      "authoring_sha256": "f18380fb00f53ac0359385951cb1e9a94b63d20f0a708f2df196f6d630939fe8",
+      "facade_sha256": "739907192c2dc4de4358bd37d23ea7eed415c64a578114e66cf3f46748740278"
+    },
+    {
+      "path": "chapter_03/__init__.py",
+      "authoring_sha256": "93636df9ce68f5ca8af36d6c5b9484647e7ae4130e56f4bf8c2c2b301473ddae",
+      "facade_sha256": "6943979baaed492a00bf4971221ca322662206dab682d681f0fdf1064d312ec8"
+    },
+    {
+      "path": "chapter_03/block_00/__init__.py",
+      "authoring_sha256": "62893c55e322598c34f9d936f8d9cd08b657c9b55928deb649bcc97bcaf329d8",
+      "facade_sha256": "5707b222dc1c3524e3054504a54ff915e18a3b7cb6ced3e9ae59614625320a2a"
+    },
+    {
+      "path": "chapter_03/block_00/manual.py",
+      "authoring_sha256": "589d2b10ed67ab3e92380ed9147c73a5accbd597ad59b84c69c4cee97c8bf772",
+      "facade_sha256": "676ca928f6295a808f6e4e59387ac074f2b093a0a80df24239bd07d2093fa92e"
+    },
+    {
+      "path": "chapter_03/block_09/__init__.py",
+      "authoring_sha256": "1de87bde6d99c0569e357d4cab8ae13f618108c48cb55b197dfa419f61366f8a",
+      "facade_sha256": "f48a03646bc9245ac2b1e5db13fc739d10cbe85f2c1d86df168ce108f36d51d4"
+    },
+    {
+      "path": "chapter_03/block_09/code_tasks.py",
+      "authoring_sha256": "b2b1a34b0c34183f0d32f26df8999dc16593c69bcb5e36e6ff92cd1073cbe076",
+      "facade_sha256": "c215f5b7ebb3e4c3078cb38a5ff94309b7ca657ae83891c3b7fb4e33bda368e9"
+    },
+    {
+      "path": "chapter_03/block_09/manual.py",
+      "authoring_sha256": "d8feeab09656c70e5e478e76b8b65debbba4e2d3faa0564a52e73079d8f97f8b",
+      "facade_sha256": "b6e8a48f51b6fe62f92b2cb2f90fd04effd2565f7284179dfa29776be56ae882"
+    },
+    {
+      "path": "chapter_03/block_10/__init__.py",
+      "authoring_sha256": "885ef708392efc9541b97c04713d919e2c90b0eaade0e2860528b60073c86158",
+      "facade_sha256": "9d6215712d5643a2183d34e070dda91c6edfda227ca20491836a664e5dfd8d6a"
+    },
+    {
+      "path": "chapter_03/block_10/code_tasks.py",
+      "authoring_sha256": "4bb128640c9bc385b8e712dcf9425a6544ff8ce442620229173b0a2d6bada22e",
+      "facade_sha256": "da8ac673683953adb31d02f68c2b7fdafbcf618ea8304102e01b9e5b7f187cec"
+    },
+    {
+      "path": "chapter_03/block_10/manual.py",
+      "authoring_sha256": "cbcaae4afc4ca8dc24eb7b42fdc35699443300fa6879b01719aad78e2f005afe",
+      "facade_sha256": "08a3d4d3330031f6c02c082fcd283b51caf5fda4395df9461b8c4e0ea41eafb9"
+    },
+    {
+      "path": "chapter_03/block_11/__init__.py",
+      "authoring_sha256": "f297ecc758af1f1d0e050c1ee1cd75acca7264063f924d51d2187bb206efc0ce",
+      "facade_sha256": "3fa6567b120ec2e187479ed3ee18bcd29ceb3c5152c1dcddfba02dd754039b0c"
+    },
+    {
+      "path": "chapter_03/block_11/code_tasks.py",
+      "authoring_sha256": "891468ee4032b89c58b2b872dfa1eaf04167bbc3dc908afc8863483ea005fca0",
+      "facade_sha256": "2147d0cccd27db34ddbd6c035d896a3ff2d102d1b795205b9a326163e5e04b3d"
+    },
+    {
+      "path": "chapter_03/block_11/manual.py",
+      "authoring_sha256": "50d27f30a178b962ceae2004eeeeeee4d19d58f0d5693f85af495eaa8e0c5e01",
+      "facade_sha256": "7e6043e1215f0a0deebe913bf1ef581144150bcda0148189adddba0efe0dadd2"
+    },
+    {
+      "path": "chapter_03/block_12/__init__.py",
+      "authoring_sha256": "db78e563da8851ec941151a8b7559d53dcdcf459c369c39b654674fbc9e1b209",
+      "facade_sha256": "984b224096fadfe00b6eca2b87f8d2155b61edc916cf2011869c6abc0dc9a0ec"
+    },
+    {
+      "path": "chapter_03/block_12/code_tasks.py",
+      "authoring_sha256": "bfff449020341d2706c98ebcbdeea9df2030aee7af968739c0ec05b2085570cc",
+      "facade_sha256": "da7569f086092d38ce937a6d338ec5f03e935bcd68894cb1a97332f5a7526c0f"
+    },
+    {
+      "path": "chapter_03/block_12/manual.py",
+      "authoring_sha256": "71f467a0b350b5a2089e7563e2b8e7c066b834d212f1fbdfad1131214db50d23",
+      "facade_sha256": "357048e9f298708a9218cf340a6e1f038cb3178a12b5d1b8ea62b1e9147abb52"
+    },
+    {
+      "path": "chapter_04/__init__.py",
+      "authoring_sha256": "74477691c70716dfeaf5318d6b6ff43dba4842982a20a097e2989c0a843f54e7",
+      "facade_sha256": "2af051c5ba10a12f5c7dd180e66f87046216f9e9b67d0b66635772cc067fc3f5"
+    },
+    {
+      "path": "chapter_04/block_00/__init__.py",
+      "authoring_sha256": "62893c55e322598c34f9d936f8d9cd08b657c9b55928deb649bcc97bcaf329d8",
+      "facade_sha256": "b6b583434ff85faf87829769cb6c8ab4a1a113e26d8f898a2cde351491eeefa3"
+    },
+    {
+      "path": "chapter_04/block_00/manual.py",
+      "authoring_sha256": "589d2b10ed67ab3e92380ed9147c73a5accbd597ad59b84c69c4cee97c8bf772",
+      "facade_sha256": "ed31fdc853a81282a9ea4a414bd7e48743cf8ade0fac5a8e54d2917cb6774551"
+    },
+    {
+      "path": "chapter_04/block_13/__init__.py",
+      "authoring_sha256": "cab3caf0c069bc18831be98899a34b5f9de3034694981f38d914d5712ce78c5f",
+      "facade_sha256": "b26d10727b230da6e521b9bcf1c21d3af808ebf5aa691512c82b4533303309e9"
+    },
+    {
+      "path": "chapter_04/block_13/code_tasks.py",
+      "authoring_sha256": "ccf61feb2b835757eb9199addef025afc2c3e3b735d5bad902c1fa3aedca46b3",
+      "facade_sha256": "e318146673a75d13be9f9725f8f9b854df174cc2fbf43538cda3118dc5a2c957"
+    },
+    {
+      "path": "chapter_04/block_13/manual.py",
+      "authoring_sha256": "5886f0d97f8d67e0e7ac9df866279bd13a47191bf78d283edba2d44cfe221e0b",
+      "facade_sha256": "10a029721f6405466d66fc8c2ba0865e9e41c78e70caa87bf9cb2afbe0a241c1"
+    },
+    {
+      "path": "chapter_04/block_14/__init__.py",
+      "authoring_sha256": "6d11c41a10521996c40a5a982cabc7e469fb3fe6c712606b611fecb98fb28163",
+      "facade_sha256": "8da5a8a1dc006d55cf148d0104879ff56d4147d191b8ddcda96021170fbe01c3"
+    },
+    {
+      "path": "chapter_04/block_14/code_tasks.py",
+      "authoring_sha256": "97e61aadf676c5ca276bd703ecc42f02120b3cd9cc20e8418005557469de3ca2",
+      "facade_sha256": "2570a3c944776aad61f8cd63d32f092f44851d294cef14d10bfde98213db3857"
+    },
+    {
+      "path": "chapter_04/block_14/manual.py",
+      "authoring_sha256": "a5d771dd992af09b789d750dde0084893c1715d3b28ef4b47ed65479ff49a5a4",
+      "facade_sha256": "09e0bb57230a563c9f9f2536e7bd835a071e1f94e453a1d794b5cab83ed724bc"
+    },
+    {
+      "path": "chapter_04/block_15/__init__.py",
+      "authoring_sha256": "f29667c56ac2e8abb62746068d2778771ea16ad80f5598fe80c3659da4a5b5a7",
+      "facade_sha256": "d8b652054d0db1f1da1a6a217f561b5dc151a8209993c8717b433a1867527c54"
+    },
+    {
+      "path": "chapter_04/block_15/code_tasks.py",
+      "authoring_sha256": "97e61aadf676c5ca276bd703ecc42f02120b3cd9cc20e8418005557469de3ca2",
+      "facade_sha256": "f812727a7d9f8830bb1c8463ff0c6f8498df7cb6c57a0de00e0405bcb5b1d6c7"
+    },
+    {
+      "path": "chapter_04/block_15/manual.py",
+      "authoring_sha256": "5a88cc0901c636987168d2f9efb96e90f5b333bc9fe4f1061065dce368ed42b3",
+      "facade_sha256": "4a4d072d36f9e9ac19bf9f8b08bb6cdacea18077a9ae427ee3d9de5941d1ed78"
+    },
+    {
+      "path": "chapter_04/block_16/__init__.py",
+      "authoring_sha256": "f0cb9cd3f8465bccdc025835614d28692939b9c880435ad6b0e398287c6649b8",
+      "facade_sha256": "0d52cfa0a76809f97397d5a9c83f658990578df25404637b0e3c5d155651b33a"
+    },
+    {
+      "path": "chapter_04/block_16/code_tasks.py",
+      "authoring_sha256": "97e61aadf676c5ca276bd703ecc42f02120b3cd9cc20e8418005557469de3ca2",
+      "facade_sha256": "e4bc547bba74f7af879dd4695f3196780895491566aa79aa1a545ccd424a7953"
+    },
+    {
+      "path": "chapter_04/block_16/manual.py",
+      "authoring_sha256": "c7deae6c0c7ea17c2a2ff18e09b16e658a36b929019a60ed43641638176fa090",
+      "facade_sha256": "91046f9562867846174cc47e4bf769033b2e77f97ce7b9b10f60bfc2f48e7134"
+    },
+    {
+      "path": "chapter_04/numbering.py",
+      "authoring_sha256": "d69695c18e82416b74333094a33fdeeef5d48d9e33dc2c7e0a5505d2271c72fa",
+      "facade_sha256": "f358cbdd09040363272b96de492249857ea8f27b0d5c7af9cfabb012112e0821"
+    },
+    {
+      "path": "chapter_05/__init__.py",
+      "authoring_sha256": "ad3307c098458e71f086c932deba6bcb2de09197be5d560f4dcda1e632c8d458",
+      "facade_sha256": "e92e0f70874b08445b7888751d39e68c503945013d48be8aaf9cb30d45685f7b"
+    },
+    {
+      "path": "chapter_05/block_00/__init__.py",
+      "authoring_sha256": "62893c55e322598c34f9d936f8d9cd08b657c9b55928deb649bcc97bcaf329d8",
+      "facade_sha256": "6be78517330ba5f57f9217e21d0cddccce331b4a6b8d5f647dbd6b5277dc9526"
+    },
+    {
+      "path": "chapter_05/block_00/manual.py",
+      "authoring_sha256": "1d6672ecda48fb53fc3eca05b62d75df03efe96056a0257f406264348d7dad34",
+      "facade_sha256": "b05cec0beb9140a5e4ae28f03c6edf6c74d7f28fd04b05583bdda7732674895e"
+    },
+    {
+      "path": "chapter_05/block_17/__init__.py",
+      "authoring_sha256": "030d14f262bd5bf87036dd1935dfd013e7e58656090e30076fdb85614df5225e",
+      "facade_sha256": "abf25e8020b31757ad3efdfb4eec60ffc7d2e6f08b58349d94723768be0ab80b"
+    },
+    {
+      "path": "chapter_05/block_17/code_tasks.py",
+      "authoring_sha256": "7689d06a0a05c401c67e3ef42125c5ff3a2e5fb7970f12193401db8b2e258cc6",
+      "facade_sha256": "763296c268abb2415d57be43707d3116c256b4eccd48d3354a30fc39aa173003"
+    },
+    {
+      "path": "chapter_05/block_17/manual.py",
+      "authoring_sha256": "073f4a0776cd34924daf96ebf19210dde7453edde5296864f8ad5cf94f33e523",
+      "facade_sha256": "22012bbfdce1214da2aaaa02e810672c00aaafe7ce43a2d8a31318ca6b1d13e9"
+    },
+    {
+      "path": "chapter_05/block_17/practice_81.py",
+      "authoring_sha256": "32bd3aa7cb74ee0211a29ee0218f89571bd568fd6640df475867704cfc7aded0",
+      "facade_sha256": "bb1c87b4eecf849472af335110de54ecd929424af5db180cc62833c4ca2f5375"
+    },
+    {
+      "path": "chapter_05/block_17/practice_81_1.py",
+      "authoring_sha256": "b76fe675da4a3eafc253d60cbef82fe5d6b32cfcf0611e2503326e82fea25334",
+      "facade_sha256": "fbb83e00dee56af1e62b4653b7c979944970fb45d261d1db264919a090ca8234"
+    },
+    {
+      "path": "chapter_05/block_17/practice_82.py",
+      "authoring_sha256": "6df68b5d02ff50a56d97db5b77d23e3ec96fde83eb134b5390b2b2a04fd8bad2",
+      "facade_sha256": "79481dc5ca79e35c962e508bb479f77be3a6364c7acf32ff0e799b829e480188"
+    },
+    {
+      "path": "chapter_05/block_17/practice_82_1.py",
+      "authoring_sha256": "91ef226c662c63dbaaf48b60f29d38c2514cba0ef40c8ac294d7788233735149",
+      "facade_sha256": "949a0e4c3bd7a4f1ae4702e9513d1582402cbdd11c55d05814c45b298613058b"
+    },
+    {
+      "path": "chapter_05/block_17/practice_83.py",
+      "authoring_sha256": "1a0c74ab7c1ef0e31b409f5f13e30c504f15737e6f120740b049d24626927f7b",
+      "facade_sha256": "4e361b4a0df2971afa39fe1bfe3dfaab8fae4d683cfaffcd0e92db707fbd6747"
+    },
+    {
+      "path": "chapter_05/block_17/practice_83_1.py",
+      "authoring_sha256": "9ca6b1064c9ffd65d3a55922310ef5c0a5f29a4a5908a2e554c3de4aa814bf34",
+      "facade_sha256": "7c36d5f18ae8344bd37e6e1cc9d6ff94fe3d83b31dea6f08d76b781302130441"
+    },
+    {
+      "path": "chapter_05/block_17/practice_84.py",
+      "authoring_sha256": "85c2c61568259ea208c016d43845b66eb73b7e3575a16447d419e9edf8c88984",
+      "facade_sha256": "134d1479cf0c8543ad12961f90f9fa006f3e7b60084e3b55108257d9a1e780d5"
+    },
+    {
+      "path": "chapter_05/block_17/practice_84_1.py",
+      "authoring_sha256": "05f81b8723beec6809bc97c31c7b7206ae46edf46e5d054dad52cfbf8714626c",
+      "facade_sha256": "d02df99077c4ad2f723cef78f11c4b0eb9258244fdae2931c1c5734f7ec9e1f5"
+    },
+    {
+      "path": "chapter_05/block_17/practice_85.py",
+      "authoring_sha256": "e78705ef3ed163546b450a76b8a2afe0f3abd9e3c05afaa73e0f93b0a0f7e98e",
+      "facade_sha256": "f22f6dfdd4ff1dc7ceb33fd79e323e0f11a1a48bf95cc04981f4cb9c34532533"
+    },
+    {
+      "path": "chapter_05/block_17/practice_85_1.py",
+      "authoring_sha256": "4c164379c94219f9e2d5cdeb0803aee9b0cab49b5c65a15dd8cb4cda3ac39ef8",
+      "facade_sha256": "004bf9d175f0b2cf40de1f86ac75c1846b95a7571bf1f2de0f7fdb895122a901"
+    },
+    {
+      "path": "chapter_05/block_18/__init__.py",
+      "authoring_sha256": "030d14f262bd5bf87036dd1935dfd013e7e58656090e30076fdb85614df5225e",
+      "facade_sha256": "e214c98a6d4e3095e45c5a25858d7fec742bb360d85922a36894ced5a5de27be"
+    },
+    {
+      "path": "chapter_05/block_18/code_tasks.py",
+      "authoring_sha256": "7689d06a0a05c401c67e3ef42125c5ff3a2e5fb7970f12193401db8b2e258cc6",
+      "facade_sha256": "145a18a1c4038636aa96d290d743812275b72a1a2bec49e07319495747573519"
+    },
+    {
+      "path": "chapter_05/block_18/manual.py",
+      "authoring_sha256": "0c3e9a4db99ddb28e963af2d83c5be418f4a6a4209e388fe0ace492ed51a7a93",
+      "facade_sha256": "83351c2f8528e4d60d9a74982ceae35ac43266425a5bf01efd3bc946dad83b73"
+    },
+    {
+      "path": "chapter_05/block_19/__init__.py",
+      "authoring_sha256": "030d14f262bd5bf87036dd1935dfd013e7e58656090e30076fdb85614df5225e",
+      "facade_sha256": "d1ca58d2715c84af22d86ad4616ca549c3ee8e6c95d3eaaf0cb1112b2367f387"
+    },
+    {
+      "path": "chapter_05/block_19/code_tasks.py",
+      "authoring_sha256": "7689d06a0a05c401c67e3ef42125c5ff3a2e5fb7970f12193401db8b2e258cc6",
+      "facade_sha256": "bbd91023cad82294833bc55b724f29c309cfe130ba27f86d35df6c43bdd30a74"
+    },
+    {
+      "path": "chapter_05/block_19/manual.py",
+      "authoring_sha256": "0c3e9a4db99ddb28e963af2d83c5be418f4a6a4209e388fe0ace492ed51a7a93",
+      "facade_sha256": "a0b0571b6957bdee2b49cd8afc1a4c763de6e2b25828f4957b6af7d7683cf81e"
+    },
+    {
+      "path": "chapter_05/block_20/__init__.py",
+      "authoring_sha256": "030d14f262bd5bf87036dd1935dfd013e7e58656090e30076fdb85614df5225e",
+      "facade_sha256": "78265483dac2072560673ac69a8e43c1b313691d5fc4d1133d2caad102a52bf1"
+    },
+    {
+      "path": "chapter_05/block_20/code_tasks.py",
+      "authoring_sha256": "7689d06a0a05c401c67e3ef42125c5ff3a2e5fb7970f12193401db8b2e258cc6",
+      "facade_sha256": "35f7c9264af95cad6768a3dd7b48705cafcc2003bf3b4a363bdd1910bafbb7e8"
+    },
+    {
+      "path": "chapter_05/block_20/manual.py",
+      "authoring_sha256": "0c3e9a4db99ddb28e963af2d83c5be418f4a6a4209e388fe0ace492ed51a7a93",
+      "facade_sha256": "d4d6a78c31911235f199da5615ec9cab851752ddd24ff5900b58e88da94680bd"
+    },
+    {
+      "path": "chapter_06/__init__.py",
+      "authoring_sha256": "98bbbf3fb1872d267728b9a77329edabadbfbe65e96b9ff119749fa18316bfff",
+      "facade_sha256": "ca6c439bac624cb788984aef19516b0feefc5c8997b9111b974dc0755261ee25"
+    },
+    {
+      "path": "chapter_06/block_00/__init__.py",
+      "authoring_sha256": "62893c55e322598c34f9d936f8d9cd08b657c9b55928deb649bcc97bcaf329d8",
+      "facade_sha256": "3ff06485137ac382be62e5d3ade1aa057ff8ed2e3a849bddfa12ad7f002d0416"
+    },
+    {
+      "path": "chapter_06/block_00/manual.py",
+      "authoring_sha256": "589d2b10ed67ab3e92380ed9147c73a5accbd597ad59b84c69c4cee97c8bf772",
+      "facade_sha256": "8aca7f2038d26be7e42c34ffcef7d144faff406e8155cbeb157e838a7f7ab7a9"
+    },
+    {
+      "path": "chapter_06/block_21/__init__.py",
+      "authoring_sha256": "759ae27af8f509eeba183d0e0593a33fb93521bd531016503f280854656304bf",
+      "facade_sha256": "1ee7bd8bcd2fb2d0534912c4db7ee35055c6d989299991b9a076252757174129"
+    },
+    {
+      "path": "chapter_06/block_21/code_tasks.py",
+      "authoring_sha256": "46015238217e387f1162dca00d27cedcb63149767f0173a4e8681715f1d9b782",
+      "facade_sha256": "3089a450363c4ee9fbe362cca7947d3deebe27ff858d679dadc34264d59219a5"
+    },
+    {
+      "path": "chapter_06/block_21/manual.py",
+      "authoring_sha256": "7791db7774d5f5460897b9ee71b5c841356c0d7cf758206e6a5d7af04b457d55",
+      "facade_sha256": "5cffc803fbc8fa54e40f67829c3e7b729fe2f36cf598f694db80314e2f3d36ae"
+    },
+    {
+      "path": "chapter_06/block_22/__init__.py",
+      "authoring_sha256": "e104a287245339b7ece7c9885b44e120404726a0007bfd6acef10897a074e9e9",
+      "facade_sha256": "c6fa80ba1e5f94a536f82e5942f9855235014e31b63cff8edfe449be84e466db"
+    },
+    {
+      "path": "chapter_06/block_22/code_tasks.py",
+      "authoring_sha256": "ef94baeed5db1127127945e4242a26933da8fab0cac3fae1eb7e4797a42c073c",
+      "facade_sha256": "347e22bdadcfb64b4edd8a56abd24b5aad5664dbd69442dc35dfc14d1d641c1d"
+    },
+    {
+      "path": "chapter_06/block_22/manual.py",
+      "authoring_sha256": "cf221a5053e2fc959342875efb7bf3a505268c290fd26df6b6abb1486cd04252",
+      "facade_sha256": "4b4148067db3808229aafa7137bee32d802ec44fda8be1865257317715752309"
+    },
+    {
+      "path": "chapter_06/block_23/__init__.py",
+      "authoring_sha256": "99029abb4f5ce8d7a8aa5056c11b5d02c398aa27125436583eff35df60402955",
+      "facade_sha256": "864b40291753893c72520ce44ad943f4436b69f864be1e5329bf1e4b197ea42c"
+    },
+    {
+      "path": "chapter_06/block_23/code_tasks.py",
+      "authoring_sha256": "e058a608964ac9e4a1e85db84843b463f5d19aac8c1a3f5bfbc66f4f5997ce5f",
+      "facade_sha256": "cfe654683830af05ddf4c16b38a3990e16de7200b1d4d5516434b7e4809952e0"
+    },
+    {
+      "path": "chapter_06/block_23/manual.py",
+      "authoring_sha256": "3eb6083241473ad7b03cdcf82ef62f71909e356e9f0c4b5f3d95f4f5f27e337f",
+      "facade_sha256": "54a8751bf53a36ccc23266b373dc946fc16137f4357bd58308e319dfa79c9867"
+    },
+    {
+      "path": "chapter_06/block_24/__init__.py",
+      "authoring_sha256": "13e2c7b6f28a8e4f8cd5ae4c8ffe1c6d2d42d145c91d4820f03c6952edbcd6ed",
+      "facade_sha256": "f1685ec14687b4e0cfd5b951a65dff24f7e318acd50fe79ee31d1324597e6239"
+    },
+    {
+      "path": "chapter_06/block_24/code_tasks.py",
+      "authoring_sha256": "3743dd07719d3dc858dd36f265fae6cb835bff98543e7fc2a067a8f72c1146cb",
+      "facade_sha256": "59e1cb419a14ba9ce0b3f7a62f8343f27ed706062269d3b89a2461600e403324"
+    },
+    {
+      "path": "chapter_06/block_24/manual.py",
+      "authoring_sha256": "4184ef476b3eff038be638729381a6eb8bae6e8d18afee543a9b592c3b290278",
+      "facade_sha256": "8f024f44536c3a09f7205e83776bddcdb3f98c605cde282eff91b6bcb61dfc11"
+    },
+    {
+      "path": "chapter_07/__init__.py",
+      "authoring_sha256": "8632e9c820f9a55d446d2c51b0a489b9fda98a6f871a292b6e637f41f14c65b5",
+      "facade_sha256": "f686f46a0c4cf5b7c052496a860bf993ff9d1d4db1d81ec2423ead84c62ae69e"
+    },
+    {
+      "path": "chapter_07/block_00/__init__.py",
+      "authoring_sha256": "62893c55e322598c34f9d936f8d9cd08b657c9b55928deb649bcc97bcaf329d8",
+      "facade_sha256": "adfdc593131a55814406bb949efcab71f3b96c2a338490ae0c3c63aaada2a0b7"
+    },
+    {
+      "path": "chapter_07/block_00/manual.py",
+      "authoring_sha256": "589d2b10ed67ab3e92380ed9147c73a5accbd597ad59b84c69c4cee97c8bf772",
+      "facade_sha256": "ca0fcd69ad9d9762eecc1be48a8ecf9bb4d03ac1a90111280d7afbc0022f778c"
+    },
+    {
+      "path": "chapter_07/block_25/__init__.py",
+      "authoring_sha256": "258f0e9f3c7055cdf8c657f47ad73c4fc301aa31340a514ea8eea90620afbe9d",
+      "facade_sha256": "4d3591f5574580672477b0dda7c50dba160058b4674b01c76075fc4d0d2a05ee"
+    },
+    {
+      "path": "chapter_07/block_25/code_tasks.py",
+      "authoring_sha256": "cecd82f3edf10dcd177b686e4e9a2035c24e4f37bf6975886b2ba3ea2fe3fd6f",
+      "facade_sha256": "1026dfd1f8b932e2ce10c77cdf7b52aad726ae7ef240bfd2a175d8e81c0c2692"
+    },
+    {
+      "path": "chapter_07/block_25/manual.py",
+      "authoring_sha256": "0290d9d6cf9a5683f27afa653e3c12ad49832d59da16771d77822e31efe76def",
+      "facade_sha256": "bc443f9297fac573179e82178acddca10d74ed4e26cdf76b5bfefb1bab77ab38"
+    },
+    {
+      "path": "chapter_07/block_26/__init__.py",
+      "authoring_sha256": "83051ce560cd9c3ac2e84265fd5f8de10b16999f1dc0c61d73813c9f2eab6ffe",
+      "facade_sha256": "ed357070267b422c29cfb5438583d5b2e367d0bb4957c1f909884c7583cca56c"
+    },
+    {
+      "path": "chapter_07/block_26/code_tasks.py",
+      "authoring_sha256": "df0e50082da151b03b8340546151478b8fd564a1048fcc6fdde7be974de624b7",
+      "facade_sha256": "b4c2fb7fb8b0567218b4114ab68c7c7507d85f0735195ae90842a28c62357e6e"
+    },
+    {
+      "path": "chapter_07/block_26/manual.py",
+      "authoring_sha256": "317300160c7eec87acbca035f981c42598a2a0f3c5373cba1b58972a9a24ae68",
+      "facade_sha256": "201303d2847bd01bf2924875ae62e1d050ee1e2eb6397daae097af323de81cde"
+    },
+    {
+      "path": "chapter_07/block_27/__init__.py",
+      "authoring_sha256": "219f113eaf3fb337f04d421d6293419332a81d51186a0053f5f52b0d854723e7",
+      "facade_sha256": "674ad9ee5deb58cf2749354af95041071dd976a94183e2acf5aac419e96e2d60"
+    },
+    {
+      "path": "chapter_07/block_27/code_tasks.py",
+      "authoring_sha256": "334611c74c531137167e20d8fe915881f5e7c1c20dad286058e6e2d915a6d944",
+      "facade_sha256": "d5493ed3607cbe3f19603afdfce37a634b354ae298930fa76263cc9ed00f9556"
+    },
+    {
+      "path": "chapter_07/block_27/manual.py",
+      "authoring_sha256": "345fc5faef2fac1151a3af75a85643caee7a720dd24627a49ee50e26a2a810d9",
+      "facade_sha256": "59c2aaa0a162b5bd57492c71fe3de7ea2ee2f6afb8b5051b1eea662088fd066c"
+    },
+    {
+      "path": "chapter_07/block_28/__init__.py",
+      "authoring_sha256": "1864e8aa4f6a8c20e96a56b72c9ed077a84afbda01ab4316f656a6ab83f272fc",
+      "facade_sha256": "e9bd211464867db22b66eaa798494a59d2b15131d22dc9e37faf81d4361847bc"
+    },
+    {
+      "path": "chapter_07/block_28/code_tasks.py",
+      "authoring_sha256": "e470be1bb3cca3aa2e4fb1d44316d77cbeb33af002aebe375e638b8705fb352c",
+      "facade_sha256": "aff605c4e8d54a85c6cba4c9fb5f3e520a81f5210c48624dc1c655f7b3dd4407"
+    },
+    {
+      "path": "chapter_07/block_28/manual.py",
+      "authoring_sha256": "43b10cd95d325234f2c03a6eb33cc8bc0c7b17d691e128e65a351e80d1b6168a",
+      "facade_sha256": "390f9ad8571122c016d68e25bf02e631e1690bc61cc8a48cbab508bb8fddbcbd"
+    },
+    {
+      "path": "chapter_08/__init__.py",
+      "authoring_sha256": "29255299743f22ffb37b4f0d7c2461fe9243556d35ab62e02d3f262374d3c88d",
+      "facade_sha256": "de5f352006cb115f5863739699b27d7fccc8b8f4c32f929f4a465cfce0655ad6"
+    },
+    {
+      "path": "chapter_08/block_00/__init__.py",
+      "authoring_sha256": "62893c55e322598c34f9d936f8d9cd08b657c9b55928deb649bcc97bcaf329d8",
+      "facade_sha256": "88ce3cd5db0830ac72edbef4a0519557baf0f076e437f14f1c79ec13b91c4eff"
+    },
+    {
+      "path": "chapter_08/block_00/manual.py",
+      "authoring_sha256": "589d2b10ed67ab3e92380ed9147c73a5accbd597ad59b84c69c4cee97c8bf772",
+      "facade_sha256": "3e4ec44a7ea42fa00962ac0592deb27a90941c48aeec204e61087f9f7bd00b92"
+    },
+    {
+      "path": "chapter_08/block_29/__init__.py",
+      "authoring_sha256": "ddb45e339fb21bba9273de85c9d0e0f47d5943c0c234a5f4610c7262a093797f",
+      "facade_sha256": "ee6257c2d47865612aa2d73eb6e6d6371720e0ce53ccb9d89b2171e1da99f3f7"
+    },
+    {
+      "path": "chapter_08/block_29/code_tasks.py",
+      "authoring_sha256": "2d5b64016b4f48c8b0ba49d9eaf0625d73b090adb345b6873c51e0db55300d70",
+      "facade_sha256": "ff1c463f1f1ba83e98232de6a51a804f016ddcf5dc8004404be8f843697e6a7d"
+    },
+    {
+      "path": "chapter_08/block_29/manual.py",
+      "authoring_sha256": "1ec02bedd127df5b250944cd4f245c5dee6d64bfc9c1d9091c1168d37e502f82",
+      "facade_sha256": "cc76cad17c810321a27148c847aa6cdae78be89c40efc3cafdccd0431384e2a1"
+    },
+    {
+      "path": "chapter_08/block_30/__init__.py",
+      "authoring_sha256": "77ae210d1464937fa913cb0ffe9bd3283079c3651a91323fbc56bdbd9f8bb651",
+      "facade_sha256": "4bd1edc86ce25da1b9ccdf4ebdc77a370aad6ce7cb44cc8257206177ff20cbfb"
+    },
+    {
+      "path": "chapter_08/block_30/code_tasks.py",
+      "authoring_sha256": "a2126f5399ede344d910ff02ead1684b6833dfbf59f71b3c6e8a2923281f33d4",
+      "facade_sha256": "848a6b0b8a4b6540784834706a306ec58db7aa4f8071c7d4e9802943c136d25b"
+    },
+    {
+      "path": "chapter_08/block_30/manual.py",
+      "authoring_sha256": "21aa53cb4e18dc104b16f9a4a8e35b02fb67f0f87ff0f26712e5cd3b633bf304",
+      "facade_sha256": "fe3f8202921617d8d8cbfae430fc2fc2a66d002c4b10ee8d0d752d8e00ae5b47"
+    },
+    {
+      "path": "chapter_08/block_31/__init__.py",
+      "authoring_sha256": "a2a357b2f4ba42d33b03999bc83b7a3ecfe3a8ebbed58fd25c656295dc4ac325",
+      "facade_sha256": "3d75dd744f92ff00f648652eca4f66cbf22191be467e6c2932c93dd2cfd0e12a"
+    },
+    {
+      "path": "chapter_08/block_31/code_tasks.py",
+      "authoring_sha256": "9e0c63a0511436bd92b9c2281667cde2a2153fbea3230754d9b008ad05cb9ae2",
+      "facade_sha256": "2301e7c68eb3cc18314b804ff12448f42d9ce1b5aa718a680c1c6d7cec915624"
+    },
+    {
+      "path": "chapter_08/block_31/manual.py",
+      "authoring_sha256": "bc9c0c4a0fbe747cb13d816cbf9498b18918b1ad84bfabef33686fe52b9efa0d",
+      "facade_sha256": "b432aabe3fbb2dbf3021f4daaa30eef4c884ea17471ee6624bd41bd29fb7676a"
+    },
+    {
+      "path": "chapter_08/block_32/__init__.py",
+      "authoring_sha256": "750b70d776dd7a3ff9dea263fe855e4e34f4daa3f84a8f8872bcd8063eaeec0c",
+      "facade_sha256": "5bb26b9ef1b12627872511569cd546d635bea91c328499a922b0b64941ad83a3"
+    },
+    {
+      "path": "chapter_08/block_32/code_tasks.py",
+      "authoring_sha256": "9b3467f678e344270acd2bdc36273a8c6f50164ae6bc059fd5459f8a49de9fb8",
+      "facade_sha256": "613699de19765b9f13f8b593810fc06a5cce5725eae9394768c26c905cf00663"
+    },
+    {
+      "path": "chapter_08/block_32/manual.py",
+      "authoring_sha256": "063ddfb0e7d2cf5a6dac6d525df02c970188675021c427e8db5692a462f69cdd",
+      "facade_sha256": "795b629a24d122a2a566f1557806a179197b2d0fc536cf64f6d6f7f301bd9923"
+    },
+    {
+      "path": "chapter_09/__init__.py",
+      "authoring_sha256": "89fd3503b46a20d40f42ef578225595945e4038b0edb9ad2920a2cfff8e7fe3a",
+      "facade_sha256": "f56483f5674479730c3ebf4285f93e1d2d2402750cc06665dac68d246dfb358d"
+    },
+    {
+      "path": "chapter_09/block_00/__init__.py",
+      "authoring_sha256": "62893c55e322598c34f9d936f8d9cd08b657c9b55928deb649bcc97bcaf329d8",
+      "facade_sha256": "cada73039b33cc9441de4d83bbff0a53586980b182988a60a2c4d597bcb040be"
+    },
+    {
+      "path": "chapter_09/block_00/manual.py",
+      "authoring_sha256": "589d2b10ed67ab3e92380ed9147c73a5accbd597ad59b84c69c4cee97c8bf772",
+      "facade_sha256": "b6971bc587bdb331844111e4ff3b92c23789364873621f1d205b1b67c82fa284"
+    },
+    {
+      "path": "chapter_09/block_33/__init__.py",
+      "authoring_sha256": "916b44d5bc867818ed1119e709ba5775fa0db862fc13aef155d537951716ab44",
+      "facade_sha256": "de12a19714d79e660963a5a3c0e0bd79a3d8e1eddf479acfffa2296619c1b8da"
+    },
+    {
+      "path": "chapter_09/block_33/code_tasks.py",
+      "authoring_sha256": "5526d0cbbabe50fc57acabd1cdb66c29679dc905a23b34bf69ee898da86719a3",
+      "facade_sha256": "b7dd9961d3bbb7574e54f0f1a8763ddfbe28df1577df090443432fc4ccabd9b9"
+    },
+    {
+      "path": "chapter_09/block_33/manual.py",
+      "authoring_sha256": "ea8fec80f0dee618dddface52f3b7cc628e2442b32d9aa7c9bf64182f3af07d8",
+      "facade_sha256": "f3ddf3779427b648fbf2acd364efb5fd7a5dbb22b3bc50e42674f39977177638"
+    },
+    {
+      "path": "chapter_09/block_34/__init__.py",
+      "authoring_sha256": "3d70c11c7a42eea3534290389f86e42c1fca08ad09ed431601c492ba70ca27df",
+      "facade_sha256": "95cd5cad78cf94b9d997f3416e17b128d3aff09c6815453bf224d4b21063068e"
+    },
+    {
+      "path": "chapter_09/block_34/code_tasks.py",
+      "authoring_sha256": "88e01ad835da2ccc418fa6b2a22628aca0e30a1ae7135daa29bbba612b1082e1",
+      "facade_sha256": "ce81b1cde4eedac87ced2e3bbcec6e16ff6593d2226fcc9649c008e2b67480cc"
+    },
+    {
+      "path": "chapter_09/block_34/manual.py",
+      "authoring_sha256": "1381a9e905e902b54e07d34d311493e1fb181ed639dd26728d9d35e87996a7bb",
+      "facade_sha256": "d20c4f959f45ff7faaddc2fd8836ff3bdec6127a330ed105121c4ef25530cfae"
+    },
+    {
+      "path": "chapter_09/block_35/__init__.py",
+      "authoring_sha256": "a0e0df7943777aeb33c0b1c564b3370f94463e1ceae5ea27f3a2faeb84b61270",
+      "facade_sha256": "43c715696b7929e51c0eb8cf224b90869d1df465db592049d44ebad5874a7177"
+    },
+    {
+      "path": "chapter_09/block_35/code_tasks.py",
+      "authoring_sha256": "a127a66395dffd0c45a8728726f6209443030b3a24ea1eb809813f5ecf00c2cb",
+      "facade_sha256": "8249f96f421dd3a86cb69c3e5475791476e238d2e6fb45dc2d993ee7b0d43a07"
+    },
+    {
+      "path": "chapter_09/block_35/manual.py",
+      "authoring_sha256": "ef1163f1b33a4dc55f11b0fc76081038dbe8e804c4d7672fea60a30537b94df0",
+      "facade_sha256": "d702371973a480187c3a3b7132d47db4a3e95d8ff1e122fc083549d060007c0a"
+    },
+    {
+      "path": "chapter_09/block_36/__init__.py",
+      "authoring_sha256": "b830b169f3ebad313da6b37ef83da12118cd4d12e040a54c1f5db74ad569db3f",
+      "facade_sha256": "15718cfa88d054746c7f4bbca6f848a67490167eb372774fddaf422d78171997"
+    },
+    {
+      "path": "chapter_09/block_36/code_tasks.py",
+      "authoring_sha256": "66788440e825edd11abe97a29638e112c37d97ddf9412d3d1931e6e962388b61",
+      "facade_sha256": "d6ef2cd6fe6cb84d641706ea298112065360f5a6b4eb611f9ebccfc919680411"
+    },
+    {
+      "path": "chapter_09/block_36/manual.py",
+      "authoring_sha256": "d669647d7e4c38710ae35f5eea5b89a77fe2a26cc1ed899ed9d2c914a3c37a5c",
+      "facade_sha256": "62f71f13a9042352ed6f6bdb3f49142108ce262463bf7e03bddbd4c171696e65"
+    }
+  ]
+}

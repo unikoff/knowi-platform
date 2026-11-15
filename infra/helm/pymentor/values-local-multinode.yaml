@@ -1,0 +1,16 @@
+profile: local-multinode
+global:
+  host: pymentor.localhost
+  cookieSecure: false
+ingress:
+  tls:
+    enabled: false
+    secretName: ""
+ingressController:
+  configureBundledK3sTraefik: true
+  replicas: 2
+core:
+  replicaCount: 1
+frontend:
+  replicaCount: 2
+  topologySpread: true

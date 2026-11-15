@@ -8,10 +8,10 @@ from pymentor_core.shared.ports import UnitOfWork
 from pymentor_core.adapters.sql import models
 
 
-def get_completed_lesson_ids(user_id: int, db: Session) -> set[str]:
+def get_completed_lesson_ids(user_id: int, db: Session, *, course_id: str = "backend") -> set[str]:
     rows = (
         db.query(models.UserLessonProgress.lesson_id)
-        .filter(models.UserLessonProgress.user_id == user_id)
+        .filter(models.UserLessonProgress.user_id == user_id, models.UserLessonProgress.course_id == course_id)
         .all()
     )
     return {row.lesson_id for row in rows}
@@ -23,30 +23,33 @@ def mark_lesson_completed(
     db: Session | None,
     *,
     uow: UnitOfWork | None = None,
+    course_id: str = "backend",
 ) -> None:
     if uow is not None:
         repository = uow.repository(models.UserLessonProgress)
-        repository.add(models.UserLessonProgress(user_id=user_id, lesson_id=lesson_id))
+        repository.add(models.UserLessonProgress(user_id=user_id, lesson_id=lesson_id, course_id=course_id))
         try:
             uow.commit()
         except IntegrityError:
-            # Совпадает с legacy-путём: повторная отметка откатывает транзакцию.
             uow.rollback()
+            if repository.find_one(user_id=user_id, lesson_id=lesson_id, course_id=course_id) is None:
+                raise
         return
 
     if db is None:
         raise ValueError("db is required when no unit of work is supplied")
-    progress = models.UserLessonProgress(user_id=user_id, lesson_id=lesson_id)
+    progress = models.UserLessonProgress(user_id=user_id, lesson_id=lesson_id, course_id=course_id)
     db.add(progress)
     try:
         db.commit()
     except IntegrityError:
-        # Урок уже отмечен — повторная отметка не ошибка.
         db.rollback()
+        if db.query(models.UserLessonProgress).filter_by(user_id=user_id, lesson_id=lesson_id, course_id=course_id).first() is None:
+            raise
 
 
 def get_completed_task_revisions(
-    user_id: int, task_ids: list[str], db: Session
+    user_id: int, task_ids: list[str], db: Session, *, course_id: str = "backend"
 ) -> dict[str, str]:
     if not task_ids:
         return {}
@@ -55,6 +58,7 @@ def get_completed_task_revisions(
         db.query(models.UserTaskProgress.task_id, models.UserTaskProgress.task_revision)
         .filter(
             models.UserTaskProgress.user_id == user_id,
+            models.UserTaskProgress.course_id == course_id,
             models.UserTaskProgress.task_id.in_(task_ids),
         )
         .all()
@@ -69,10 +73,11 @@ def mark_task_completed(
     db: Session | None,
     *,
     uow: UnitOfWork | None = None,
+    course_id: str = "backend",
 ) -> None:
     if uow is not None:
         repository = uow.repository(models.UserTaskProgress)
-        progress = repository.find_one(user_id=user_id, task_id=task_id)
+        progress = repository.find_one(user_id=user_id, task_id=task_id, course_id=course_id)
         if progress is not None:
             if progress.task_revision == task_revision:
                 return
@@ -83,6 +88,7 @@ def mark_task_completed(
                 models.UserTaskProgress(
                     user_id=user_id,
                     task_id=task_id,
+                    course_id=course_id,
                     task_revision=task_revision,
                 )
             )
@@ -91,7 +97,7 @@ def mark_task_completed(
             uow.commit()
         except IntegrityError:
             uow.rollback()
-            progress = repository.find_one(user_id=user_id, task_id=task_id)
+            progress = repository.find_one(user_id=user_id, task_id=task_id, course_id=course_id)
             if progress is None:
                 raise
             if progress.task_revision != task_revision:
@@ -106,6 +112,7 @@ def mark_task_completed(
         db.query(models.UserTaskProgress)
         .filter(
             models.UserTaskProgress.user_id == user_id,
+            models.UserTaskProgress.course_id == course_id,
             models.UserTaskProgress.task_id == task_id,
         )
         .first()
@@ -120,6 +127,7 @@ def mark_task_completed(
             models.UserTaskProgress(
                 user_id=user_id,
                 task_id=task_id,
+                course_id=course_id,
                 task_revision=task_revision,
             )
         )
@@ -132,6 +140,7 @@ def mark_task_completed(
             db.query(models.UserTaskProgress)
             .filter(
                 models.UserTaskProgress.user_id == user_id,
+                models.UserTaskProgress.course_id == course_id,
                 models.UserTaskProgress.task_id == task_id,
             )
             .first()

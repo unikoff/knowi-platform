@@ -1,0 +1,91 @@
+{
+  "schema_version": 2,
+  "course_id": "backend_copy",
+  "slug": "backend_copy",
+  "title": "Python Backend Copy",
+  "content_version": "0c7de80ec9040694e4496e0967180f8c83ee40214671a156629abafa0fe625b5",
+  "layout": {
+    "plans": "backend/plans",
+    "practice": "backend/practice",
+    "frontend": "frontend"
+  },
+  "frontend": {
+    "course": "frontend/course/index.ts",
+    "personal_landing": "frontend/landing-personal/index.ts",
+    "course_landing": "frontend/landing-course/index.ts"
+  },
+  "tracks": [
+    {
+      "track_id": "Основы Python и мышление программиста 01.2",
+      "title": "Глава 1: Python с нуля",
+      "order": 1,
+      "source_dirs": [
+        "chapter_01"
+      ]
+    },
+    {
+      "track_id": "Python глубже, файлы и структура небольшого проекта",
+      "title": "Глава 2: Python и устройство проектов",
+      "order": 2,
+      "source_dirs": [
+        "chapter_02"
+      ]
+    },
+    {
+      "track_id": "HTTP, API и FastAPI - Planner API",
+      "title": "Глава 3: HTTP и FastAPI",
+      "order": 3,
+      "source_dirs": [
+        "chapter_03"
+      ]
+    },
+    {
+      "track_id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API",
+      "title": "Глава 4: FastAPI и базы данных",
+      "order": 4,
+      "source_dirs": [
+        "chapter_04"
+      ]
+    },
+    {
+      "track_id": "Аутентификация, сессии, токены и завершение FastAPI - Personal StudyHub API",
+      "title": "Глава 5: Пользователи и доступ",
+      "order": 5,
+      "source_dirs": [
+        "chapter_05"
+      ]
+    },
+    {
+      "track_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub",
+      "title": "Глава 6: SQL и PostgreSQL",
+      "order": 6,
+      "source_dirs": [
+        "chapter_06"
+      ]
+    },
+    {
+      "track_id": "Асинхронность и производительность backend - Async StudyHub",
+      "title": "Глава 7: Асинхронный Python",
+      "order": 7,
+      "source_dirs": [
+        "chapter_07"
+      ]
+    },
+    {
+      "track_id": "Docker, CI-CD и первый стабильный деплой - Deployable StudyHub",
+      "title": "Глава 8: Docker и деплой",
+      "order": 8,
+      "source_dirs": [
+        "chapter_08"
+      ]
+    },
+    {
+      "track_id": "StudyHub LMS, Redis, портфолио и собеседования - StudyHub LMS Release",
+      "title": "Глава 9: LMS и релиз StudyHub",
+      "order": 9,
+      "source_dirs": [
+        "chapter_09"
+      ]
+    }
+  ]
+}

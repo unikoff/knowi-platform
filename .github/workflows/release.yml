@@ -1,0 +1,183 @@
+name: Release CI/CD
+
+on:
+  push:
+    branches: [Release]
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - 'tooling/ci/**'
+      - 'tooling/dev/**'
+      - 'tooling/courses/**'
+      - 'services/core-api/**'
+      - 'services/runner-pool/**'
+      - 'apps/web/**'
+      - 'courses/**'
+      - 'docs/multicourse/**'
+      - 'infra/gitops/**'
+      - 'infra/helm/**'
+      - 'infra/local-postgres-redis/**'
+      - 'infra/local-k3s/**'
+
+concurrency:
+  group: release-ci-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: pymentor_test
+          POSTGRES_PASSWORD: pymentor_test
+          POSTGRES_DB: pymentor_test
+        ports: ['127.0.0.1:57382:5432']
+        options: >-
+          --health-cmd "pg_isready -U pymentor_test -d pymentor_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+      redis:
+        image: redis:7
+        ports: ['127.0.0.1:57381:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s
+          --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Install test dependencies
+        run: python -m pip install -r services/core-api/requirements-dev.txt
+      - name: Exercise required PostgreSQL and Redis target suites
+        run: python tooling/ci/preview_checks.py
+      - name: Rehearse c503 backup restore and forward migration
+        run: python tooling/ci/rehearse_c504_backup.py --container '${{ job.services.postgres.id }}' --output '${{ runner.temp }}/c504-backup-rehearsal'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.18.0'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Exercise browser contracts and build current courses
+        working-directory: apps/web
+        run: |
+          npm ci
+          npm run test:release
+          npm run build
+          python tools/check_public_course_assets.py dist
+      - name: Build canonical image and exercise disposable image smoke
+        run: python tooling/ci/image_smoke.py
+
+  images:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/Release' && github.repository_id == '1288938642'
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      core: ${{ steps.build.outputs.core }}
+      frontend: ${{ steps.build.outputs.frontend }}
+      runner: ${{ steps.build.outputs.runner }}
+      migrations: ${{ steps.build.outputs['core-migrations'] }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+      - name: Authenticate to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Build and publish SHA-tagged images
+        id: build
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_image() {
+            local name="$1" context="$2" dockerfile="$3"
+            shift 3
+            local metadata="$RUNNER_TEMP/$name-metadata.json"
+            docker buildx build --push --provenance=mode=max --sbom=true --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" --label org.opencontainers.image.revision="$GITHUB_SHA" --cache-from "type=registry,ref=ghcr.io/unikoff/knowi-platform-$name:buildcache" --cache-to "type=registry,ref=ghcr.io/unikoff/knowi-platform-$name:buildcache,mode=max" --file "$dockerfile" --tag "ghcr.io/unikoff/knowi-platform-$name:$GITHUB_SHA" --metadata-file "$metadata" "$@" "$context"
+            local digest
+            digest=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["containerimage.digest"])' "$metadata")
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+            echo "$name=$digest" >> "$GITHUB_OUTPUT"
+            echo "$name: $digest" >> "$GITHUB_STEP_SUMMARY"
+          }
+          build_image core . services/core-api/Dockerfile --target runtime
+          build_image core-migrations . services/core-api/Dockerfile --target migrations
+          build_image frontend . apps/web/Dockerfile
+          build_image runner-pool services/runner-pool services/runner-pool/Dockerfile
+          echo "runner=$(python -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"] + "/runner-pool-metadata.json"))["containerimage.digest"])')" >> "$GITHUB_OUTPUT"
+      - name: Scan core image
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2
+        with:
+          image: ghcr.io/unikoff/knowi-platform-core@${{ steps.build.outputs.core }}
+          output-format: table
+          severity-cutoff: critical
+          fail-build: true
+      - name: Scan frontend image
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2
+        with:
+          image: ghcr.io/unikoff/knowi-platform-frontend@${{ steps.build.outputs.frontend }}
+          output-format: table
+          severity-cutoff: critical
+          fail-build: true
+      - name: Scan migration image
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2
+        with:
+          image: ghcr.io/unikoff/knowi-platform-core-migrations@${{ steps.build.outputs['core-migrations'] }}
+          output-format: table
+          severity-cutoff: critical
+          fail-build: true
+      - name: Scan runner image
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2
+        with:
+          image: ghcr.io/unikoff/knowi-platform-runner-pool@${{ steps.build.outputs.runner }}
+          output-format: table
+          severity-cutoff: critical
+          fail-build: true
+
+  publish:
+    timeout-minutes: 5
+    if: github.event_name == 'push' && github.ref == 'refs/heads/Release' && github.repository_id == '1288938642'
+    needs: images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: true
+      - name: Update and publish preview release
+        env:
+          CORE_DIGEST: ${{ needs.images.outputs.core }}
+          FRONTEND_DIGEST: ${{ needs.images.outputs.frontend }}
+          RUNNER_DIGEST: ${{ needs.images.outputs.runner }}
+          MIGRATION_DIGEST: ${{ needs.images.outputs.migrations }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python tooling/ci/update_preview_release.py --source-sha "$GITHUB_SHA" --core-digest "$CORE_DIGEST" --frontend-digest "$FRONTEND_DIGEST" --runner-digest "$RUNNER_DIGEST" --migration-digest "$MIGRATION_DIGEST"
+          git add -- infra/gitops/preview/kustomization.yaml infra/gitops/preview/applications.json infra/gitops/preview/release.json
+          if test -f infra/gitops/preview/runner.json; then git add -- infra/gitops/preview/runner.json; fi
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "chore(preview): update image digests [skip ci]"
+          remote_head=$(git ls-remote origin refs/heads/Release | cut -f1)
+          test "$remote_head" = "$GITHUB_SHA" || { echo 'Preview branch advanced; refusing stale publication' >&2; exit 1; }
+          git push origin HEAD:refs/heads/Release

@@ -1,13 +1,14 @@
 # Core API
 
-Единственный рабочий пакет — `pymentor_core`. Старый хостинг и новый профиль
-используют одну реализацию. Это модульный монолит с границами для дальнейшего
-выделения сервисов. Отдельный HTTP сервис курсов реализуется в MC2, не этим переносом.
+Единственный рабочий пакет — `pymentor_core`, runtime — PostgreSQL и Redis.
+Это модульный монолит с границами для дальнейшего
+выделения сервисов. Курсы поставляются пакетами `courses/<course_id>`; общий Core
+и интерфейс остаются в монорепозитории.
 
 ```text
 services/core-api/
   pymentor_core/
-    app/                  factory, настройки, lifespan, сборка зависимостей, ASGI/WSGI/worker
+    app/                  factory, настройки, lifespan, сборка зависимостей, ASGI/worker
     modules/
       identity/           аккаунты, права, вход и восстановление повторного запроса
       learning/           каталог, доступ и правила учебного прогресса
@@ -20,15 +21,13 @@ services/core-api/
       sql/                общие модели, UoW и SQL реализации команд
       postgres/           async sessions, cleanup и защита импортированного outbox
       redis/              хранилище сеансов
-      legacy_sqlite/      временный bootstrap/engine/triggers/SQL sessions
       course_local/       чтение существующих файлов через CourseCatalog/LessonContent/PracticeSpec
       legacy_runner/      текущий subprocess interpreter за портом
       telegram/           транспорт уведомлений
     shared/               внутренние порты, ошибки, неизменяемые bindings
   migrations/             один Alembic; выпущенные revisions сохранены
-  tools/migration/        snapshot, preflight, import, recovery и ACL
-  tools/maintenance/      явные команды администратора и слотов
-  tools/lab/              probes и сохранённые исследовательские варианты
+  tools/maintenance/      явная команда прав администратора для PostgreSQL
+  tools/lab/              guarded запуск единственной factory на disposable PG/Redis
   tests/regression/       сохранённые сценарии API, данных, курсов и отказов
   tests/architecture/     автоматические проверки границ
 ```
@@ -42,7 +41,7 @@ Telegram отправляется worker вне бизнес-транзакци�
 
 - `app/factory.py` собирает HTTP-приложение, `app/worker.py` запускает обработчик уведомлений.
 - `app/wiring.py` подключает реализации; `app/paths.py` задаёт все пути к коду, контенту и writable state.
-- `app/schema_policy.py` хранит единственную ожидаемую ревизию/набор таблиц и правила SQLite bootstrap.
+- `app/schema_policy.py` хранит ожидаемую ревизию/набор таблиц; runtime не выполняет DDL.
 - `modules/<область>/` содержит правила и операции области. `api/` — её HTTP-граница:
   роуты, модели запроса/ответа, авторизация и перевод ошибок.
 - `adapters/<технология>/` содержит SQL, Redis, файловые и сетевые реализации. Блокировки,
@@ -68,106 +67,161 @@ Runtime не зависит от tools/tests; модули не импортир
 от приложения и бизнес-модулей. Чистые бизнес-правила не импортируют SQLAlchemy/FastAPI.
 Динамические импорты проверяются отдельными тестами запуска, а не этим AST-анализатором.
 
-## Два профиля
+## Единственный runtime
 
-`legacy_sqlite`: прежний hosting/Passenger, SQL-сеансы, исходная `backend/test.db`.
-`backend/main.py` явно выбирает его. Passenger инициализирует схему один раз при первом
-HTTP запросе, поскольку WSGI-адаптер не запускает ASGI lifespan.
+Core требует явные `DATABASE_URL` (PostgreSQL), `REDIS_URL`, Redis prefix и login recovery key.
+SQLite default/fallback, SQL-only auth и выбор двух DB-профилей отсутствуют.
+`PYMENTOR_PROFILE` не нужен; старые значения отклоняются. Приложение не загружает `.env`
+и не применяет DDL на startup/readiness. Настройки передаются окружением/Secret store.
 
-`postgres_redis`: явные `DATABASE_URL` (`postgresql+psycopg` или `postgresql+asyncpg`),
-`REDIS_URL`, отдельный `PYMENTOR_REDIS_PREFIX`, `PYMENTOR_LOGIN_RECOVERY_KEY` (64 hex).
-Секреты передаются окружением. Startup/readiness проверяют готовую схему и Redis;
-скрытого перехода к SQLite/SQL-only входу нет. Профиль выбирается **до импорта** и меняется
-только перезапуском процесса. Часть бизнес-запросов ещё использует sync PostgreSQL pool:
-полный async — PYM-37, реальные replicas/load — PYM-250/252.
+На AlphaVPS уже актуальные данные. Этот спринт удаляет legacy-код; новый перенос,
+importer, переинициализация сессий и повторный cutover не требуются.
+Пример переменных без секретов: [`.env.example`](.env.example).
 
-Content transport сейчас только `local`, адреса/ID/ревизии и frontend API сохранены.
-`course_http` отклоняется до реализации MC2/PYM-481. Материалы остаются в
-`../../backend/content/materials`; чистые authoring helpers принадлежат этим ресурсам.
+| Настройка | Контракт |
+| --- | --- |
+| `DATABASE_URL` | `postgresql+psycopg://...` или `postgresql+asyncpg://...`; обязательна |
+| `REDIS_URL` | `redis://...` или `rediss://...`; обязательна |
+| `KNOWI_REDIS_PREFIX` | Отдельный namespace окружения; сохранить текущее значение |
+| `KNOWI_LOGIN_RECOVERY_KEY` | 64 hex символа; сохранить текущий ключ для повторов входа |
+| `PYMENTOR_STATE_DIR` | Writable абсолютный каталог для локальных locks; не база данных |
+| `PYMENTOR_COURSE_TRANSPORT` | `local` в этой копии; `http` требует `COURSE_CONTENT_URL` и отдельного сервиса |
 
-## Локальные команды
+`PYMENTOR_REDIS_PREFIX` и `PYMENTOR_LOGIN_RECOVERY_KEY` остаются равнозначными aliases.
+При одновременном задании KNOWI/PYMENTOR значения должны совпадать. Изменение prefix/key
+затрагивает существующие сессии; cleanup сохраняет текущие Secret references и значения.
+PostgreSQL `sessions` хранит digests/revocation/committed-operation evidence; это не SQL-only
+способ входа. HTTP auth требует Redis. При его недоступности возвращается контролируемый
+отказ; восстановление потерянной проекции допускается только по подтверждённой операции.
 
-Из корня проекта в PowerShell, с активированным существующим Python окружением:
+Общие SQL models/UoW и Alembic history сохраняются. HTTP-сценарии используют asyncpg
+и Redis; отдельные служебные проверки и совместимые бизнес-функции используют sync
+PostgreSQL. Авторский контент находится в `courses/<course_id>/backend`, React-страницы
+и лендинги — в `courses/<course_id>/frontend`. Core загружает каталог через адаптер
+и протокол пакета курса; прежние материалы сохранены в `courses/<course_id>/archive/legacy-content`.
+Дублирующего `services/core-api/content` больше нет. ID ресурсов сохранены; `course_id` необязателен
+для прежних API-клиентов и по умолчанию выбирает `backend`.
+
+## Установка и запуск
+
+Из корня проекта создайте окружение сервиса (canonical image использует Python 3.12):
 
 ```powershell
-$env:PYTHONPATH="$PWD\services\core-api;$PWD\backend"
-$env:PYMENTOR_PROFILE="legacy_sqlite"
-# Для безопасного пробного запуска используйте отдельную копию, не рабочую test.db:
-$env:DATABASE_URL="sqlite:///C:/temp/pymentor-demo.sqlite3"
-python -m uvicorn pymentor_core.app.asgi:create_app --factory --host 127.0.0.1 --port 8001
+python -m venv services/core-api/.venv
+services/core-api/.venv/Scripts/python.exe -m pip install -r services/core-api/requirements-dev.txt
+$env:PYTHONPATH="$PWD\services\core-api"
+$env:DATABASE_URL="postgresql+psycopg://<app-role>:<secret>@<host>:5432/<database>"
+$env:REDIS_URL="redis://<host>:6379/0"
+$env:KNOWI_REDIS_PREFIX="<environment>:"
+$env:KNOWI_LOGIN_RECOVERY_KEY="<existing 64 hex characters>"
+services/core-api/.venv/Scripts/python.exe -m uvicorn pymentor_core.app.asgi:create_app --factory --host 127.0.0.1 --port 8001
 ```
 
-Каталог C:/temp предварительно должен существовать. Приложение будет на
-http://127.0.0.1:8001; `/health/live`, `/health/ready`, `/docs` доступны для проверки.
-Для PostgreSQL задать перечисленное окружение, `PYMENTOR_PROFILE=postgres_redis` и
-использовать ту же команду. Схема должна быть подготовлена отдельно; текущие migration
-инструменты сохраняют строгую allowlist локальной лаборатории и не пригодны для VPS
-без отдельного этапа принятия целевого сервера.
+Для разработки API+Vite установите зависимости `npm ci` в `apps/web`, затем из
+корня проекта запустите `tooling/dev/start.bat --mode configured` в Windows или
+`tooling/dev/start.sh --mode configured` в Linux. Эти команды используют окружение
+сервиса, требуют экспортированные переменные выше и запускают тот же ASGI factory.
+Backend автоматически не выбирает SQLite и не читает локальную `.env`.
+
+### Схема PostgreSQL
+
+Ожидаемая ревизия — `c504_course_progress`, включая verified/email-change state
+и разделение прогресса по курсам. Перед выпуском этой версии нужно проверить текущий
+head целевой PostgreSQL и отдельно применить управляемую миграцию. Состояние c504 на
+AlphaVPS этой локальной интеграцией не проверялось; production-данные не менялись.
+Runtime-роль использует DML, отдельная migration-роль — DDL. При выпуске с новой схемой
+оператор отдельно применяет проверенный migration image/command к явной цели, до старта API.
+Read-only проверка 15.11.2026 подтвердила на рабочей `knowi_core` ревизию
+`c503_dual_email_change`; новый runtime требует `c504_course_progress`.
+Старый runtime отклоняет c504, поэтому этот переход требует остановки старых writers
+и управляемого окна обслуживания, а не обычного смешанного canary. Порядок и ограничения:
+[c504 cutover](../../infra/gitops/operations/README.md).
+
+Команда миграции после выполнения preconditions:
+
+```powershell
+python -m pip install -r services/core-api/requirements-migration.txt
+# Через защищённое окружение задать совпадающие KNOWI_MIGRATION_URL (asyncpg),
+# KNOWI_MIGRATION_HOST, KNOWI_MIGRATION_DATABASE, KNOWI_MIGRATION_USER.
+python -m alembic -c services/core-api/alembic-runtime.ini upgrade head
+```
+
+Это не команда импорта данных и не обязательный шаг текущего cleanup на AlphaVPS.
+Не подменять runtime DSN migration credentials. Исторические revision IDs и проверенный
+additive schema bridge сохраняются. Старые SQLite import/lab инструменты удалены;
+актуальные данные PostgreSQL используются без повторного импорта.
+
+### Worker и health
 
 ```powershell
 python -m pymentor_core.app.worker --stats
-python -m pytest services/core-api/tests -p no:cacheprovider
 ```
 
-`--stats` не отправляет сообщения. Worker без этого флага отправляет реальную очередь;
-не запускайте его на рабочей базе для пробной проверки. Перед тестами задайте
-`DATABASE_URL=sqlite:///:memory:` и `PYTHON_DOTENV_DISABLED=1`. Окружения PG/Redis
-выбираются отдельно, пропущенные тесты не являются PASS.
+`--stats` читает статистику без отправок. Обычный worker без этого флага обрабатывает
+настоящий outbox; API не запускает sender автоматически. Пробные сценарии используют
+синтетические данные и sinks. Telegram/SMTP credentials не копируются в тестовую среду.
 
-Старые команды `uvicorn main:app`, `python -m notifications.worker --stats` и
-`python -m services.notification_worker --stats` из backend сохранены как короткие
-переходники. Исследовательские алгоритмы больше не импортируются runtime.
+`GET /health/live` — процесс жив; `GET /health/startup` — startup окончен;
+`GET /health/ready` — доступны необходимые PostgreSQL schema/Redis. Ошибка зависимости
+не включает SQLite fallback. Перед проверками отказов используется disposable среда.
 
-## Tools и состояние
+## Образ, smoke и CI
 
-Из `services/core-api`, добавив текущий каталог и `../../backend` в PYTHONPATH:
-
-```text
-python -m tools.maintenance.make_admin user@example.test --database-url URL --dry-run
-python -m tools.maintenance.fill_booking_slots 2027 01 --database-url URL --dry-run
+```powershell
+docker build -f services/core-api/Dockerfile --target runtime -t knowi/core-local:pg06 .
+docker build -f services/core-api/Dockerfile --target migrations -t knowi/core-local-migrations:pg06 .
+python tooling/ci/image_smoke.py
 ```
 
-Для применения заменить `--dry-run` на `--apply`. Целевая БД обязательна;
-fill_booking_slots сохраняет прежнее ограничение SQLite. Никакого выбора рабочей
-базы по умолчанию нет. Lab/probe команды запускаются `python -m tools.lab.NAME`,
-миграционные — `python -m tools.migration.NAME`; их guards/ACL обязательны.
+Один Dockerfile, без build-time DB profile. Runtime работает от UID10001, содержит Core
+и материалы курса, исключает SQLite adapter/wrappers, БД, `.env`, Git/tests/lab и Alembic.
+Migration tooling находится в отдельном target. Smoke поднимает только свой временный
+Compose project (PG/Redis, без host ports/постоянных volumes), проверяет health → login/
+cookie → PG write/read → logout → worker stats и убирает только свои ресурсы.
 
-`PYMENTOR_STATE_DIR` — абсолютный каталог writable state вне пакета. Новый профиль
-по умолчанию использует `data/core-api`; образ — `/app/data/core-api`. Старый профиль
-сохраняет прежние lock/log пути backend, чтобы координироваться с работающими старыми
-процессами. Логи и locks не включаются в образ. Исторический backend/output сохранён.
-
-## Образ и выпуск
-
-Из корня проекта:
-
-```text
-docker build -f services/core-api/Dockerfile --build-arg PROFILE=legacy_sqlite -t pymentor/core-api:local .
+```powershell
+python tooling/ci/check_single_runtime.py
+python tooling/ci/check_single_runtime.py --image knowi/core-local:pg06
+python tooling/ci/image_smoke.py
+# Сервисные test groups требуют отдельные disposable PG/Redis по release.yml:
+python tooling/ci/preview_checks.py
 ```
 
-`PROFILE=postgres_redis` добавляет отдельные драйверы. Сборка копирует только canonical
-pymentor_core и course resources, работает от UID 10001 и не содержит БД/.env/tests/tools/lab/
-frontend/Git metadata. Публичные production данные в образ не попадают.
+Группы: `tests/runtime_suites.json`. Required CI использует loopback57382 (DB/user
+pymentor_test), Redis57381, внешнюю подготовку только именованных test DB и отдельные
+процессы HTTP suites. Пустой/failed/skipped JUnit, недоступные сервисы и SQLite import/DSN
+блокируют gate. Старые lab/import fixtures удалены; бизнес-проверки работают на PostgreSQL.
 
-**Release gate:** существующий CI использует прежний context `./backend`. Его необходимо
-отдельно переключить на этот Dockerfile и корень проекта перед выпуском. Git/CI/CD/сервер
-этой работой не обновлялись. История проверок и реальные ограничения —
-`../../docs/assistant/backend-modularity/final-acceptance.md`.
+Canonical pipeline — `.github/workflows/release.yml`, candidate через PR в `Release`.
+Checks обязательны; images/publish выполняются только разрешённым push в Release.
+Успешный PR CI не означает merge или deployment. Для выпуска фиксируются source SHA,
+runtime/migration digests и config revision; фактический rollout проверяется отдельно.
 
-## Масштабирование
+## Почта и состояние
 
-Сохраняются отдельные точки запуска API и notification worker. В PostgreSQL/Redis-профиле
-они используют общие хранилища; файлы курса подключены через заменяемый адаптер. Это
-позволяет развивать и размещать процессы отдельно, сохраняя одну реализацию правил.
-SQLite остаётся переходным режимом для одного экземпляра. Эта структурная переработка
-не измеряет допустимое число реплик или пользователей: нагрузка, полный async и выделение
-сервиса курсов остаются отдельными задачами PYM-250/252, PYM-37 и MC2.
+Email links: `PYMENTOR_EMAIL_TOKEN_SECRET` (не менее32байт),
+`PYMENTOR_EMAIL_PUBLIC_URL` (HTTPS), `PYMENTOR_SMTP_HOST/PORT/FROM/USERNAME/PASSWORD/STARTTLS`.
+Секреты хранятся вне Git. Для loopback SMTP sink разрешены локальный HTTP и STARTTLS0;
+удалённый SMTP требует STARTTLS. Общие rate limits находятся в Redis, отказ не включает
+process-local limiter. Формат подписанных ссылок/сроки и проверка verified сохраняются.
 
-Результаты текущего упрощения: [structure-simplification.md](../../docs/assistant/backend-modularity/structure-simplification.md).
+`PYMENTOR_STATE_DIR` по умолчанию `services/core-api/.local/state`, в образе `/app/data/core-api`.
+Для worker/Runner с локальными locks каталог должен быть writable; локальные файлы не
+заменяют PostgreSQL transactional state и Redis. Логи/locks не включаются в image.
 
-## Что удалить после принятого переезда (C5/PYM-56/PYM-480)
+## Работа с уже существующими данными
 
-Удалить `adapters/legacy_sqlite`, старые main/Passenger/cron переходники, SQLite-настройки
-и compatibility manifests только после принятого переключения. Сами базы/резервные копии
-не удаляются автоматически. Course-local и legacy-runner имеют собственные этапы замены;
-их нельзя удалить вместе с SQLite. Retention резервных копий остаётся открытым решением Jira.
+Cleanup не меняет PostgreSQL tables/roles, Secret values/prefixes, данные и действующие
+сессии. Приватные архивы и PostgreSQL backup сохраняются отдельно от исходников;
+перенос из них не входит в очистку. Старые import/recovery tools удалены. Снятие template с desired
+state не является разрешением удалить фактический PVC/архив.
+
+Backup/restore текущего PostgreSQL выполняются по существующему операторскому runbook
+и политике CORP-426; это отдельная операция с проверкой целевой БД и сохранением новых
+записей. Возврат runtime DSN к старому SQLite snapshot не является recovery.
+
+Read-only baseline AlphaVPS13.11: `knowi01`, namespace`pymentor`, PostgreSQL revisionc503,
+Redis PING/readiness200; Core/worker используют Secret`preview-migrated-runtime`, без
+SQLite mounts. Подробные checks и ограничения — CORP-519 в Jira. Данные/секреты не
+дублируются в документации. SQLite adapter, Passenger/cron wrappers и старые build profiles удалены;
+course-local/Runner сохраняются до своих отдельных переходов.

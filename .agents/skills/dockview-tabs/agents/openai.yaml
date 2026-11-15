@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dockview Tabs"
+  short_description: "Панели Dockview, DnD и сохранение layout"
+  default_prompt: "Используй $dockview-tabs для этого изменения рабочей области Pymentor с проверкой ID, разрешённых перемещений и восстановления layout."

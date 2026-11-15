@@ -6,7 +6,9 @@ import unittest
 from pathlib import Path
 
 from pymentor_core.adapters.course_local import catalog as content
-from content.materials import chapter_02 as course
+from pymentor_core.adapters.course_local.runtime import default_runtime as _course_runtime
+_authoring = _course_runtime().context("backend").get_authoring
+course = _authoring("chapter_02")
 
 
 OLD_NUMBERS = ["21","22","23","24","24.1","25","26","26.1","27","27.1","28","29","30","30.1","31","32","33","34","34.1","35","35.1","35.2","36","36.1","36.2","37","37.1","37.2","38","38.1","38.2","39","39.1","40","40.1","40.2","41","41.1","41.2","42","42.1","43","44"]
@@ -57,7 +59,7 @@ class DeeperDayNumberingTests(unittest.TestCase):
                     self.assertIs(content.find_task(task["id"]), task)
 
     def test_practice_access_and_frontend_pages_match_the_numbered_sources(self):
-        registry = (self.repo / "frontend/src/lessons/chapter_02/index.ts").read_text(encoding="utf-8")
+        registry = (self.repo / "courses/backend/frontend/course/chapter_02/index.ts").read_text(encoding="utf-8")
         entries = dict(re.findall(r'"([^"]+\.md)": "([^"]+)"', registry))
         self.assertEqual(len(entries), 45)
         for number, lesson in zip(NEW_NUMBERS, self.lessons):
@@ -68,7 +70,7 @@ class DeeperDayNumberingTests(unittest.TestCase):
                 relative = lesson["source_file"].removeprefix("chapter_02/")
                 self.assertTrue((content.COURSE_ROOT / lesson["source_file"]).is_file())
                 page = entries[relative]
-                text = (self.repo / "frontend/src/lessons/chapter_02" / f"{page}.tsx").read_text(encoding="utf-8")
+                text = (self.repo / "courses/backend/frontend/course/chapter_02" / f"{page}.tsx").read_text(encoding="utf-8")
                 self.assertIn(f"export function {page.split('/')[-1]}", text)
                 self.assertRegex(text, r'<RichHero\b[\s\S]*?\btitle=')
         lessons = dict(zip(NEW_NUMBERS, self.lessons))

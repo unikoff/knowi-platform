@@ -1,1 +1,0 @@
-var e=new Set([`lesson-b504d05e6763add4db882bfe-task-05`]);function t(t){return t.required!==!1&&!e.has(t.id)}export{t};

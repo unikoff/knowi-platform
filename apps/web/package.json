@@ -1,0 +1,34 @@
+{
+  "name": "pymentor-platform-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config config/vite.config.ts --host 127.0.0.1 --port 5173 --configLoader bundle",
+    "build": "npm run check:lesson-visuals && tsc --noEmit -p config/tsconfig.json && vite build --config config/vite.config.ts --configLoader bundle",
+    "check:lesson-visuals": "node ../../tooling/courses/check_lesson_visuals.cjs",
+    "test:lesson-visuals": "node ../../tooling/courses/test_lesson_visuals.cjs",
+    "preview": "vite preview --config config/vite.config.ts --host 127.0.0.1 --port 4173 --configLoader bundle",
+    "predev": "node tools/course-registry.mjs",
+    "prebuild": "node tools/course-registry.mjs",
+    "test:course-runtime": "node tools/course-registry.mjs && node --test tools/course-document.test.mjs tools/course-registry.test.mjs src/shared/course-paths.test.mjs src/shared/api/client.test.mjs",
+    "test:course-demo": "node --test tools/course-demo.test.mjs",
+    "test:course-boundary": "node --test tools/course-boundary.test.mjs",
+    "test:release": "node tools/course-registry.mjs && node tools/test-release.mjs"
+  },
+  "dependencies": {
+    "dockview-react": "8.5.1",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "video.js": "8.24.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^6.0.3",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.3",
+    "yaml": "2.9.0"
+  }
+}

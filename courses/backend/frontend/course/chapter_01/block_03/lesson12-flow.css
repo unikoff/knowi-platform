@@ -1,0 +1,32 @@
+.lesson12-setup {
+  container-type: inline-size;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: var(--diagram-space);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--diagram-radius);
+  background: var(--bg);
+}
+.lesson12-setup > p { margin: var(--diagram-space-sm) 0 var(--diagram-space); color: var(--muted); }
+.lesson12-setup-steps { list-style: none; counter-reset: setup; padding: 0; margin: 0; }
+.lesson12-setup-steps li {
+  counter-increment: setup;
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.25rem minmax(10rem, .85fr) minmax(0, 1.7fr) minmax(0, 1.2fr);
+  gap: var(--diagram-space);
+  align-items: baseline;
+  padding: var(--diagram-space) 0;
+  border-top: 1px solid var(--line);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.lesson12-setup-steps li::before { content: counter(setup, decimal-leading-zero); color: var(--accent); font-weight: 700; }
+.lesson12-setup-steps strong { font-size: 1rem; }
+.lesson12-setup-steps small { font-size: .9rem; color: var(--muted); }
+.lesson12-setup-steps li:last-child { padding-bottom: 0; }
+@container (max-width: 700px) {
+  .lesson12-setup-steps li { grid-template-columns: 2rem minmax(0, 1fr); gap: var(--diagram-space-xs) var(--diagram-space); }
+  .lesson12-setup-steps li span, .lesson12-setup-steps li small { grid-column: 2; }
+}

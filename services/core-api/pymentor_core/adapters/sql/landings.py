@@ -14,8 +14,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from pymentor_core.adapters.sql import models
+from pymentor_core.adapters.course_local.landing_catalog import course_landing_slugs
 
 from pymentor_core.modules.landings.contracts import (
+    VerifiedCourseDestination,
     LANDING_EVENT_CONTRACTS, MAX_TEST_EVENTS_PER_HOUR,
     MAX_CONSULTATION_REQUESTS_PER_HOUR, MAX_MANUAL_RETRIES,
 )
@@ -27,10 +29,8 @@ def _utcnow() -> datetime:
 
 
 def _start_write_transaction(db: Session) -> None:
-    if db.bind is not None and db.bind.dialect.name == "sqlite":
-        if db.in_transaction():
-            db.rollback()
-        db.execute(text("BEGIN IMMEDIATE"))
+    if db.get_bind().dialect.name != "postgresql":
+        raise RuntimeError("Landing writes require PostgreSQL")
 
 
 def _canonical_payload(
@@ -161,6 +161,161 @@ def configure_landing_telegram(
     return config
 
 
+def sync_course_destinations(
+    db: Session,
+    *,
+    settings: dict[str, dict],
+    expected_versions: dict[str, int],
+    apply: bool = False,
+    verified_destinations: dict[str, VerifiedCourseDestination] | None = None,
+) -> dict[str, dict]:
+    """Preview or atomically apply trusted course destinations to existing landings."""
+    from sqlalchemy import select
+
+    landing_slugs = course_landing_slugs()
+    if set(settings) != set(landing_slugs):
+        raise LandingError(status_code=422, detail="Требуются настройки всех разрешённых курсов")
+    if set(expected_versions) != set(landing_slugs):
+        raise LandingError(status_code=422, detail="Не заданы ожидаемые версии конфигурации")
+    if apply and (verified_destinations is None or set(verified_destinations) != set(landing_slugs)):
+        raise LandingError(status_code=409, detail="Каждое назначение требует отдельной проверки Telegram")
+    parsed: dict[str, str] = {}
+    for course_id, value in settings.items():
+        if not isinstance(value, dict) or set(value) != {"schema_version", "course_id", "contacts", "telegram"}:
+            raise LandingError(status_code=422, detail=f"Некорректные настройки курса {course_id}")
+        telegram = value.get("telegram")
+        if (
+            value.get("schema_version") != 1
+            or value.get("course_id") != course_id
+            or not isinstance(telegram, dict)
+            or set(telegram) != {"enabled", "chat_id", "topic_id"}
+            or not isinstance(telegram.get("enabled"), bool)
+            or telegram.get("topic_id") is not None
+        ):
+            raise LandingError(status_code=422, detail=f"Некорректные настройки курса {course_id}")
+        chat_id = telegram.get("chat_id")
+        if not telegram["enabled"]:
+            raise LandingError(status_code=409, detail=f"Получатель курса {course_id} отключён")
+        if type(chat_id) is not str or not re.fullmatch(r"-?[1-9]\d{0,18}", chat_id) or not -(2**63) <= int(chat_id) < 2**63:
+            raise LandingError(status_code=422, detail=f"Недопустимый получатель курса {course_id}")
+        parsed[course_id] = chat_id
+
+    if apply:
+        _start_write_transaction(db)
+    slugs = set(landing_slugs.values())
+    query = select(models.Landing).where(models.Landing.slug.in_(slugs)).order_by(models.Landing.slug)
+    if apply:
+        query = query.with_for_update()
+    landings = {row.slug: row for row in db.execute(query).scalars().all()}
+    if set(landings) != slugs or any(not row.is_active for row in landings.values()):
+        raise LandingError(status_code=409, detail="Активные курсовые лендинги не найдены")
+    current: dict[str, models.LandingTelegramConfig | None] = {
+        course: current_landing_telegram_config(db, landings[slug])
+        for course, slug in landing_slugs.items()
+    }
+    shared = next((config for config in current.values() if config is not None), None)
+    if shared is None or not _SECRET_REF_PATTERN.fullmatch(shared.secret_ref):
+        raise LandingError(status_code=409, detail="Общий Telegram secret alias не настроен")
+    if any(config is not None and config.secret_ref != shared.secret_ref for config in current.values()):
+        raise LandingError(status_code=409, detail="Курсовые лендинги используют разные secret alias")
+    result: dict[str, dict] = {}
+    for course_id, slug in landing_slugs.items():
+        landing = landings[slug]
+        expected = expected_versions[course_id]
+        if type(expected) is not int or expected < 0:
+            raise LandingError(status_code=422, detail="Недопустимая ожидаемая версия")
+        if landing.config_version != expected:
+            raise LandingError(status_code=409, detail=f"Конфигурация курса {course_id} изменилась параллельно")
+        chat_id = parsed[course_id]
+        old = current[course_id]
+        same_destination = (
+            old is not None
+            and old.secret_ref == shared.secret_ref
+            and old.chat_id == chat_id
+            and old.status == "verified"
+        )
+        needs_enable = not landing.telegram_enabled
+        result[course_id] = {
+            "landing_id": landing.id,
+            "slug": slug,
+            "expected_version": expected,
+            "version": landing.config_version if same_destination else landing.config_version + 1,
+            "destination_config_id": old.id if same_destination else None,
+            "chat_id": chat_id,
+            "secret_ref": shared.secret_ref,
+            "changed": not same_destination or needs_enable,
+        }
+    if apply:
+        for course_id in landing_slugs:
+            proof = verified_destinations[course_id]
+            if (
+                not isinstance(proof, VerifiedCourseDestination)
+                or proof.course_id != course_id
+                or proof.secret_ref != shared.secret_ref
+                or proof.chat_id != parsed[course_id]
+                or not isinstance(proof.bot_username, str)
+                or not proof.bot_username.strip()
+                or len(proof.bot_username) > 64
+                or any(ord(char) < 32 for char in proof.bot_username)
+            ):
+                raise LandingError(status_code=409, detail=f"Telegram-проверка курса {course_id} не подтверждена")
+
+    for course_id, slug in landing_slugs.items():
+        landing = landings[slug]
+        old = current[course_id]
+        same_destination = (
+            old is not None
+            and old.secret_ref == shared.secret_ref
+            and old.chat_id == parsed[course_id]
+            and old.status == "verified"
+        )
+        needs_enable = not landing.telegram_enabled
+        if apply and not same_destination:
+            chat_id = parsed[course_id]
+            config = models.LandingTelegramConfig(
+                landing_id=landing.id,
+                version=landing.config_version + 1,
+                secret_ref=shared.secret_ref,
+                chat_id=chat_id,
+                bot_username=verified_destinations[course_id].bot_username.strip(),
+                status="verified",
+                verified_at=_utcnow(),
+            )
+            landing.config_version += 1
+            landing.telegram_enabled = True
+            db.add(config)
+            db.flush()
+            result[course_id]["destination_config_id"] = config.id
+        elif apply and needs_enable:
+            landing.telegram_enabled = True
+    if apply:
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            raise LandingError(status_code=409, detail="Конфигурация курса изменилась параллельно") from None
+    return result
+
+
+def submit_course_consultation(db: Session, slug: str, event_id: str, payload: dict):
+    course_id = next((course for course, landing_slug in course_landing_slugs().items() if landing_slug == slug), None)
+    if course_id is None:
+        raise LandingError(status_code=404, detail="Курсовой лендинг не найден")
+    landing = db.query(models.Landing).filter_by(slug=slug, is_active=True).first()
+    if landing is None:
+        raise LandingError(status_code=404, detail="Активный лендинг не найден")
+    config = current_landing_telegram_config(db, landing)
+    if landing.telegram_enabled and config is not None and config.status == "verified":
+        resolve_landing_bot_token(config.secret_ref)
+    return enqueue_landing_event(
+        db,
+        landing_id=landing.id,
+        event_id=event_id,
+        event_type="consultation_request.v1",
+        payload=payload,
+    )
+
+
 def disable_landing_telegram(db: Session, landing_id: str) -> models.Landing:
     _start_write_transaction(db)
     landing = (
@@ -186,6 +341,17 @@ def current_landing_telegram_config(
     )
 
 
+def _same_consultation_payload(event, event_type, payload, contract):
+    if event_type != "consultation_request.v1" or event.event_type != event_type:
+        return False
+    try:
+        previous = json.loads(event.payload_json)
+    except (TypeError, json.JSONDecodeError):
+        return False
+    stable_fields = contract["payload_keys"] - {"consented_at"}
+    return isinstance(previous, dict) and all(previous.get(key) == payload.get(key) for key in stable_fields)
+
+
 def enqueue_landing_event(
     db: Session,
     *,
@@ -208,17 +374,8 @@ def enqueue_landing_event(
     )
     if existing is not None:
         if existing.payload_sha256 != digest:
-            if event_type == "consultation_request.v1":
-                try:
-                    previous_payload = json.loads(existing.payload_json)
-                except (TypeError, json.JSONDecodeError):
-                    previous_payload = None
-                stable_fields = contract["payload_keys"] - {"consented_at"}
-                if isinstance(previous_payload, dict) and all(
-                    previous_payload.get(field) == payload.get(field)
-                    for field in stable_fields
-                ):
-                    return existing, True
+            if _same_consultation_payload(existing, event_type, payload, contract):
+                return existing, True
             raise LandingError(
                 status_code=409, detail="Ключ события уже использован с другими данными"
             )
@@ -285,7 +442,10 @@ def enqueue_landing_event(
             .filter_by(landing_id=landing_id, event_id=event_id)
             .first()
         )
-        if concurrent is not None and concurrent.payload_sha256 == digest:
+        if concurrent is not None and (
+            concurrent.payload_sha256 == digest
+            or _same_consultation_payload(concurrent, event_type, payload, contract)
+        ):
             return concurrent, True
         if concurrent is not None:
             raise LandingError(

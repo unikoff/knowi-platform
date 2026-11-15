@@ -1,44 +1,67 @@
-.venv/
-__pycache__/
-*.py[cod]
+# Service/app-local dependencies, state, credentials and generated output.
+**/.venv/
+**/node_modules/
+**/.local/
+**/.cache/
+**/.vite/
+**/dist/
+**/__pycache__/
+**/*.py[cod]
+**/*.tsbuildinfo
+apps/web/config/vite.resend-local*.config.ts
+**/.pytest*/
+**/*.log
+**/output/
+**/.env
+**/.env.*
+!**/.env.example
+**/*.pem
+**/*.key
+**/*.db
+**/*.db-*
+**/*.sqlite
+**/*.sqlite-*
+**/*.sqlite3
+**/*.sqlite3-*
 
-backend/test.db
-test.db
-backend/*.log
-backend/notification-worker.log.*
-backend/.runner.lock
-backend/.notification-worker.lock
-backend/.env
-
-frontend/node_modules/
-frontend/*.log
-# frontend/dist is intentionally tracked: the production host cannot build it.
-
-# Claude Code local configuration.
+# Local editor/tool metadata.
 .claude/
-
-# Local ZIP archive of a build; frontend/dist is already tracked.
+.serena/
+.playwright-cli/
+.docs
+DEPLOYMENT.local.md
 pymentor-dist.zip
 
-# Local deployment notes with production details.
-DEPLOYMENT.local.md
-
-.docs
-
-# Local verification runs and generated artifacts.
-/output/
-/.playwright-cli/
+# Keep canonical methodics and project maintenance records; older runs stay local.
+/docs/*
+!/docs/make les stage/
+!/docs/make les stage/**
+!/docs/maintenance/
+!/docs/architecture/
+!/docs/course-isolation/
+# Keep current course architecture guides; generated evidence and media stay local.
+/docs/course-isolation/*
+!/docs/course-isolation/backend.md
+!/docs/course-isolation/frontend-runtime.md
+!/docs/course-isolation/shared-ui.md
+!/docs/course-isolation/landing.md
+!/docs/course-isolation/ai-tools.md
+!/docs/course-isolation/RESULT.md
+!/docs/course-isolation/catalog-before.json
 /docs/stage-runs/
-**/.pytest_cache/
-backend/pymentor-run-*/
-backend/tests/pymentor-core-baseline-*/
 docs/manual-upgrade/**/CHAT_RUNS.json
 docs/manual-upgrade/**/RUN.json
 docs/stage-system-setup/**/CHAT_RUNS.json
 docs/stage-system-setup/**/RUN.json
-docs/stage-system-setup/**/dispatch-check-*/
-docs/stage-system-setup/**/core-check-*/
-.serena/
 
-# Documentation is maintained locally.
-/docs/
+# Disposable visual-review builds beside development-only demo sources.
+apps/web/devtools/lesson-visual-demo/*-build*/
+apps/web/devtools/lesson-visual-demo/*-dist/
+apps/web/devtools/lesson-visual-demo/*-baseline/
+apps/web/devtools/lesson-visual-demo/*.jpg
+!apps/web/devtools/lesson-visual-demo/important-tone.jpg
+!apps/web/devtools/lesson-visual-demo/lists-without-headings.jpg
+!apps/web/devtools/lesson-visual-demo/text-accents.jpg
+apps/web/devtools/lesson-visual-demo/*-report.json
+apps/web/devtools/lesson-visual-demo/source-inventory.json
+apps/web/devtools/lesson-visual-demo/*.diff

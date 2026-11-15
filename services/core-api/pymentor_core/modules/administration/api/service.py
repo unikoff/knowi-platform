@@ -13,6 +13,7 @@ from pymentor_core.modules.bookings.api.schemas import SlotCreate
 from pymentor_core.modules.administration.api.schemas import QuotaChange
 from pymentor_core.modules.administration.api.schemas import SubscriptionChange
 from pymentor_core.modules.administration.public import require_admin
+from pymentor_core.modules.identity.principal import require_admin as authorize_admin
 
 
 def _call(name, *args, **kwargs):
@@ -24,8 +25,8 @@ def _call(name, *args, **kwargs):
         ) from exc
 
 
-def admin_overview(request: Request, db: Session):
-    actor = require_admin(request, db)
+def admin_overview(request: Request, db: Session, *, actor=None):
+    actor = authorize_admin(actor) if actor is not None else require_admin(request, db)
     return _call("admin_overview", actor=actor, db=db)
 
 
@@ -37,8 +38,9 @@ def list_users(
     year: int | None,
     month: int | None,
     db: Session,
+    *, actor=None,
 ):
-    actor = require_admin(request, db)
+    actor = authorize_admin(actor) if actor is not None else require_admin(request, db)
     return _call(
         "list_users",
         actor=actor,
@@ -57,8 +59,9 @@ def delete_user(
     db: Session,
     *,
     expected_account_ref: str | None = None,
+    actor=None,
 ):
-    actor = require_admin(request, db)
+    actor = authorize_admin(actor) if actor is not None else require_admin(request, db)
     return _call(
         "delete_user",
         user_id=user_id,
@@ -75,11 +78,10 @@ def change_subscription(
     db: Session | None,
     *,
     uow: UnitOfWork | None = None,
+    actor=None,
 ):
-    actor = (
-        require_admin(request, db)
-        if uow is None
-        else require_admin(request, db, uow=uow)
+    actor = authorize_admin(actor) if actor is not None else (
+        require_admin(request, db) if uow is None else require_admin(request, db, uow=uow)
     )
     return _call(
         "change_subscription",
@@ -92,9 +94,9 @@ def change_subscription(
 
 
 def admin_list_slots(
-    request: Request, year: int, month: int, include_past: bool, db: Session
+    request: Request, year: int, month: int, include_past: bool, db: Session, *, actor=None
 ):
-    actor = require_admin(request, db)
+    actor = authorize_admin(actor) if actor is not None else require_admin(request, db)
     return _call(
         "admin_list_slots",
         actor=actor,
@@ -105,25 +107,26 @@ def admin_list_slots(
     )
 
 
-def admin_create_slot(payload: SlotCreate, request: Request, db: Session):
-    actor = require_admin(request, db)
+def admin_create_slot(payload: SlotCreate, request: Request, db: Session, *, actor=None):
+    actor = authorize_admin(actor) if actor is not None else require_admin(request, db)
     return _call("admin_create_slot", payload=payload, actor=actor, db=db)
 
 
-def admin_delete_slot(slot_id: int, request: Request, db: Session):
-    actor = require_admin(request, db)
+def admin_delete_slot(slot_id: int, request: Request, db: Session, *, actor=None):
+    actor = authorize_admin(actor) if actor is not None else require_admin(request, db)
     return _call("admin_delete_slot", slot_id=slot_id, actor=actor, db=db)
 
 
-def student_profile(user_id: int, request: Request, year: int, month: int, db: Session):
-    actor = require_admin(request, db)
+def student_profile(user_id: int, request: Request, year: int, month: int, db: Session, *, actor=None, content=None):
+    actor = authorize_admin(actor) if actor is not None else require_admin(request, db)
     return _call(
-        "student_profile", user_id=user_id, actor=actor, year=year, month=month, db=db
+        "student_profile", user_id=user_id, actor=actor, year=year, month=month, db=db,
+        **({"content": content} if content is not None else {})
     )
 
 
-def change_quota(user_id: int, payload: QuotaChange, request: Request, db: Session):
-    actor = require_admin(request, db)
-    return _call("change_quota", user_id=user_id, payload=payload, actor=actor, db=db)
+def change_quota(user_id: int, payload: QuotaChange, request: Request, db: Session, *, actor=None, content=None):
+    actor = authorize_admin(actor) if actor is not None else require_admin(request, db)
+    return _call("change_quota", user_id=user_id, payload=payload, actor=actor, db=db, **({"content": content} if content is not None else {}))
 
 

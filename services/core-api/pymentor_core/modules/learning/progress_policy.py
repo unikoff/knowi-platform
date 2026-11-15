@@ -5,18 +5,25 @@ import json
 import re
 
 
-# Stable IDs of optional practice tasks; all other tasks are required by default.
-OPTIONAL_TASK_IDS = frozenset({"lesson-b504d05e6763add4db882bfe-task-05"})
+# Compatibility export; optional identities belong to each course catalog.
+OPTIONAL_TASK_IDS = frozenset()
+
+
+def lesson_progress_policy(lesson: dict) -> dict:
+    return lesson.get("progress_policy", {})
+
+
+def uses_persisted_task_progress(lesson: dict) -> bool:
+    return lesson_progress_policy(lesson).get("revision_tracked", True) is True
+
+
+def uses_card_completion(lesson: dict | None) -> bool:
+    return isinstance(lesson, dict) and lesson_progress_policy(lesson).get("completion", "cards") == "cards"
 
 
 def is_overview_lesson(lesson: dict) -> bool:
-    """Chapter overview pages are complete from the start, without a saved marker."""
-    parts = str(lesson.get("source_file", "")).replace("\\", "/").split("/")
-    return (
-        len(parts) == 3
-        and bool(re.fullmatch(r"chapter_\d+", parts[0]))
-        and parts[1] == "block_00"
-    )
+    """Only the course catalog can designate an automatically complete overview."""
+    return lesson_progress_policy(lesson).get("overview") is True
 
 
 def is_countable_lesson(lesson: dict) -> bool:
@@ -27,11 +34,12 @@ def is_countable_lesson(lesson: dict) -> bool:
 
 def is_task_required(task: dict) -> bool:
     """Tasks are required by default; only explicit metadata or this stable mapping can opt out."""
-    return task.get("required") is not False and task.get("id") not in OPTIONAL_TASK_IDS
+    return task.get("required") is not False
 
 
 def required_lesson_tasks(lesson: dict) -> list[dict]:
-    return [task for task in lesson.get("tasks", []) if is_task_required(task)]
+    optional = lesson_progress_policy(lesson).get("optional_task_ids", [])
+    return [task for task in lesson.get("tasks", []) if is_task_required(task) and task.get("id") not in optional]
 
 
 def chapter_one_completion_task_id(lesson_id: str) -> str:

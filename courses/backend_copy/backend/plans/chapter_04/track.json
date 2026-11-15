@@ -1,0 +1,6 @@
+{
+  "title": "Глава 4: FastAPI и базы данных",
+  "tagline": "FastAPI, SQLite и SQLAlchemy: от JSON-хранилища к Database API",
+  "order": 4,
+  "id": "FastAPI, SQLite и SQLAlchemy - StudyHub Database API"
+}

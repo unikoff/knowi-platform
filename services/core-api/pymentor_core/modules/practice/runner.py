@@ -19,3 +19,7 @@ def run_python_task(*args, **kwargs):
 
 def get_runner_executor(*args, **kwargs):
     return get_bindings().runner.get_runner_executor(*args, **kwargs)
+
+
+def get_runner_policy():
+    return get_bindings().runner.policy

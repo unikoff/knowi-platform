@@ -8,10 +8,12 @@ from pydantic import constr
 class CodeSubmitRequest(BaseModel):
     code: constr(min_length=1, max_length=8000)
     task_revision: constr(pattern=r"^[0-9a-f]{64}$") | None = None
+    course_id: constr(min_length=1, max_length=80) | None = None
 
 
 class InterpreterRunRequest(BaseModel):
     code: constr(min_length=1, max_length=8000)
+    course_id: constr(min_length=1, max_length=80) | None = None
 
 
 class TestResult(BaseModel):
