@@ -7,6 +7,7 @@ from datetime import timezone
 from pathlib import Path
 
 from fastapi import FastAPI
+import pytest
 from pg_business_support import runtime_db
 
 from pymentor_core.app.dependencies import get_db
@@ -161,7 +162,20 @@ def test_unsafe_origin_check_blocks_cross_origin_and_preserves_allowed_requests(
     asyncio.run(_exercise_origin_check())
 
 
-def test_api_aliases_preserve_catalog_auth_cookies_and_missing_refresh(runtime_db):
+@pytest.fixture(params=[False, True], ids=["without-frontend", "with-frontend"])
+def frontend_runtime(request, monkeypatch, tmp_path):
+    from pymentor_core.app import web
+    dist = tmp_path / "dist"
+    if request.param:
+        (dist / "assets").mkdir(parents=True)
+        (dist / "index.html").write_text("<!doctype html><title>fixture</title>", encoding="utf-8")
+    monkeypatch.setattr(web, "DIST_DIR", dist)
+    # Request the fixture only after the path is configured: it creates the app.
+    return request.getfixturevalue("runtime_db"), request.param
+
+
+def test_api_aliases_preserve_catalog_auth_cookies_and_missing_refresh(frontend_runtime):
+    runtime_db, frontend_present = frontend_runtime
     from uuid import uuid4
     from test_c2_1_4_auth_legacy import call
     with runtime_db() as db:
@@ -186,7 +200,8 @@ def test_api_aliases_preserve_catalog_auth_cookies_and_missing_refresh(runtime_d
         logout = call("POST", prefix + "/logout", cookie=cookie.value)
         assert logout.status == 200 and logout.cookie().value == ""
         assert call("GET", prefix + "/me", cookie=cookie.value).status == 401
-        # The full app's static GET fallback returns 405 for this absent POST.
-        assert call("POST", prefix + "/refresh").status == 405
+        # An installed SPA adds a GET catch-all; an asset-free app has no matching route.
+        expected_status = 405 if frontend_present else 404
+        assert call("POST", prefix + "/refresh").status == expected_status
     assert catalogs[0] == catalogs[1]
     assert users[0] == users[1]
