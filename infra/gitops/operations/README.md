@@ -91,6 +91,10 @@ Job использует отдельный Secret `pymentor/knowi-core-migratio
    Старый Rollout уже удалён на шаге5. Новый создаётся как первый deployment;
    selectors, ownership, первый stable и отсутствие преждевременного analysis
    проверяются изолированной репетицией перед выполнением на рабочем кластере.
+   До ручной sync также удалить старый `frontend-progressive` с foreground cascade
+   и проверить отсутствие его pods/ReplicaSets: его обычный canary analysis обращается
+   к публичному сайту, который ещё закрыт maintenance. Первый deployment нового
+   frontend пропускает эти шаги; обе новые stable ревизии проверяются до открытия.
 9. Проверить внутри namespace нужные digest/revision, readiness, auth, запись/чтение
    профиля, оба курса, изоляцию прогресса, logout и worker. Проверить, что все Service
    endpoints относятся только к новому Core. При сбое оставаться в maintenance.

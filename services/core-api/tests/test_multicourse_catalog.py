@@ -35,28 +35,41 @@ def disposable_courses():
         shutil.rmtree(resolved)
 
 
-def test_full_products_preserve_every_baseline_resource_and_private_spec(runtime):
+@pytest.mark.parametrize("course_id", ["backend", "backend_copy"])
+def test_full_products_preserve_every_baseline_resource_and_private_spec(runtime, course_id):
     baseline = json.loads((ROOT / "services/core-api/tests/fixtures/contracts/multicourse/MC1.2/inventory.json").read_text(encoding="utf-8"))
     current = ROOT / "services/core-api/tests/fixtures/contracts/multicourse/main-import/main-content-before.json"
     if current.is_file():
-        captured = json.loads(current.read_text(encoding="utf-8"))
-        baseline = {"tracks": captured["tracks"], "identity_authority": {"content_revision": captured["content_revision"]}}
-    a = runtime.snapshot("backend")
-    b = runtime.snapshot("backend_copy")
-    assert a.catalog.TRACKS == b.catalog.TRACKS
-    assert len(a.catalog.TRACKS) == 9
-    assert len(a.catalog.LESSONS) == 310
-    assert sum(len(lesson["tasks"]) for lesson in a.catalog.LESSONS) == 204
-    assert a.catalog.get_content_revision() == baseline["identity_authority"]["content_revision"]
-    expected = []
-    for track in baseline["tracks"]:
-        for lesson in track["lessons"]:
-            expected.append((track["track_id"], lesson["lesson_id"], lesson["legacy_id"], lesson["source_file"], [(t["task_id"], t["revision"]) for t in lesson["tasks"]]))
-    actual = []
-    for track in a.catalog.TRACKS:
-        for lesson in track["lessons"]:
-            actual.append((track["id"], lesson["id"], lesson["legacy_id"], lesson["source_file"], [(t["id"], t["revision"]) for t in lesson["tasks"]]))
-    assert actual == expected
+        baseline = json.loads(current.read_text(encoding="utf-8"))
+    catalog = runtime.snapshot(course_id).catalog
+    assert len(catalog.TRACKS) == 9
+    assert len(catalog.LESSONS) == 310
+    assert sum(len(lesson["tasks"]) for lesson in catalog.LESSONS) == 204
+    expected = [(track["track_id"], lesson["lesson_id"], lesson["legacy_id"], lesson["source_file"],
+                 [(task["task_id"], task["revision"]) for task in lesson["tasks"]])
+                for track in baseline["tracks"] for lesson in track["lessons"]]
+    actual = [(track["id"], lesson["id"], lesson["legacy_id"], lesson["source_file"],
+               [(task["id"], task["revision"]) for task in lesson["tasks"]])
+              for track in catalog.TRACKS for lesson in track["lessons"]]
+    assert len(actual) == len(expected)
+    for index, (observed, historic) in enumerate(zip(actual, expected)):
+        assert observed == historic, f"{course_id} lesson identity/revision mismatch at index {index}"
+
+
+def test_lesson_70_course_specific_policy_and_public_answers(runtime):
+    lesson_id = "lesson-c4878f92ca23a93b777d9fa8"
+    provider = LocalCourseProvider(runtime)
+    for course_id, private, requirements in (("backend", True, True), ("backend_copy", False, False)):
+        catalog = runtime.snapshot(course_id).catalog
+        lesson = catalog.find_lesson(lesson_id)
+        assert lesson["private_manual_answers"] is private
+        exercise = lesson["manual_practice"][0]
+        assert ("requirements" in exercise["tasks"][2]) is requirements
+        assert "answer" in exercise["tasks"][2]
+        public = next(item for item in provider.get_public_lessons(lesson["track"], course_id=course_id)
+                      if item["id"] == lesson_id)
+        assert "answer" not in public["manual_practice"][0]["tasks"][2]
+        assert "private_manual_answers" not in public
 
 
 def test_python_modules_and_provider_results_are_not_shared_between_courses(runtime):
