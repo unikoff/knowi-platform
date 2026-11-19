@@ -1,0 +1,65 @@
+name: knowi-analytics-app-01a1df75
+x-app: &app
+  image: ${ANALYTICS_IMAGE:-knowi-analytics:corp63-synthetic}
+  pull_policy: never
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  restart: "no"
+  mem_limit: 256m
+  cpus: 0.5
+  networks: [analytics-data]
+
+services:
+  collector:
+    <<: *app
+    command: [collector, --host, 0.0.0.0, --port, "8000"]
+    environment:
+      ANALYTICS_COLLECTOR_DATABASE_URL: ${ANALYTICS_COLLECTOR_DATABASE_URL:?Set the dedicated collector database URL}
+      ANALYTICS_COLLECTOR_POOL_SIZE: "2"
+      ANALYTICS_COLLECTOR_POOL_OVERFLOW: "0"
+      FORWARDED_ALLOW_IPS: ""
+  processor:
+    <<: *app
+    command: [processor, --host, 0.0.0.0, --port, "8000"]
+    environment:
+      ANALYTICS_PROCESSOR_DATABASE_URL: ${ANALYTICS_PROCESSOR_DATABASE_URL:?Set the dedicated processor database URL}
+      ANALYTICS_PROCESSOR_POOL_SIZE: "2"
+      ANALYTICS_PROCESSOR_POOL_OVERFLOW: "0"
+      FORWARDED_ALLOW_IPS: ""
+  query:
+    <<: *app
+    command: [query, --host, 0.0.0.0, --port, "8000"]
+    environment:
+      ANALYTICS_QUERY_DATABASE_URL: ${ANALYTICS_QUERY_DATABASE_URL:?Set the dedicated query database URL}
+      ANALYTICS_QUERY_POOL_SIZE: "2"
+      ANALYTICS_QUERY_POOL_OVERFLOW: "0"
+      FORWARDED_ALLOW_IPS: ""
+  migrate:
+    <<: *app
+    profiles: [migration]
+    command: [migrate]
+    environment:
+      ANALYTICS_MIGRATE_DATABASE_URL: ${ANALYTICS_MIGRATE_DATABASE_URL:-}
+      ANALYTICS_MIGRATE_POOL_SIZE: "1"
+      ANALYTICS_MIGRATE_POOL_OVERFLOW: "0"
+  ingress:
+    image: traefik:v3.7.15
+    command:
+      - --providers.file.filename=/etc/traefik/routes.yaml
+      - --entrypoints.web.address=:8000
+      - --api.dashboard=false
+      - --accesslog=false
+    ports: ["127.0.0.1:57400:8000"]
+    volumes: ["./routes.yaml:/etc/traefik/routes.yaml:ro"]
+    networks: [analytics-data]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 128m
+    cpus: 0.25
+
+networks:
+  analytics-data:
+    external: true
+    name: knowi-analytics-01a1df75-net

@@ -61,3 +61,32 @@ def chapter_one_completion_revision(lesson: dict) -> str:
         default=str,
     )
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def needs_chapter_one_self_check_progress(lesson: dict) -> bool:
+    return (
+        uses_card_completion(lesson)
+        and bool(lesson.get("self_check"))
+        and (bool(lesson.get("manual_practice")) or not lesson.get("tasks"))
+    )
+
+
+def lesson_completion_requirements(lesson: dict):
+    """Yield alternative proofs: a lesson receipt flag and the required task revisions."""
+    tasks = lesson.get("tasks", [])
+    if uses_card_completion(lesson):
+        # Pre-card completions remain valid alongside the revision-pinned proofs.
+        yield True, ()
+        for task_id, revision in lesson_progress_policy(lesson).get("legacy_task_completions", {}).items():
+            yield False, ((task_id, revision),)
+        required = tuple((task["id"], task.get("revision")) for task in required_lesson_tasks(lesson))
+        if lesson.get("manual_practice") or not tasks:
+            if needs_chapter_one_self_check_progress(lesson):
+                marker = (chapter_one_completion_task_id(lesson["id"]), chapter_one_completion_revision(lesson))
+                yield False, (*required, marker)
+        elif required:
+            yield False, required
+    elif not uses_persisted_task_progress(lesson) or not tasks:
+        yield True, ()
+    else:
+        yield bool(lesson.get("manual_practice")), tuple((task["id"], task.get("revision")) for task in tasks)

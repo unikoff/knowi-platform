@@ -11,7 +11,7 @@
     "preview": "vite preview --config config/vite.config.ts --host 127.0.0.1 --port 4173 --configLoader bundle",
     "predev": "node tools/course-registry.mjs",
     "prebuild": "node tools/course-registry.mjs",
-    "test:course-runtime": "node tools/course-registry.mjs && node --test tools/course-document.test.mjs tools/course-registry.test.mjs src/shared/course-paths.test.mjs src/shared/api/client.test.mjs",
+    "test:course-runtime": "node tools/course-registry.mjs && node --test tools/course-document.test.mjs tools/course-registry.test.mjs tools/course-frontend-watch.test.mjs src/course-runtime/page-registry.test.mjs src/shared/course-paths.test.mjs src/shared/api/client.test.mjs",
     "test:course-demo": "node --test tools/course-demo.test.mjs",
     "test:course-boundary": "node --test tools/course-boundary.test.mjs",
     "test:release": "node tools/course-registry.mjs && node tools/test-release.mjs"

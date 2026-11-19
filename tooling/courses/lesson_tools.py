@@ -49,8 +49,16 @@ def number_key(value):
     return tuple(int(part) for part in value.split('.'))
 
 
+def validate_preview_origin(origin):
+    match = re.fullmatch(r'http://127\.0\.0\.1(?::([1-9][0-9]{0,4}))?', origin)
+    if not match or (match.group(1) and int(match.group(1)) > 65535):
+        raise ResolutionError('Invalid preview origin: expected HTTP 127.0.0.1 with a valid port')
+    return origin
+
+
 class Inventory:
-    def __init__(self, root, chapter, course='backend'):
+    def __init__(self, root, chapter, course='backend', preview_origin='http://127.0.0.1:5173'):
+        self.preview_origin = validate_preview_origin(preview_origin)
         self.root = Path(root).resolve()
         if not re.fullmatch(r'[a-z0-9]+(?:_[a-z0-9]+)*', course) or course == 'shared':
             raise ResolutionError("Invalid course name")
@@ -109,7 +117,7 @@ class Inventory:
             return result
         mapping = self.mapping(md)
         result.update({'lesson_source': self.source(md), 'number': NUMBER.match(md.name).group(1), 'mapping_targets': mapping, 'tsx': [self.source(self.front / (item + '.tsx')) or {'path': self.rel(self.front / (item + '.tsx')), 'status': 'MISSING'} for item in mapping]})
-        result['preview_url'] = ('http://127.0.0.1:5173/authoring.html?lesson=' + quote(self.chapter + '/' + mapping[0], safe='/')) if len(mapping) == 1 else None
+        result['preview_url'] = (self.preview_origin + '/authoring.html?lesson=' + quote(self.chapter + '/' + mapping[0], safe='/')) if len(mapping) == 1 else None
         if result['preview_url'] and self.course != 'backend':
             result['preview_url'] += '&course=' + quote(self.course, safe='')
         result['preview_scope'] = 'Early theory preview; API and practice are not verified.'
@@ -140,7 +148,7 @@ class Inventory:
         return result
 
 
-def parse_practice(inv, path, lesson, kind, seen=None, imported=False):
+def parse_practice(inv, path, lesson, kind, seen=None, imported=False, *, literal_entries=None):
     """Inspect target literals in local numbered catalogs without importing Python."""
     seen = seen or set()
     checks, sources = [], []
@@ -200,7 +208,10 @@ def parse_practice(inv, path, lesson, kind, seen=None, imported=False):
                               and isinstance(arg.value, ast.Name) and arg.value.id in modules):
                             module = modules[arg.value.id]
                         if module:
-                            subchecks, subsources = parse_practice(inv, path.parent / (module + '.py'), lesson, kind, seen, imported=True)
+                            subchecks, subsources = parse_practice(
+                                inv, path.parent / (module + '.py'), lesson, kind, seen,
+                                imported=True, literal_entries=literal_entries,
+                            )
                             checks.extend(subchecks)
                             sources.extend(subsources)
                             if subsources:
@@ -228,6 +239,9 @@ def parse_practice(inv, path, lesson, kind, seen=None, imported=False):
             status = 'FAIL' if isinstance(node, (ast.Constant, ast.Dict, ast.Set)) else 'UNKNOWN'
             checks.append((status, f'{name} target value is not a literal list'))
             continue
+        if literal_entries is not None:
+            literal_entries.append(node.elts)
+            continue
         for i, card in enumerate(node.elts):
             if not isinstance(card, ast.Dict):
                 status = 'FAIL' if isinstance(card, (ast.Constant, ast.List, ast.Tuple, ast.Set)) else 'UNKNOWN'
@@ -244,6 +258,53 @@ def parse_practice(inv, path, lesson, kind, seen=None, imported=False):
             return [('UNKNOWN', 'Imported practice may contain target: ' + inv.rel(path))], []
         return [], []
     return checks, sources
+
+
+def visible_manual_card(node):
+    """Project only learner-facing literals, without decoding hidden values."""
+    error = 'Manual practice has unsupported or ambiguous card fields'
+    if not isinstance(node, ast.Dict):
+        raise ResolutionError(error)
+    card = {}
+    for key, value in zip(node.keys, node.values):
+        if not isinstance(key, ast.Constant) or not isinstance(key.value, str):
+            raise ResolutionError(error)
+        field = key.value
+        if field in card:
+            raise ResolutionError(error)
+        if field in ('title', 'task', 'result'):
+            if not isinstance(value, ast.Constant) or not isinstance(value.value, str):
+                raise ResolutionError(error)
+            card[field] = value.value
+        elif field in ('steps', 'requirements', 'tasks'):
+            if not isinstance(value, (ast.List, ast.Tuple)):
+                raise ResolutionError(error)
+            if field == 'tasks':
+                card[field] = [visible_manual_card(task) for task in value.elts]
+            elif all(isinstance(item, ast.Constant) and isinstance(item.value, str) for item in value.elts):
+                card[field] = [item.value for item in value.elts]
+            else:
+                raise ResolutionError(error)
+    if not card.get('title') or not card.get('task'):
+        raise ResolutionError(error)
+    return card
+
+
+def visible_practice(inv, md):
+    number = '.'.join(map(str, number_key(NUMBER.match(md.name).group(1))))
+    path = inv.practice / md.parent.relative_to(inv.base) / 'manual.py'
+    entries = []
+    checks, sources = parse_practice(inv, path, number, 'manual', literal_entries=entries)
+    if len(entries) != 1 or not entries[0] or any(status != 'PASS' for status, _ in checks):
+        raise ResolutionError('No unambiguous static manual practice for this lesson')
+    return {
+        'course': inv.course,
+        'chapter': inv.chapter,
+        'number': number,
+        'scope': 'STATIC_MANUAL_PROMPTS',
+        'practice_sources': sources,
+        'cards': [visible_manual_card(card) for card in entries[0]],
+    }
 
 
 def validate_card(card, kind, label, checks, nested=False):
@@ -322,8 +383,8 @@ def validate_card(card, kind, label, checks, nested=False):
 
 
 def check_plan_structure(contents):
-    """Check the planned teaching frame; author-only headings do not end the lesson."""
-    headings = list(re.finditer(r'^#{1,6}\s+(\d{2})(?:[.)\s:\-]+)(.+?)\s*$', contents, re.M))
+    """Check teaching sections below H1; the document title is not a lesson section."""
+    headings = list(re.finditer(r'^#{2,6}\s+(\d{2})(?:[.)\s:\-]+)(.+?)\s*$', contents, re.M))
     checks = []
     first = headings[0] if headings else None
     valid_intro = bool(first and first.group(1) == '00')
@@ -438,22 +499,28 @@ def human_output(value, prefix=''):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
-    for command in ('context', 'check'):
+    for command in ('context', 'check', 'visible-practice'):
         p = sub.add_parser(command)
         p.add_argument('--chapter', required=True)
         p.add_argument('--course', default='backend', help='Course folder (default: backend)')
         p.add_argument('--root', type=Path, default=ROOT)
+        p.add_argument('--preview-origin', default='http://127.0.0.1:5173', help='Local HTTP 127.0.0.1 preview origin')
         p.add_argument('--json', action='store_true')
-        group = p.add_mutually_exclusive_group(required=command == 'check')
+        group = p.add_mutually_exclusive_group(required=command != 'context')
         group.add_argument('--lesson')
         group.add_argument('--source')
         if command == 'check':
             p.add_argument('--stage', required=True, choices=('2', '3'))
     args = parser.parse_args(argv)
     try:
-        inv = Inventory(args.root, args.chapter, args.course)
+        inv = Inventory(args.root, args.chapter, args.course, args.preview_origin)
         md = inv.resolve(args.lesson, getattr(args, 'source', None)) if args.lesson or getattr(args, 'source', None) else None
-        data = inv.context(md) if args.command == 'context' else check(inv, md, args.stage)
+        if args.command == 'context':
+            data = inv.context(md)
+        elif args.command == 'visible-practice':
+            data = visible_practice(inv, md)
+        else:
+            data = check(inv, md, args.stage)
         code = 1 if args.command == 'check' and any(c['status'] == 'FAIL' for c in data['checks']) else 0
     except (ResolutionError, OSError, UnicodeError) as exc:
         data = {'error': str(exc), 'candidates': getattr(exc, 'candidates', [])}

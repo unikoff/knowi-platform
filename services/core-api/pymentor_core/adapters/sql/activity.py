@@ -22,7 +22,14 @@ def record_activity_day(
     *,
     uow: UnitOfWork | None = None,
     clock: Clock | None = None,
+    expected_account_ref: str | None = None,
 ) -> models.UserActivityDay:
+    from pymentor_core.adapters.sql.analytics_delivery_ops import integration
+    if integration.enabled():
+        timestamp = visited_at or (clock.now() if clock is not None else None)
+        return integration.record_visit(integration.session_for(db, uow), user_id, activity_date, timestamp, expected_account_ref)
+    if expected_account_ref is not None:
+        integration.guard_lifecycle(integration.session_for(db, uow), user_id, expected_account_ref)
     if uow is not None:
         repository = uow.repository(models.UserActivityDay)
         timestamp = visited_at or (

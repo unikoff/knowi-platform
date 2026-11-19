@@ -15,6 +15,9 @@ class ClaimedNotification:
     start_time: str
     attempts: int
     lock_token: str
+    course_id: str | None = None
+    calendar_owner_id: int | None = None
+    booking_id: int | None = None
 
 
 @dataclass(frozen=True)

@@ -1,6 +1,5 @@
 """Deletion with an account-generation precondition on managed PostgreSQL."""
 
-from types import SimpleNamespace
 from threading import Event
 from threading import Thread
 
@@ -11,7 +10,7 @@ from sqlalchemy import text
 from pymentor_core.adapters.sql import models
 from pymentor_core.adapters.sql import administration as storage
 from pymentor_core.modules.administration.api import service
-from test_account_progress_deletion import add_user
+from test_account_progress_deletion import add_user, add_admin
 from test_account_progress_deletion import database
 from test_c2_1_4_auth_legacy import runtime_db
 
@@ -27,16 +26,16 @@ def test_profile_user_and_reference_are_read_together(database):
         ), {"uid": user_id})
 
 
-def test_retry_of_old_delete_cannot_remove_recreated_account(database, monkeypatch):
+def test_retry_of_old_delete_cannot_remove_recreated_account(database):
     _, factory = database
-    monkeypatch.setattr(service, "require_admin", lambda *_: SimpleNamespace(id=99999))
     with factory() as db:
+        actor = add_admin(db)
         user_id = add_user(db, "synthetic-old")
         generation = db.scalar(text(
             "SELECT lifecycle_id FROM account_lifecycles WHERE user_id=:uid"
         ), {"uid": user_id})
         assert generation
-        assert service.delete_user(user_id, None, db, expected_account_ref=generation) == {"deleted": user_id}
+        assert service.delete_user(user_id, None, db, expected_account_ref=generation, actor=actor) == {"deleted": user_id}
     with factory() as db:
         db.add(models.User(id=user_id, username="synthetic-new", email="new@example.test",
                            _password_hash="synthetic-hash"))
@@ -48,28 +47,28 @@ def test_retry_of_old_delete_cannot_remove_recreated_account(database, monkeypat
         ), {"uid": user_id})
         assert replacement and replacement != generation
         with pytest.raises(HTTPException) as error:
-            service.delete_user(user_id, None, db, expected_account_ref=generation)
+            service.delete_user(user_id, None, db, expected_account_ref=generation, actor=actor)
         assert error.value.status_code == 409
         assert db.get(models.User, user_id).email == "new@example.test"
         assert db.query(models.UserLessonProgress).filter_by(user_id=user_id).count() == 1
 
 
 
-def test_stale_delete_waiting_for_concurrent_recreation_rejects_new_generation(database, monkeypatch):
+def test_stale_delete_waiting_for_concurrent_recreation_rejects_new_generation(database):
     engine, factory = database
     ready, finished = Event(), Event()
     errors = []
     with factory() as db:
+        actor = add_admin(db)
         user_id = add_user(db, "old", seed_progress=False)
         old_ref = db.scalar(text("SELECT lifecycle_id FROM account_lifecycles WHERE user_id=:uid"), {"uid": user_id})
-    monkeypatch.setattr(service, "require_admin", lambda *_: SimpleNamespace(id=99999))
 
     def attempt_stale_delete():
         try:
             with factory() as db:
                 db.execute(text("SET LOCAL lock_timeout = '3s'"))
                 ready.set()
-                service.delete_user(user_id, None, db, expected_account_ref=old_ref)
+                service.delete_user(user_id, None, db, expected_account_ref=old_ref, actor=actor)
         except Exception as error:
             errors.append(error)
         finally:

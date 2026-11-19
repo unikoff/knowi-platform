@@ -1,0 +1,1 @@
+"""Collector public HTTP transport."""

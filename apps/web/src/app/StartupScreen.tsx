@@ -1,11 +1,9 @@
+import { BrandLogo } from "../shared/brand/BrandLogo";
 export function StartupScreen() {
   return (
     <main className="status-page status-page--loading" aria-labelledby="startup-title">
       <section className="startup-card" role="status" aria-live="polite">
-        <div className="status-brand">
-          <span className="status-brand__mark" aria-hidden="true"><i /><i /><i /><i /></span>
-          <span>knowi<span className="status-brand__dot">.</span></span>
-        </div>
+        <div className="status-brand"><BrandLogo /></div>
 
         <div className="startup-art" aria-hidden="true">
           <div className="startup-art__orbit startup-art__orbit--inner" />

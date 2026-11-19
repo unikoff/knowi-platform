@@ -11,8 +11,9 @@ import {
 import { formatSlotTimeRange } from "../../../shared/lib/dates";
 import { getAdminOverview } from "../api";
 import type { AdminOverview } from "../../../shared/api/contracts";
+import type { ScopedDashboard } from "../scopedApi";
 
-type Props = { onOpenStudent: (studentId: number) => void };
+type Props = { onOpenStudent: (studentId: number) => void; data?: ScopedDashboard; hideSubscriptions?: boolean; hideActivity?: boolean };
 type TrendPoint = { date: string; value: number };
 
 function formatDayMonth(value: string) {
@@ -270,12 +271,13 @@ function StudentList({ students, onOpenStudent, emptyMessage }: {
   );
 }
 
-export function AdminOverviewDashboard({ onOpenStudent }: Props) {
-  const [overview, setOverview] = useState<AdminOverview | null>(null);
+export function AdminOverviewDashboard({ onOpenStudent, data, hideSubscriptions = false, hideActivity = false }: Props) {
+  const [fetchedOverview, setOverview] = useState<AdminOverview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (data) return;
     let cancelled = false;
     setIsLoading(true);
     setError("");
@@ -292,8 +294,9 @@ export function AdminOverviewDashboard({ onOpenStudent }: Props) {
       });
 
     return () => { cancelled = true; };
-  }, []);
+  }, [data]);
 
+  const overview = data ?? fetchedOverview;
   return (
     <section className="admin-overview" aria-label="Обзор показателей платформы">
       {error && <div className="form-error" role="alert">{error}</div>}
@@ -314,21 +317,21 @@ export function AdminOverviewDashboard({ onOpenStudent }: Props) {
                 />
                 <MetricCard
                   title="Активны · 7 дней"
-                  value={overview.active_students_7d.toLocaleString("ru-RU")}
-                  note="были на платформе"
+                  value={hideActivity ? "—" : overview.active_students_7d?.toLocaleString("ru-RU") ?? "—"}
+                  note={hideActivity || overview.active_students_7d == null ? "данные недоступны" : "были активны"}
                 />
                 <MetricCard
                   title="Без активности · 7 дней"
-                  value={overview.inactive_students_7d?.toLocaleString("ru-RU") ?? "—"}
-                  note="требуют внимания"
+                  value={hideActivity ? "—" : overview.inactive_students_7d?.toLocaleString("ru-RU") ?? "—"}
+                  note={hideActivity || overview.inactive_students_7d == null ? "данные недоступны" : "требуют внимания"}
                   tone="amber"
                 />
               </div>
-              <TrendChart
+              {!hideActivity && Array.isArray(overview.daily_active_students) && overview.daily_active_students.every((point) => typeof point.active_students === "number") ? <TrendChart
                 points={overview.daily_active_students.map((point) => ({ date: point.date, value: point.active_students }))}
                 title="Посещения по дням"
                 description={formatStudentCount}
-              />
+              /> : <p className="admin-overview__empty">Данные о посещениях по дням недоступны.</p>}
             </section>
 
             <section className="admin-overview__group">
@@ -360,7 +363,7 @@ export function AdminOverviewDashboard({ onOpenStudent }: Props) {
               </section>
             </section>
 
-            <section className="admin-overview__group is-subscriptions">
+            {!hideSubscriptions && <section className="admin-overview__group is-subscriptions">
               <div className="admin-overview__group-heading">
                 <h2><ShieldCheck size={17} aria-hidden="true" /> Подписки</h2>
               </div>
@@ -393,7 +396,7 @@ export function AdminOverviewDashboard({ onOpenStudent }: Props) {
                   emptyMessage="В ближайшие 7 дней подписки не заканчиваются."
                 />
               </section>
-            </section>
+            </section>}
 
             <section className="admin-overview__group">
               <div className="admin-overview__group-heading">

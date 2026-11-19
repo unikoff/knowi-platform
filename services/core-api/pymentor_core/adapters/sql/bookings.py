@@ -32,6 +32,8 @@ def _start_write_transaction(db: Session) -> None:
     """Validate the sole backend; PostgreSQL owns transaction and row locks."""
     if db.get_bind().dialect.name != "postgresql":
         raise RuntimeError("Booking writes require PostgreSQL")
+    from pymentor_core.adapters.sql.role_admin_cutover import require_mode
+    require_mode(db, scoped=False)
 
 
 def _require_postgres_read_committed(db: Session) -> None:
@@ -110,9 +112,10 @@ def get_quota(
     uow: UnitOfWork | None = None,
 ) -> int:
     if uow is not None:
-        row = uow.repository(models.BookingQuota).find_one(
-            user_id=user_id, year=year, month=month
-        )
+        repository = uow.repository(models.BookingQuota)
+        row = repository.find_one(user_id=user_id, year=year, month=month, course_id='backend')
+        if row is None:
+            row = repository.find_one(user_id=user_id, year=year, month=month, course_id=None)
         return row.granted_slots if row else 0
     if db is None:
         raise ValueError("db is required when no unit of work is supplied")
@@ -122,6 +125,7 @@ def get_quota(
             models.BookingQuota.user_id == user_id,
             models.BookingQuota.year == year,
             models.BookingQuota.month == month,
+            or_(models.BookingQuota.course_id == 'backend', models.BookingQuota.course_id.is_(None)),
         )
         .first()
     )
@@ -129,6 +133,7 @@ def get_quota(
 
 
 def add_quota(user_id: int, year: int, month: int, amount: int, db: Session) -> int:
+    _start_write_transaction(db)
     _lock_postgres_user(db, user_id)
     row = (
         db.query(models.BookingQuota)
@@ -136,6 +141,7 @@ def add_quota(user_id: int, year: int, month: int, amount: int, db: Session) -> 
             models.BookingQuota.user_id == user_id,
             models.BookingQuota.year == year,
             models.BookingQuota.month == month,
+            or_(models.BookingQuota.course_id == 'backend', models.BookingQuota.course_id.is_(None)),
         )
         .first()
     )
@@ -158,6 +164,7 @@ def count_bookings_in_month(user_id: int, year: int, month: int, db: Session) ->
             models.BookingSlot.student_id == user_id,
             models.BookingSlot.slot_date >= start_date,
             models.BookingSlot.slot_date <= end_date,
+            or_(models.BookingSlot.course_id == 'backend', models.BookingSlot.course_id.is_(None)),
         )
         .count()
     )
@@ -233,11 +240,29 @@ def create_slot(
 
 
 def delete_slot(slot_id: int, db: Session) -> None:
-    slot = db.query(models.BookingSlot).filter(models.BookingSlot.id == slot_id).first()
+    if db.get_bind().dialect.name != 'postgresql':
+        raise RuntimeError('Booking writes require PostgreSQL')
+    from pymentor_core.adapters.sql.role_admin_cutover import lock_mode
+    scoped = lock_mode(db)
+    slot = db.query(models.BookingSlot).filter(models.BookingSlot.id == slot_id,
+        or_(models.BookingSlot.course_id == 'backend', models.BookingSlot.course_id.is_(None))).first()
     if slot is None:
         raise BookingError(status_code=404, detail="Слот не найден")
+    if scoped:
+        from fastapi import HTTPException
+        has_history = db.execute(text('SELECT EXISTS(SELECT 1 FROM booking_history WHERE slot_id=:id)'), {'id': slot_id}).scalar_one()
+        if slot.student_id is not None or has_history:
+            raise BookingError(status_code=409, detail='Слот связан с историей записи')
+        raise HTTPException(status_code=503, detail='Legacy booking writes retired after cutover')
     db.delete(slot)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        from pymentor_core.adapters.sql.role_admin_commands import _constraint_name
+        name = _constraint_name(exc)
+        if name == 'booking_history_slot_id_fkey':
+            raise BookingError(status_code=409, detail='Слот связан с историей записи') from exc
+        raise
 
 
 def list_slots_for_month_admin(
@@ -255,6 +280,8 @@ def list_slots_for_month_admin(
         .filter(
             models.BookingSlot.slot_date >= start_date,
             models.BookingSlot.slot_date <= end_date,
+            or_(models.BookingSlot.course_id == 'backend', models.BookingSlot.course_id.is_(None)),
+            models.BookingSlot.archived_at.is_(None),
         )
         .order_by(
             models.BookingSlot.slot_date.asc(), models.BookingSlot.start_time.asc()
@@ -296,6 +323,8 @@ def list_bookable_slots(
         .filter(
             models.BookingSlot.slot_date >= start_date,
             models.BookingSlot.slot_date <= end_date,
+            or_(models.BookingSlot.course_id == 'backend', models.BookingSlot.course_id.is_(None)),
+            models.BookingSlot.archived_at.is_(None),
             or_(
                 models.BookingSlot.student_id.is_(None),
                 models.BookingSlot.student_id == user_id,
@@ -322,7 +351,8 @@ def book_slot(
     _lock_postgres_user(db, user_id)
     slot = (
         db.query(models.BookingSlot)
-        .filter(models.BookingSlot.id == slot_id)
+        .filter(models.BookingSlot.id == slot_id,
+            or_(models.BookingSlot.course_id == 'backend', models.BookingSlot.course_id.is_(None)))
         .with_for_update()
         .first()
     )
@@ -383,7 +413,8 @@ def cancel_booking(
     _lock_postgres_user(db, user_id)
     slot = (
         db.query(models.BookingSlot)
-        .filter(models.BookingSlot.id == slot_id)
+        .filter(models.BookingSlot.id == slot_id,
+            or_(models.BookingSlot.course_id == 'backend', models.BookingSlot.course_id.is_(None)))
         .with_for_update()
         .first()
     )

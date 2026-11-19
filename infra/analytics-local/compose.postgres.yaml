@@ -1,0 +1,40 @@
+# Isolated synthetic Analytics database. Never attach Core data or networks.
+services:
+  analytics-postgres:
+    image: postgres:16
+    env_file: ../../services/analytics/.local/postgres.env
+    ports: ["127.0.0.1:57392:5432"]
+    command:
+      - postgres
+      - -c
+      - max_connections=40
+      - -c
+      - shared_buffers=32MB
+      - -c
+      - work_mem=2MB
+      - -c
+      - maintenance_work_mem=32MB
+      - -c
+      - synchronous_commit=on
+      - -c
+      - fsync=on
+      - -c
+      - full_page_writes=on
+    mem_limit: 384m
+    cpus: 0.5
+    volumes: [analytics_postgres_data:/var/lib/postgresql/data]
+    networks:
+      analytics:
+        aliases: [analytics-postgres]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U analytics_bootstrap -d analytics_bootstrap]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    labels:
+      knowi.analytics.synthetic: "true"
+volumes:
+  analytics_postgres_data:
+networks:
+  analytics:
+    name: knowi-analytics-01a1df75-net

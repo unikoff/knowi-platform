@@ -12,6 +12,10 @@ function courseScopedUrl(url: string): string {
   return `${path}?${params.toString()}`;
 }
 
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
+
 export async function apiRequest<T>(
   url: string,
   body?: unknown,
@@ -45,7 +49,7 @@ export async function apiRequest<T>(
   if (!response.ok) {
     const detail = typeof data?.detail === "string" ? data.detail :
       typeof data?.message === "string" ? data.message : "Проверьте введённые данные и попробуйте снова";
-    throw new Error(detail);
+    throw new ApiError(detail, response.status);
   }
 
   return data as T;

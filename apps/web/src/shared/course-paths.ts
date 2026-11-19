@@ -1,11 +1,13 @@
 import type { CourseId } from "../course-runtime/course-registry";
 import { courseIds, registeredCourses } from "../../.cache/course-registry/course-ids.ts";
+import { catalogPreviewCourses, type CatalogPreviewSlug } from "./catalog-preview-courses.ts";
 
 export type CourseRoute =
   | { kind: "learning"; courseId: CourseId; legacy: boolean }
   | { kind: "personal"; courseId: CourseId; legacy: boolean; section?: string }
   | { kind: "about"; courseId: CourseId; legacy: false }
   | { kind: "catalog" }
+  | { kind: "catalog-preview"; slug: CatalogPreviewSlug }
   | { kind: "redirect"; to: string }
   | { kind: "not-found" };
 
@@ -33,12 +35,19 @@ export function courseUrls(base: string, courseId: CourseId) {
 
 const landingSections = new Set(["reviews", "platform", "pricing", "personal-data", "privacy-policy"]);
 
+export function catalogPreviewUrl(base: string, slug: CatalogPreviewSlug) {
+  return `${normalizedBase(base)}catalog/${slug}`;
+}
+
 export function resolveCourseRoute(pathname: string, base: string): CourseRoute {
   const root = normalizedBase(base);
   if (/[\\?#]/.test(pathname) || !pathname.startsWith(root)) return { kind: "not-found" };
   const relative = pathname.slice(root.length).replace(/\/+$/, "");
-  if (relative === "") return { kind: "catalog" };
-  if (relative === "courses") return { kind: "redirect", to: root };
+  if (relative === "") return { kind: "redirect", to: `${root}backend` };
+  if (relative === "catalog") return { kind: "catalog" };
+  const preview = catalogPreviewCourses.find(course => relative === `catalog/${course.slug}`);
+  if (preview) return { kind: "catalog-preview", slug: preview.slug };
+  if (relative === "courses") return { kind: "redirect", to: `${root}catalog` };
   if (isCourseId("backend") && relative === "backend/landing") return { kind: "personal", courseId: "backend", legacy: true };
   for (const section of landingSections) {
     if (isCourseId("backend") && (relative === `backend/${section}` || relative === `backend/landing/${section}`)) {

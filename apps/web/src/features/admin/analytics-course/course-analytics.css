@@ -1,0 +1,18 @@
+.course-analytics__panel { grid-template-columns: minmax(0, 1fr); }
+.course-analytics__period, .course-analytics__meta { margin: 0; color: var(--muted); font-size: .76rem; line-height: 1.5; overflow-wrap: anywhere; }
+.course-analytics__metrics { grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); }
+.course-analytics__table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid var(--line-soft); border-radius: var(--radius-sm); scrollbar-color: var(--line) transparent; }
+.course-analytics__table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.course-analytics__table { width: 100%; border-collapse: collapse; color: var(--text); font-size: .76rem; font-variant-numeric: tabular-nums; }
+.course-analytics__table th, .course-analytics__table td { padding: 9px 10px; border-bottom: 1px solid var(--line-soft); text-align: left; white-space: nowrap; }
+.course-analytics__table thead th { color: var(--muted); font-size: .68rem; }
+.course-analytics__table tbody tr:last-child > * { border-bottom: 0; }
+.course-analytics__table tbody th { font-weight: 600; }
+.course-analytics-details__row { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--line-soft); border-radius: var(--radius-sm); background: var(--surface); }
+.course-analytics-details__row > strong { font-size: .8rem; }
+.course-analytics-details__row > span { color: var(--muted); font-size: .75rem; line-height: 1.5; overflow-wrap: anywhere; }
+.course-analytics-details__row > button { justify-self: start; text-align: left; }
+.course-analytics-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+.course-analytics-filters fieldset { display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.course-analytics-filters legend { padding: 0 0 5px; color: var(--muted); font-size: .76rem; font-weight: 700; }
+.course-analytics-filters button[aria-pressed="true"] { border-color: var(--border-tint-accent); background: var(--accent-soft); color: var(--text); }

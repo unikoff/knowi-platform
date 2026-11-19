@@ -105,7 +105,7 @@ export function AdminScreen() {
 
   return (
       <section className={`admin-panel ${adminTab === "calendar" ? "admin-panel--calendar" : ""}`} aria-label="Админ-панель">
-        <nav className="admin-tabs" aria-label="Разделы админ-панели">
+        <nav className="admin-tabs section-navigation" aria-label="Разделы админ-панели">
           <button
             type="button"
             className={adminTab === "overview" ? "is-active" : ""}

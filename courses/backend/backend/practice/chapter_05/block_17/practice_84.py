@@ -1,176 +1,941 @@
-"""Manual practice for the assigned lesson, authored in Stage 3."""
+"""Project practice for the User schema lesson."""
 
-MANUAL_PRACTICE = {
-    84: [{
-        "title": "Сверяем заполненную копию с baseline",
-        "task": "В изолированной учебной копии Planner есть проверенный резерв, восстановленная база с двумя разными синтетическими задачами, образец после исходной ревизии и каталог миграций. Работаем из project/ с подготовленным окружением.",
-        "result": "Подходящая копия отмечена конкретной исходной revision, её структура и данные сохранены; несовпадающая копия не отмечена.",
-        "tasks": [
-            {
-                "title": "Определяем безопасные файлы",
-                "task": "В учебном project/ найдём восстановленную заполненную базу, пустой образец после исходной ревизии и отдельный резерв. Запишем их абсолютные пути и выберем ещё одно свободное имя для будущей ошибочной копии. Найдём фактический ID начальной ревизии. В migrations/env.py проверим и при необходимости добавим сверку URL с контрольным путём до подключения и до offline-настройки. На отдельном недопустимом адресе убедимся, что проверка останавливает команду до создания файла. Затем сопоставим адреса и прочитаем историю каждой базы. Запустим подготовленный тест истории с новым временным каталогом внутри project/, чтобы проверить совместимость с этой защитой. Если не можем подтвердить восстановление или адрес, остановимся до записи.",
-                "requirements": [
-                    "Абсолютные пути восстановленной копии, образца, резерва и будущей одноразовой копии записаны; первые три файла существуют, четвёртый отсутствует, все пути различны.",
-                    "Восстановление и опись как минимум двух разных задач подтверждены; при отсутствии доказательств работа остановлена.",
-                    "В migrations/versions найдено значение revision исходного файла с down_revision = None.",
-                    "В migrations/env.py проверка файлового SQLite URL и абсолютного контрольного пути выполняется до подключения и offline configure; несовпадающий или отсутствующий учебный файл отклонён до создания.",
-                    "Для каждой проверяемой базы в alembic.ini согласованы sqlalchemy.url и абсолютный expected_database_path; до python -m alembic current выведены и сопоставлены оба пути.",
-                    "Подготовленный tests/test_db_schema.py успешно выполнен с новым basetemp внутри project/: проверки используют существующие зарезервированные цели, а неверный путь не создаётся."
-                ],
-                "result": "Пути и реальный ID исходной ревизии записаны, текущая версия обоих учебных файлов известна, резерв не выбран целью.",
-                "hint": "Вспомним разные роли файлов и две настройки адреса. Метка версии берётся из файла ревизии, а не из имени head.",
-                "answer": {
-                    "explanation": "Адрес подключения и контрольный путь должны описывать один разрешённый существующий файл. Опись и резерв позволяют восстановить состояние, если дальнейшая работа не удалась. Это правило сохраняется при следующем изменении: для заранее разрешённой новой учебной базы сначала проверяем существующий контролируемый каталог, свободное имя и совпадение URL с абсолютным контрольным путём, затем отдельно создаём пустой файл через Path(...).open('xb').close(). Занятое имя вызывает отказ без перезаписи. После этого передаём оба согласованных значения в тот же Config и запускаем upgrade для создания схемы. Заполненную копию и резерв повторно не создаём; при неизвестном пути останавливаемся.",
-                    "steps": [
-                        "В project/ найдём переданные имена файлов и запишем их абсолютные пути. Убедимся, что резерв и исходник не являются целью и новый путь свободен.",
-                        "Откроем файл исходной ревизии и скопируем значение revision; down_revision у неё равен None.",
-                        "До обеих ветвей env.py прочитаем и проверим URL и ожидаемый путь. На отдельном отсутствующем учебном файле проверим отказ до создания; offline-ветвь также находится после проверки.",
-                        "В alembic.ini установим sqlalchemy.url и expected_database_path на образец, сверим вывод проверки путей, выполним python -m alembic current. Затем аналогично выберем восстановленную копию.",
-                        "Если пути не совпали, файл отсутствует или обнаружена неожиданная revision, остановимся до маркировки.",
-                        "В tests/test_db_schema.py сверим подготовленные проверки: для baseline и current свободные файлы резервируются через xb до upgrade; в проверке неверного URL зарезервирован ожидаемый файл, а ошибочный отсутствует. Оба адреса задаются в одном Config. Если тест ещё не приведён к этому состоянию, вернёмся к его подготовке, не меняя guard.",
-                        "В PowerShell из project/ убедимся, что .pytest-baseline-84 отсутствует: pytest может очистить переданный basetemp. Затем запустим адресный файл: \n```powershell\npython -m pytest tests/test_db_schema.py --basetemp .pytest-baseline-84\n```\nОжидаем успешные проверки исходной и текущей схемы и отказ для неверного URL без создания ошибочного файла. При ошибке читаем вывод и проверяем путь и подготовку теста."
-                    ],
-                    "code": """# Фрагмент migrations/env.py до offline/online ветвей, из project/
-from pathlib import Path
-from sqlalchemy.engine import make_url
+MANUAL_PRACTICE = {84: [{'title': 'User-схема без потери задач',
+       'task': 'В своём локальном SQL Planner есть исходная история и проверенная заполненная копия. '
+               'Работаем в прежнем project с синтетическими данными, закрытыми писателями и доступной '
+               'описью; единственную пользовательскую БД не меняем. Каждая карточка продолжает '
+               'сохранённое состояние предыдущей. Выбранный свободный суффикс рабочего каталога '
+               'используем во всех дальнейших путях и командах. Код редактора платформы для этого '
+               'многофайлового проекта не используется.',
+       'tasks': [{'title': 'Подтвердить две baseline и сохранить исходные значения',
+                  'task': 'Работаем из корня своего учебного project с синтетическими данными. До '
+                          'изменения нужны пустой E2 исходной истории и прошедшая сравнение и stamp '
+                          'заполненная F. Их реальные адреса берём из прежних описи и '
+                          'baseline-link-check.md; E1 с контрольной строкой и отвергнутую Q не '
+                          'используем. Остановим API/CLI и закроем Session. Выберем один свободный '
+                          'scratch/user-schema-demo с новым суффиксом, если имя занято. По показанной в '
+                          'теории copy_new создадим new.sqlite3 и filled.sqlite3 из соответствующих '
+                          'закрытых источников. Функцию можно перенести из полного независимого примера '
+                          'в отдельную Python-сессию; новый backup-wrapper не пишем. До User-upgrade '
+                          'сохраним в state.md адреса, исходную revision, SQL tasks и все строки '
+                          'id/title/priority/is_done/tags/title_normalized. SQL-чтение выполняем тем же '
+                          'read-only приёмом, который показан на книгах, заменяя список полей на '
+                          'названные Task-поля. После копирования сверим обе цели с источниками. При '
+                          'несовпадении или неизвестном объекте остановимся и вернёмся к проверке '
+                          'исходной истории.',
+                  'requirements': ['В новом свободном каталоге существуют разные new.sqlite3 и '
+                                   'filled.sqlite3, совпадающие с проверенными E2/F; источники остались '
+                                   'прежними.',
+                                   'Обе цели имеют исходную p0001, исходную схему tasks и не содержат '
+                                   'users. New не содержит Task-строк; filled сохраняет все исходные ID '
+                                   'и значения.',
+                                   'State.md записан до изменения схемы и содержит реальные адреса, '
+                                   'исходную revision, DDL tasks и все шесть Task-полей. Занятые пути '
+                                   'не перезаписаны.'],
+                  'result': 'Две рабочие baseline и исходные значения предъявлены из сохранённой описи; '
+                            'User-upgrade ещё не запускался.',
+                  'hint': 'Восстановим роли E2/F и открываем только существующие источники. Прежде '
+                          'copy_new проверим имя назначения; равный current не заменяет известную '
+                          'схему.',
+                  'answer': {'explanation': 'Рабочие цели должны быть точными отдельными копиями, чтобы '
+                                            'не менять единственные источники. Исходная опись позволяет '
+                                            'сравнить значения после перехода. Представленный путь '
+                                            'использует ту же copy_new, что полный независимый пример.',
+                             'steps': ['В корне project откроем Python тем же интерпретатором. Сохраним '
+                                       'определения read_tasks и показанной copy_new, затем выберем '
+                                       'реальные адреса источников через input.',
+                                       'Создадим новый каталог и два назначения; guard откажет на '
+                                       'занятом имени. До копирования читаем и сохраняем '
+                                       'схему/строки/current каждого источника.',
+                                       'После backup сравним цели с сохранёнными состояниями и запишем '
+                                       'state.md. Не продолжаем при несовпадении; неизвестную схему не '
+                                       'исправляем stamp.'],
+                             'code': 'from contextlib import closing\n'
+                                     'from pathlib import Path\n'
+                                     'import sqlite3\n'
+                                     '\n'
+                                     '\n'
+                                     'def read_tasks(path):\n'
+                                     '    path = Path(path).resolve()\n'
+                                     '    if not path.is_file():\n'
+                                     '        raise FileNotFoundError(path)\n'
+                                     '    with closing(sqlite3.connect(path.as_uri() + "?mode=ro", '
+                                     'uri=True)) as db:\n'
+                                     '        rows = db.execute("SELECT id, title, priority, is_done, '
+                                     'tags, title_normalized FROM tasks ORDER BY id").fetchall()\n'
+                                     '        ddl = db.execute("SELECT sql FROM sqlite_schema WHERE '
+                                     'name=\'tasks\'").fetchone()\n'
+                                     '        version = db.execute("SELECT version_num FROM '
+                                     'alembic_version").fetchall()\n'
+                                     '    return rows, ddl, version\n'
+                                     '\n'
+                                     'def copy_new(source: Path, destination: Path):\n'
+                                     '    source = source.resolve()\n'
+                                     '    destination = destination.resolve()\n'
+                                     '    if not source.is_file() or source == destination:\n'
+                                     '        raise ValueError("Нужен существующий отдельный '
+                                     'источник")\n'
+                                     '    with closing(sqlite3.connect(source.as_uri() + "?mode=ro", '
+                                     'uri=True)) as src:\n'
+                                     '        destination.touch(exist_ok=False)\n'
+                                     '        with closing(sqlite3.connect(destination)) as dst:\n'
+                                     '            src.backup(dst)\n'
+                                     '            if dst.execute("PRAGMA integrity_check").fetchone() '
+                                     '!= ("ok",):\n'
+                                     '                raise RuntimeError("Копия непригодна")\n'
+                                     '# В отдельной Python-сессии из project, после сохранения '
+                                     'определения функций:\n'
+                                     'source_new = Path(input("Абсолютный путь к проверенному пустому '
+                                     'E2: ")).resolve()\n'
+                                     'source_filled = Path(input("Абсолютный путь к проверенной '
+                                     'заполненной F: ")).resolve()\n'
+                                     'root = Path("scratch/user-schema-demo").resolve()\n'
+                                     'root.mkdir(parents=True, exist_ok=False)\n'
+                                     'new = root / "new.sqlite3"\n'
+                                     'filled = root / "filled.sqlite3"\n'
+                                     'if source_new == source_filled:\n'
+                                     '    raise ValueError("Источники должны различаться")\n'
+                                     'before_new = read_tasks(source_new)\n'
+                                     'before_filled = read_tasks(source_filled)\n'
+                                     'if before_new[0] or before_new[2] != [("p0001",)] or '
+                                     'before_filled[2] != [("p0001",)]:\n'
+                                     '    raise ValueError("Исходные состояния не подтверждены")\n'
+                                     'copy_new(source_new, new)\n'
+                                     'copy_new(source_filled, filled)\n'
+                                     'if read_tasks(new) != before_new or read_tasks(filled) != '
+                                     'before_filled:\n'
+                                     '    raise RuntimeError("Рабочая копия не совпала")\n'
+                                     'note = "\\n".join(["E2: " + str(source_new), "F: " + '
+                                     'str(source_filled), "new: " + str(new), "filled: " + str(filled), '
+                                     '"до new: " + repr(before_new), "до filled: " + '
+                                     'repr(before_filled)])\n'
+                                     '(root / "state.md").write_text(note, encoding="utf-8")\n'
+                                     'print("Две baseline подтверждены, опись сохранена")\n'
+                                     '\n'
+                                     '# Отдельно подтверждаем отсутствие users в обоих источниках:\n'
+                                     'for source in (source_new, source_filled):\n'
+                                     '    with closing(sqlite3.connect(source.as_uri() + "?mode=ro", '
+                                     'uri=True)) as db:\n'
+                                     '        print(source.name, db.execute("SELECT name FROM '
+                                     'sqlite_schema WHERE name=\'users\'").fetchall())\n'
+                                     '# Ожидаем [] в обоих случаях; при ином результате дальше не '
+                                     'переходим.\n',
+                             'checks': ['На new чтение rows даёт [], current p0001; filled содержит '
+                                        'прежние синтетические задачи со всеми полями.',
+                                        'Повторное исключительное создание занятого имени отказывает и '
+                                        'не меняет прежние байты.',
+                                        'State.md существует до следующей карточки; sources не выбраны '
+                                        'как назначения.']}},
+                 {'title': 'Написать единый normalize_login',
+                  'task': 'В существующем app/validators.py добавим normalize_login(value: object) -> '
+                          'str, сохраняя Task-валидаторы. Самостоятельно реализуем правило Planner: '
+                          'только строка ASCII, отказ на Unicode до преобразований, trim краёв и ASCII '
+                          'lowercase, затем 3–32 знака из a-z/0-9/_. Внутренние знаки не удаляем. '
+                          'Недопустимый ввод даёт ValueError. Пароль в эту функцию не передаём. В новом '
+                          'tests/test_user_schema.py напишем проверки результата и отказа. Из project '
+                          'запустим python -m pytest tests/test_user_schema.py. Используем разобранные '
+                          'try/except и assert; новые fixtures не нужны.',
+                  'requirements': ['В app/validators.py определена одна normalize_login с указанной '
+                                   'сигнатурой, прежние Task-валидаторы сохранены.',
+                                   "'  Ada_7 ' возвращает 'ada_7'; длины 3/32 допустимы, 2/33 "
+                                   'отвергаются, повторная нормализация канонического значения '
+                                   'неизменна.',
+                                   'None, число, пустая/пробельная строка, внутренний пробел, дефис, '
+                                   'точка, Unicode, K и Unicode-пробел по краю дают ValueError.',
+                                   'Tests/test_user_schema.py проверяет эти случаи и запускается '
+                                   'прежним окружением, не обращаясь к БД.'],
+                  'result': 'Функция возвращает одно каноническое имя или ValueError; собственные '
+                            'проверки различают допустимые границы и ошибочный ввод.',
+                  'hint': 'В примере handle сначала проверяются тип и ASCII. Затем сравним, чем правило '
+                          'Planner отличается по регистру, длине и разрешённому знаку.',
+                  'answer': {'explanation': 'Фильтрация Unicode до lower не допускает превращения K в '
+                                            'k. Strip касается только краёв. Отдельная проверка длины и '
+                                            'алфавита оставляет контроль понятным и возвращает '
+                                            'одинаковый ключ будущим create и поиску.',
+                             'steps': ['Добавим функцию к существующим валидаторам, не заменяя весь '
+                                       'модуль.',
+                                       'В test_login_accepts_canonical_values сравним возвращённые '
+                                       'строки и повторное применение. В отрицательном тесте отметим '
+                                       'только перехваченный ValueError как ожидаемый отказ.',
+                                       'Запустим pytest из project. Падение на K указывает на порядок '
+                                       "ASCII/lower; принятие 'ada 7' указывает на удаление внутренних "
+                                       'пробелов.'],
+                             'code': '# Добавление в app/validators.py:\n'
+                                     'def normalize_login(value: object) -> str:\n'
+                                     '    if not isinstance(value, str) or not value.isascii():\n'
+                                     '        raise ValueError("Нужна ASCII-строка login")\n'
+                                     '    login = value.strip().lower()\n'
+                                     '    if not 3 <= len(login) <= 32:\n'
+                                     '        raise ValueError("Длина login должна быть 3-32")\n'
+                                     '    for char in login:\n'
+                                     '        if char not in "abcdefghijklmnopqrstuvwxyz0123456789_":\n'
+                                     '            raise ValueError("Недопустимый знак login")\n'
+                                     '    return login\n'
+                                     '\n'
+                                     '# Полный tests/test_user_schema.py:\n'
+                                     'from app.validators import normalize_login\n'
+                                     '\n'
+                                     '\n'
+                                     'def test_login_accepts_canonical_values():\n'
+                                     '    for source, expected in [("  Ada_7 ", "ada_7"), ("abc", '
+                                     '"abc"), ("a" * 32, "a" * 32)]:\n'
+                                     '        assert normalize_login(source) == expected\n'
+                                     '        assert normalize_login(expected) == expected\n'
+                                     '\n'
+                                     '\n'
+                                     'def test_login_rejects_invalid_values():\n'
+                                     '    for source in [None, 7, "", "  ", "ab", "a" * 33, "ada 7", '
+                                     '"ada-7", "ada.7", "Иван", "Kim", "\\u00a0ada"]:\n'
+                                     '        rejected = False\n'
+                                     '        try:\n'
+                                     '            normalize_login(source)\n'
+                                     '        except ValueError:\n'
+                                     '            rejected = True\n'
+                                     '        assert rejected, repr(source)\n'
+                                     '\n'
+                                     '# Терминал из project:\n'
+                                     '# python -m pytest tests/test_user_schema.py\n',
+                             'checks': ['Проверки принимают 3 и 32 знака, отвергают 2 и 33.',
+                                        "Normalize_login('Kim') даёт ValueError, а не 'kim'.",
+                                        'Тексты ошибок могут отличаться; важен правильный тип отказа и '
+                                        'отсутствие записи в БД.']}},
+                 {'title': 'Описать UserRow и выбрать публичные поля',
+                  'task': 'В существующем app/DBase/models.py самостоятельно добавим UserRow(Base), не '
+                          'меняя TaskRow. Нужны users и четыре колонки: id INTEGER PK/NOT NULL, login '
+                          'String(32) NOT NULL с uq_users_login, password_hash String NOT NULL без '
+                          "искусственного короткого лимита, role String NOT NULL с SQL-default 'user' и "
+                          "CHECK ck_users_role_allowed для 'user'/'admin'. Составим в отдельном "
+                          'проверочном опыте словарь id/login из синтетической внутренней записи с '
+                          'известным id. Поле password_hash содержит SCHEMA_ONLY_NOT_A_HASH, это не '
+                          'настоящий хеш. Сверим объявление и безопасный результат до обращения к пока '
+                          'отсутствующей users.',
+                  'requirements': ['Один UserRow добавлен к существующему Base в app/DBase/models.py, '
+                                   'имеет указанные четыре поля и именованные UNIQUE/CHECK.',
+                                   "Role имеет SQL-default 'user', все четыре колонки явно NOT NULL, id "
+                                   'является PK. TaskRow и его ограничения прежние; '
+                                   'description/owner/FK не добавлены.',
+                                   'Проекция синтетической внутренней записи содержит ровно id/login; '
+                                   'hash/role наружу не включены, исходная запись сохранена.',
+                                   'Импорт модели не создаёт users и не выполняет миграцию.'],
+                  'result': 'UserRow описывает ожидаемую схему; безопасная проекция показывает только '
+                            'id/login, а рабочие SQLite пока остаются baseline.',
+                  'hint': 'Сопоставим MemberRow и ревизию: UNIQUE относится к хранимому имени, а '
+                          'server_default становится частью SQL, обычный default этого не обещает.',
+                  'answer': {'explanation': 'Модель описывает ожидание, а реальный файл изменит только '
+                                            'история. Выбор двух полей в новый словарь отделяет '
+                                            'внутреннюю запись от ответа; следующая тема оформит этот '
+                                            'выбор функцией repository.',
+                             'steps': ['Сохраним прежние Base/TaskRow/импорты и добавим только '
+                                       'UniqueConstraint и новый класс.',
+                                       'Прочитаем тип, nullable, PK и ограничения каждого поля, сверим '
+                                       'SQL-default роли.',
+                                       'В отдельной Python-пробе создадим внутренний словарь и новый '
+                                       'словарь двух публичных полей. Убедимся, что сам импорт не '
+                                       'изменил baseline.'],
+                             'code': '# Добавляем в app/DBase/models.py, сохраняя Base, TaskRow и '
+                                     'прежние импорты:\n'
+                                     'from sqlalchemy import UniqueConstraint\n'
+                                     '\n'
+                                     '\n'
+                                     'class UserRow(Base):\n'
+                                     '    __tablename__ = "users"\n'
+                                     '    __table_args__ = (\n'
+                                     '        UniqueConstraint("login", name="uq_users_login"),\n'
+                                     '        CheckConstraint("role IN (\'user\', \'admin\')", '
+                                     'name="ck_users_role_allowed"),\n'
+                                     '    )\n'
+                                     '    id: Mapped[int] = mapped_column(Integer, primary_key=True, '
+                                     'nullable=False)\n'
+                                     '    login: Mapped[str] = mapped_column(String(32), '
+                                     'nullable=False)\n'
+                                     '    password_hash: Mapped[str] = mapped_column(String, '
+                                     'nullable=False)\n'
+                                     '    role: Mapped[str] = mapped_column(String, nullable=False, '
+                                     'server_default="user")\n'
+                                     '\n'
+                                     '\n'
+                                     '# Отдельная проба в Python, не добавление в рабочий main:\n'
+                                     'internal = {"id": 7, "login": "ada_7", "password_hash": '
+                                     '"SCHEMA_ONLY_NOT_A_HASH", "role": "user"}\n'
+                                     'public = {"id": internal["id"], "login": internal["login"]}\n'
+                                     'print(public)\n'
+                                     "# {'id': 7, 'login': 'ada_7'}\n",
+                             'checks': ["Публичный вывод равен {'id': 7, 'login': 'ada_7'} и не "
+                                        'содержит роль/фиктивный hash.',
+                                        'В исходном TaskRow по-прежнему шесть прежних полей, а SQLite '
+                                        'без upgrade не содержит users.']}},
+                 {'title': 'Написать revision, согласовать init_db и прежние тесты схемы',
+                  'task': 'Рабочие базы пока на p0001. Из project создадим одну ручную заготовку '
+                          'командой python -m alembic revision -m "add users". Сохраним фактический '
+                          'revision ID в state.md и проверим parent=p0001. Самостоятельно напишем '
+                          'создание users с полями и ограничениями предыдущей карточки; не импортируем '
+                          'mutable metadata и не редактируем исходную revision. Target_metadata=None '
+                          'сохраняется. До запуска читаем весь кандидат: в нём нет изменения tasks, '
+                          'description, owner, посторонних drop/alter. Downgrade явно отказывает. В '
+                          'app/DBase/init_db.py заменим прежний create_all на явный отказ с инструкцией '
+                          'Alembic, ещё до открытия SQLite. В README запишем, что именно sqlalchemy.url '
+                          'ini задаёт цель истории, а DATABASE_URL отдельно задаёт цель API/CLI. '
+                          'Проверим ненулевой статус команды init_db на отсутствующем контрольном пути '
+                          'и неизменность существующей baseline. Затем самостоятельно согласуем '
+                          'существующий tests/test_db_schema.py с новым поведением по книжному примеру '
+                          'раздела 04. В metadata ожидаем tasks и users, сохраняя все прежние проверки '
+                          'полей и ограничений Task. Тест создания и повторного запуска должен '
+                          'применять проектную историю через Config и command.upgrade к своей временной '
+                          'базе, с сохранением контрольной задачи. Тест старой неизвестной таблицы '
+                          'теперь проверяет ненулевой статус init_db, инструкцию Alembic и побайтную '
+                          'неизменность файла. Добавим отказ init_db на отсутствующем файле; прежнюю '
+                          'проверку безопасного импорта сохраним. Из project выполним python -m pytest '
+                          'tests/test_db_schema.py tests/test_user_schema.py -q. Эти тесты используют '
+                          'tmp_path и не применяют upgrade к рабочим new/filled.',
+                  'requirements': ['Одна новая revision имеет фактический ID, down_revision=p0001 и '
+                                   'создаёт только users с договорёнными '
+                                   'колонками/ограничениями/default. В истории один head; исходная '
+                                   'p0001 побайтно прежняя.',
+                                   'Upgrade не вызывает runtime metadata/create_all, не меняет Task и '
+                                   'не добавляет owner/description. Downgrade явно отказывает '
+                                   'RuntimeError.',
+                                   'Python -m app.DBase.init_db завершается ненулевым статусом с '
+                                   'инструкцией явной истории, не создавая отсутствующий SQLite и не '
+                                   'меняя существующий.',
+                                   'README различает sqlalchemy.url Alembic и DATABASE_URL приложения. '
+                                   'Никакого автоматического upgrade при запуске API/CLI нет.',
+                                   'Tests/test_db_schema.py ожидает metadata tasks/users и сохраняет '
+                                   'все прежние Task assertions. Создание/повтор выполняются историей '
+                                   'на tmp_path; контрольная задача сохраняется. Проверки отказа '
+                                   'init_db охватывают отсутствующий файл и неизменность существующего; '
+                                   'безопасный импорт по-прежнему проверяется.',
+                                   'Адресный pytest для test_db_schema.py и test_user_schema.py '
+                                   'проходит. Конфигурация теста выбирает временную БД без изменения '
+                                   'проектного ini; new/filled пока остаются p0001.'],
+                  'result': 'Проверенный User-переход и обновлённые тесты сохранены; адресные тесты '
+                            'проходят, init_db безопасно отказывает, обе рабочие базы ещё на p0001.',
+                  'hint': 'Заготовка revision не является исполненным DDL. Сверим оп.create_table с '
+                          'ожидаемыми колонками. В старых тестах отделим неизменный договор Task от '
+                          'двух изменившихся ожиданий: единственная таблица и успешный bootstrap.',
+                  'answer': {'explanation': 'Новый файл фиксирует переход от неизменной baseline. Явный '
+                                            'отказ init_db не позволяет создать актуальную metadata без '
+                                            'истории. Поэтому в тесте создания вызываем историю, а от '
+                                            'прежней команды ожидаем безопасный отказ. Изменяется '
+                                            'ожидание команды и состав metadata, но не проверки прежних '
+                                            'Task-колонок, данных и безопасного импорта. Ненулевой '
+                                            'статус проверяется отдельным процессом, а не перехватом '
+                                            'исключения внутри Python.',
+                             'steps': ['Создадим заготовку и оставим сгенерированные '
+                                       'revision/down_revision; заменим только тела операций и '
+                                       'необходимые импорты, как показано ниже.',
+                                       'Полностью заменим старый init_db простым явным отказом без '
+                                       'открытия engine. В README укажем ручной запуск истории и два '
+                                       'адресных параметра.',
+                                       'В PowerShell временно зададим DATABASE_URL отсутствующего '
+                                       'контрольного пути, запустим init_db и прочитаем $LASTEXITCODE. '
+                                       'Test-Path должен остаться False. Повтор на baseline не меняет '
+                                       'её DDL/current/строки. Затем вернём нужный URL.',
+                                       'В tests/test_db_schema.py добавим run_upgrade: Config читает '
+                                       'проектный ini, set_main_option выбирает абсолютный '
+                                       'script_location и URL временной базы, command.upgrade применяет '
+                                       'head. Сам ini не перезаписывается. В прежнем тесте создания '
+                                       'заменим оба вызова run_init_db на run_upgrade, сохраняя все '
+                                       'assertions Task и контрольную строку между вызовами.',
+                                       'Ожидаемый набор metadata расширим до tasks/users. Run_init_db '
+                                       'возвращает результат subprocess.run с check=False: тесты читают '
+                                       'код и инструкцию отказа. Для старой таблицы сравним bytes '
+                                       'до/после, затем сохраним прежние проверки колонок/строки. '
+                                       'Добавим отсутствующую цель; тест импорта оставим прежним.',
+                                       'Запустим адресный pytest и прочитаем причину каждого падения. '
+                                       'Удаление tests или прежних Task assertions не является '
+                                       'исправлением. Успех относится к временным базам тестов; рабочие '
+                                       'new/filled всё ещё не обновлены.'],
+                             'code': '# В новой сгенерированной revision сохраняем revision и '
+                                     "down_revision='p0001'.\n"
+                                     '# Прежнюю p0001_tasks_baseline.py не редактируем.\n'
+                                     'from alembic import op\n'
+                                     'import sqlalchemy as sa\n'
+                                     '\n'
+                                     '\n'
+                                     'def upgrade():\n'
+                                     '    op.create_table("users",\n'
+                                     '        sa.Column("id", sa.Integer(), primary_key=True, '
+                                     'nullable=False),\n'
+                                     '        sa.Column("login", sa.String(32), nullable=False),\n'
+                                     '        sa.Column("password_hash", sa.String(), nullable=False),\n'
+                                     '        sa.Column("role", sa.String(), nullable=False, '
+                                     'server_default="user"),\n'
+                                     '        sa.UniqueConstraint("login", name="uq_users_login"),\n'
+                                     '        sa.CheckConstraint("role IN (\'user\', \'admin\')", '
+                                     'name="ck_users_role_allowed"))\n'
+                                     '\n'
+                                     '\n'
+                                     'def downgrade():\n'
+                                     '    raise RuntimeError("Используем проверенное восстановление")\n'
+                                     '\n'
+                                     '# Полное новое содержимое app/DBase/init_db.py:\n'
+                                     'def create_schema() -> None:\n'
+                                     '    raise SystemExit("Схему создаёт история. Выберите '
+                                     'sqlalchemy.url в alembic.ini и явно выполните python -m alembic '
+                                     'upgrade head.")\n'
+                                     '\n'
+                                     '\n'
+                                     'if __name__ == "__main__":\n'
+                                     '    create_schema()\n'
+                                     '\n'
+                                     '# PowerShell из project, контрольный путь заранее проверен как '
+                                     'отсутствующий:\n'
+                                     '# $env:DATABASE_URL = '
+                                     '"sqlite:///C:/chosen/project/scratch/user-schema-demo/init-absent.sqlite3"\n'
+                                     '# python -m app.DBase.init_db\n'
+                                     '# $LASTEXITCODE  # ненулевой\n'
+                                     '# Test-Path -LiteralPath '
+                                     '"C:/chosen/project/scratch/user-schema-demo/init-absent.sqlite3"  '
+                                     '# False\n'
+                                     '\n'
+                                     '# Обновлённый tests/test_db_schema.py целиком, прежние Task '
+                                     'assertions сохранены:\n'
+                                     'import os\n'
+                                     'import subprocess\n'
+                                     'import sys\n'
+                                     'from pathlib import Path\n'
+                                     '\n'
+                                     'from sqlalchemy import CheckConstraint, Integer, JSON, String, '
+                                     'UniqueConstraint, text\n'
+                                     'from sqlalchemy.engine import URL\n'
+                                     '\n'
+                                     'from app.DBase.models import Base\n'
+                                     'from app.core.engine import make_engine\n'
+                                     '\n'
+                                     '\n'
+                                     'PROJECT_ROOT = Path(__file__).resolve().parents[1]\n'
+                                     '\n'
+                                     '\n'
+                                     'def sqlite_url(path: Path) -> str:\n'
+                                     '    return URL.create("sqlite", '
+                                     'database=path.as_posix()).render_as_string(\n'
+                                     '        hide_password=False\n'
+                                     '    )\n'
+                                     '\n'
+                                     '\n'
+                                     'def run_init_db(database_url: str):\n'
+                                     '    environment = os.environ.copy()\n'
+                                     '    environment["DATABASE_URL"] = database_url\n'
+                                     '    return subprocess.run(\n'
+                                     '        [sys.executable, "-B", "-m", "app.DBase.init_db"],\n'
+                                     '        cwd=PROJECT_ROOT,\n'
+                                     '        env=environment,\n'
+                                     '        check=False,\n'
+                                     '        capture_output=True,\n'
+                                     '        text=True,\n'
+                                     '    )\n'
+                                     '\n'
+                                     '\n'
+                                     'def run_upgrade(database_url: str) -> None:\n'
+                                     '    program = """import sys\n'
+                                     'from alembic import command\n'
+                                     'from alembic.config import Config\n'
+                                     'config = Config(sys.argv[1])\n'
+                                     'config.set_main_option("script_location", sys.argv[2])\n'
+                                     'config.set_main_option("sqlalchemy.url", sys.argv[3])\n'
+                                     'command.upgrade(config, "head")\n'
+                                     '"""\n'
+                                     '    subprocess.run(\n'
+                                     '        [sys.executable, "-B", "-c", program, str(PROJECT_ROOT / '
+                                     '"alembic.ini"),\n'
+                                     '         str(PROJECT_ROOT / "migrations"), database_url],\n'
+                                     '        cwd=PROJECT_ROOT, check=True, capture_output=True, '
+                                     'text=True,\n'
+                                     '    )\n'
+                                     '\n'
+                                     '\n'
+                                     'def test_task_row_metadata_matches_initial_table_contract():\n'
+                                     '    assert set(Base.metadata.tables) == {"tasks", "users"}\n'
+                                     '    table = Base.metadata.tables["tasks"]\n'
+                                     '\n'
+                                     '    assert list(table.columns.keys()) == [\n'
+                                     '        "id",\n'
+                                     '        "title",\n'
+                                     '        "priority",\n'
+                                     '        "is_done",\n'
+                                     '        "tags",\n'
+                                     '        "title_normalized",\n'
+                                     '    ]\n'
+                                     '    assert isinstance(table.c.id.type, Integer)\n'
+                                     '    assert isinstance(table.c.priority.type, Integer)\n'
+                                     '    assert isinstance(table.c.title.type, String)\n'
+                                     '    assert table.c.title.type.length is None\n'
+                                     '    assert table.c.is_done.type.python_type is bool\n'
+                                     '    assert isinstance(table.c.tags.type, JSON)\n'
+                                     '    assert isinstance(table.c.title_normalized.type, String)\n'
+                                     '    assert table.c.id.primary_key\n'
+                                     '    assert all(not column.nullable for column in table.columns)\n'
+                                     '\n'
+                                     '    checks = {\n'
+                                     '        "".join(str(constraint.sqltext).lower().split())\n'
+                                     '        for constraint in table.constraints\n'
+                                     '        if isinstance(constraint, CheckConstraint)\n'
+                                     '    }\n'
+                                     '    assert "id>0" in checks\n'
+                                     '    assert "priority>=1andpriority<=5" in checks\n'
+                                     '    assert table.c.priority.default.arg == 2\n'
+                                     '    assert table.c.is_done.default.arg is False\n'
+                                     '    first_tags = table.c.tags.default.arg(None)\n'
+                                     '    second_tags = table.c.tags.default.arg(None)\n'
+                                     '    assert first_tags == second_tags == []\n'
+                                     '    assert first_tags is not second_tags\n'
+                                     '    assert table.c.title_normalized.server_default is None\n'
+                                     '    assert not any(\n'
+                                     '        isinstance(constraint, UniqueConstraint) for constraint '
+                                     'in table.constraints\n'
+                                     '    )\n'
+                                     '\n'
+                                     '\n'
+                                     'def test_import_does_not_create_database_file(tmp_path):\n'
+                                     '    database_path = tmp_path / "import-only.sqlite3"\n'
+                                     '    environment = os.environ.copy()\n'
+                                     '    environment["DATABASE_URL"] = sqlite_url(database_path)\n'
+                                     '\n'
+                                     '    subprocess.run(\n'
+                                     '        [sys.executable, "-B", "-c", "import '
+                                     'app.DBase.init_db"],\n'
+                                     '        cwd=PROJECT_ROOT,\n'
+                                     '        env=environment,\n'
+                                     '        check=True,\n'
+                                     '        capture_output=True,\n'
+                                     '        text=True,\n'
+                                     '    )\n'
+                                     '\n'
+                                     '    assert not database_path.exists()\n'
+                                     '\n'
+                                     '\n'
+                                     'def '
+                                     'test_explicit_history_upgrade_matches_sqlite_and_is_repeatable(tmp_path):\n'
+                                     '    database_path = tmp_path / "planner.sqlite3"\n'
+                                     '    database_url = sqlite_url(database_path)\n'
+                                     '    run_upgrade(database_url)\n'
+                                     '\n'
+                                     '    engine = make_engine(database_url)\n'
+                                     '    try:\n'
+                                     '        with engine.connect() as connection:\n'
+                                     '            columns = connection.execute(\n'
+                                     '                text("PRAGMA table_info(tasks)")\n'
+                                     '            ).mappings().all()\n'
+                                     '            create_sql = connection.execute(\n'
+                                     '                text(\n'
+                                     '                    "SELECT sql FROM sqlite_master "\n'
+                                     '                    "WHERE type = :kind AND name = :name"\n'
+                                     '                ),\n'
+                                     '                {"kind": "table", "name": "tasks"},\n'
+                                     '            ).scalar_one()\n'
+                                     '\n'
+                                     '        with engine.connect() as connection:\n'
+                                     '            assert connection.execute(text("SELECT COUNT(*) FROM '
+                                     'users")).scalar_one() == 0\n'
+                                     '\n'
+                                     '        assert [column["name"] for column in columns] == [\n'
+                                     '            "id",\n'
+                                     '            "title",\n'
+                                     '            "priority",\n'
+                                     '            "is_done",\n'
+                                     '            "tags",\n'
+                                     '            "title_normalized",\n'
+                                     '        ]\n'
+                                     '        assert columns[0]["pk"] == 1\n'
+                                     '        assert all(column["notnull"] == 1 for column in columns)\n'
+                                     '        assert all(column["dflt_value"] is None for column in '
+                                     'columns)\n'
+                                     '        assert "id > 0" in create_sql\n'
+                                     '        assert "priority >= 1" in create_sql\n'
+                                     '        assert "priority <= 5" in create_sql\n'
+                                     '\n'
+                                     '        with engine.begin() as connection:\n'
+                                     '            connection.execute(\n'
+                                     '                text(\n'
+                                     '                    "INSERT INTO tasks "\n'
+                                     '                    "(id, title, priority, is_done, tags, '
+                                     'title_normalized) "\n'
+                                     '                    "VALUES (1, \'keep row\', 2, 0, \'[]\', '
+                                     '\'keep row\')"\n'
+                                     '                )\n'
+                                     '            )\n'
+                                     '\n'
+                                     '        run_upgrade(database_url)\n'
+                                     '        with engine.connect() as connection:\n'
+                                     '            rows = connection.execute(\n'
+                                     '                text("SELECT id, title FROM tasks ORDER BY id")\n'
+                                     '            ).all()\n'
+                                     '        assert rows == [(1, "keep row")]\n'
+                                     '    finally:\n'
+                                     '        engine.dispose()\n'
+                                     '\n'
+                                     '\n'
+                                     'def '
+                                     'test_init_db_refuses_existing_table_without_changes(tmp_path):\n'
+                                     '    database_path = tmp_path / "legacy.sqlite3"\n'
+                                     '    database_url = sqlite_url(database_path)\n'
+                                     '    engine = make_engine(database_url)\n'
+                                     '    try:\n'
+                                     '        with engine.begin() as connection:\n'
+                                     '            connection.execute(\n'
+                                     '                text(\n'
+                                     '                    "CREATE TABLE tasks "\n'
+                                     '                    "(id INTEGER PRIMARY KEY, legacy_marker TEXT '
+                                     'NOT NULL)"\n'
+                                     '                )\n'
+                                     '            )\n'
+                                     '            connection.execute(\n'
+                                     '                text("INSERT INTO tasks (id, legacy_marker) '
+                                     'VALUES (7, \'preserve\')")\n'
+                                     '            )\n'
+                                     '    finally:\n'
+                                     '        engine.dispose()\n'
+                                     '\n'
+                                     '    before = database_path.read_bytes()\n'
+                                     '    result = run_init_db(database_url)\n'
+                                     '    assert result.returncode != 0\n'
+                                     '    assert "alembic upgrade head" in result.stderr\n'
+                                     '    assert database_path.read_bytes() == before\n'
+                                     '\n'
+                                     '    engine = make_engine(database_url)\n'
+                                     '    try:\n'
+                                     '        with engine.connect() as connection:\n'
+                                     '            columns = connection.execute(\n'
+                                     '                text("PRAGMA table_info(tasks)")\n'
+                                     '            ).mappings().all()\n'
+                                     '            rows = connection.execute(\n'
+                                     '                text("SELECT id, legacy_marker FROM tasks")\n'
+                                     '            ).all()\n'
+                                     '        assert [column["name"] for column in columns] == ["id", '
+                                     '"legacy_marker"]\n'
+                                     '        assert rows == [(7, "preserve")]\n'
+                                     '    finally:\n'
+                                     '        engine.dispose()\n'
+                                     '\n'
+                                     '\n'
+                                     'def '
+                                     'test_init_db_refuses_absent_database_without_creating_file(tmp_path):\n'
+                                     '    database_path = tmp_path / "not-created.sqlite3"\n'
+                                     '    assert not database_path.exists()\n'
+                                     '    result = run_init_db(sqlite_url(database_path))\n'
+                                     '    assert result.returncode != 0\n'
+                                     '    assert "alembic upgrade head" in result.stderr\n'
+                                     '    assert not database_path.exists()\n'
+                                     '\n'
+                                     '# Терминал из project:\n'
+                                     '# python -m pytest tests/test_db_schema.py '
+                                     'tests/test_user_schema.py -q\n',
+                             'checks': ['Current обеих рабочих целей ещё p0001, потому что к ним '
+                                        'upgrade не запускался.',
+                                        'В revision нет лишних операций, а исходная baseline совпадает '
+                                        'с сохранённой версией.',
+                                        'Init_db вернул ненулевой код процесса; отсутствующий файл не '
+                                        'возник, существующая baseline прежняя.',
+                                        'Адресный pytest проходит: metadata учитывает users, временная '
+                                        'схема создаётся историей и повтор сохраняет контрольную '
+                                        'задачу, отказ init_db не меняет файлы, импорт безопасен. Все '
+                                        'прежние проверки Task остались.']}},
+                 {'title': 'Применить историю к двум копиям и проверить факт',
+                  'task': 'При остановленных писателях по очереди выберем new.sqlite3 и filled.sqlite3 '
+                          'в sqlalchemy.url проектного ini. Перед каждым подключением проверим '
+                          'существующий файл и current=p0001. Выполним python -m alembic upgrade head и '
+                          'прочитаем current новой сессией; повторим upgrade. Сравним DDL tasks и все '
+                          'сохранённые значения из state.md, затем прочитаем фактические '
+                          'колонки/индексы/SQL users. На new проверим пробные insert с rollback: два '
+                          "канонических разных имени допустимы; повтор нормализованного '  Ada_7 "
+                          "'/'ada_7' даёт UNIQUE; role='operator' даёт CHECK; отсутствующий login/hash "
+                          'и явный NULL role дают NOT NULL; пропущенная role получает user. Каждый опыт '
+                          'заканчиваем rollback и закрытием соединения, чтобы users осталась пустой. '
+                          'Для API/CLI отдельно зададим DATABASE_URL filled и новым процессом проверим '
+                          'прежнее чтение задач; публичный ответ не раскрывает tags. Все внутренние '
+                          'поля сверяем SQL. Из project запустим всю унаследованную регрессию командой '
+                          'python -m pytest -q, включая обновлённые проверки схемы предыдущей карточки, '
+                          'и запишем результат в state.md. Падения исследуем, не удаляем прежние тесты '
+                          'Task. После успеха создадим user-head.checkpoint.sqlite3 знакомой copy_new, '
+                          'сохраним его путь и текущую User-revision в state.md.',
+                  'requirements': ['Обе копии имеют фактическую User-revision и одинаковую users-схему '
+                                   'по колонкам, PK/NOT NULL, UNIQUE login, CHECK роли и SQL-default. '
+                                   'Повтор upgrade не меняет метку/данные.',
+                                   'Task DDL, множество ID и все шесть значений совпадают с исходной '
+                                   'описью. Source E2/F не изменены.',
+                                   'Обычные и нарушающие конкретное ограничение insert дают различимые '
+                                   'наблюдения; каждый пробный scope откатан, новая Session видит '
+                                   'пустую users.',
+                                   'API/CLI читают обновлённую filled по тому же явно заданному URL. '
+                                   'SQL сверяет tags/title_normalized; HTTP/CLI их не раскрывают.',
+                                   'Полный python -m pytest -q проходит с прежними Task tests и '
+                                   'обновлённым договором схемы; команда и результат сохранены в '
+                                   'state.md.',
+                                   'User-head.checkpoint.sqlite3 создан по свободному отдельному пути '
+                                   'после всех успешных проверок, соответствует User-revision и '
+                                   'сохранённым Task, не содержит фиктивных аккаунтов.'],
+                  'result': 'На двух траекториях создана реальная users, Task сохранён, ограничения '
+                            'наблюдаемы, а успешный checkpoint пригоден для следующей проверки.',
+                  'hint': 'Разделим три факта: current показывает метку; PRAGMA/SQL показывают схему; '
+                          'сравнение с записью до изменения показывает сохранность Task. Любое '
+                          'исключение ещё не доказывает UNIQUE.',
+                  'answer': {'explanation': 'Те же канонические строки позволяют БД увидеть дубликат. '
+                                            'Каждый отказ сверяем с конкретной причиной; rollback '
+                                            'убирает также успешно вставленные пробные строки. Чтение '
+                                            'новой Session исключает вывод из прежнего состояния ORM. '
+                                            'Ни String(32), ни один current не заменяют весь договор.',
+                             'steps': ['Для new и filled отдельно проверим выбранный ini, существование '
+                                       'файла и исходный current, применим одну собственную revision и '
+                                       'повторим upgrade. Фактический ID запишем в state.md.',
+                                       'Новым read-only соединением сравним сохранённый tasks '
+                                       'DDL/полные строки с текущими, затем прочитаем table_info, '
+                                       'index_list/index_info и CREATE TABLE users.',
+                                       'В отдельной Python-пробе из project выполним приведённые '
+                                       'insert. Код похож на probe каталога, но использует собственную '
+                                       'users; после каждой проверки транзакция откатывается.',
+                                       'Проверим нулевое число User свежим соединением и прежнее чтение '
+                                       'API/CLI с явным DATABASE_URL. Из project запустим python -m '
+                                       'pytest -q; прочитаем полный итог, сохраним команду/результат в '
+                                       'state.md. После успеха создадим checkpoint через copy_new в '
+                                       'свободный путь.'],
+                             'code': '# PowerShell из project: sqlalchemy.url ini сначала указывает на '
+                                     'new, затем на filled.\n'
+                                     '# python -m alembic current\n'
+                                     '# python -m alembic upgrade head\n'
+                                     '# python -m alembic current\n'
+                                     '# python -m alembic upgrade head\n'
+                                     '\n'
+                                     '# Отдельная Python-проба из project:\n'
+                                     'from contextlib import closing\n'
+                                     'from pathlib import Path\n'
+                                     'import sqlite3\n'
+                                     'from app.validators import normalize_login\n'
+                                     '\n'
+                                     '\n'
+                                     'def probe(path, label, statements):\n'
+                                     '    path = Path(path).resolve()\n'
+                                     '    if not path.is_file():\n'
+                                     '        raise FileNotFoundError(path)\n'
+                                     '    with closing(sqlite3.connect(path)) as db:\n'
+                                     '        db.execute("BEGIN")\n'
+                                     '        try:\n'
+                                     '            for sql, values in statements:\n'
+                                     '                db.execute(sql, values)\n'
+                                     '            print(label, "принято", db.execute("SELECT login, '
+                                     'role FROM users").fetchall())\n'
+                                     '        except sqlite3.IntegrityError as error:\n'
+                                     '            print(label, error.sqlite_errorname, str(error))\n'
+                                     '        finally:\n'
+                                     '            db.rollback()\n'
+                                     '\n'
+                                     '\n'
+                                     'path = Path("scratch/user-schema-demo/new.sqlite3").resolve()\n'
+                                     'insert = "INSERT INTO users(login, password_hash) VALUES (?, ?)"\n'
+                                     'values = (normalize_login("  Ada_7 "), '
+                                     '"SCHEMA_ONLY_NOT_A_HASH_A")\n'
+                                     'probe(path, "default", [(insert, values)])\n'
+                                     'probe(path, "два разных имени", [(insert, values), (insert, '
+                                     '(normalize_login(" Ben_8 "), "SCHEMA_ONLY_NOT_A_HASH_B"))])\n'
+                                     'probe(path, "UNIQUE", [(insert, values), (insert, '
+                                     '(normalize_login("ada_7"), "SCHEMA_ONLY_NOT_A_HASH_B"))])\n'
+                                     'probe(path, "CHECK", [("INSERT INTO users(login, password_hash, '
+                                     'role) VALUES (?, ?, ?)", ("ben_8", "SCHEMA_ONLY_NOT_A_HASH_B", '
+                                     '"operator"))])\n'
+                                     'probe(path, "NULL login", [(insert, (None, '
+                                     '"SCHEMA_ONLY_NOT_A_HASH_B"))])\n'
+                                     'probe(path, "NULL hash", [(insert, ("ben_8", None))])\n'
+                                     'probe(path, "NULL role", [("INSERT INTO users(login, '
+                                     'password_hash, role) VALUES (?, ?, ?)", ("ben_8", '
+                                     '"SCHEMA_ONLY_NOT_A_HASH_B", None))])\n'
+                                     'with closing(sqlite3.connect(path.as_uri() + "?mode=ro", '
+                                     'uri=True)) as db:\n'
+                                     '    print("Users после rollback:", db.execute("SELECT COUNT(*) '
+                                     'FROM users").fetchone()[0])\n'
+                                     '    print("Колонки:", db.execute("PRAGMA '
+                                     'table_info(users)").fetchall())\n'
+                                     '    indexes = db.execute("PRAGMA index_list(users)").fetchall()\n'
+                                     '    print("Индексы:", indexes)\n'
+                                     '    for index in indexes:\n'
+                                     '        if index[2] == 1:\n'
+                                     '            print("Уникальные колонки:", db.execute(\'PRAGMA '
+                                     'index_info("\' + index[1].replace(\'"\', \'""\') + '
+                                     '\'")\').fetchall())\n'
+                                     '    print("DDL:", db.execute("SELECT sql FROM sqlite_schema WHERE '
+                                     'name=\'users\'").fetchone()[0])\n'
+                                     '\n'
+                                     '# Полная сверка Task использует read_tasks из первой карточки и '
+                                     'исходную запись state.md.\n'
+                                     '# При сравнении ревизию User учитываем отдельно, а rows/DDL tasks '
+                                     'должны совпасть.\n'
+                                     '# Терминал из project: python -m pytest -q\n'
+                                     '# Запишем команду и фактический итог в state.md до создания '
+                                     'успешного checkpoint.\n',
+                             'checks': ['Проба default показывает role=user, UNIQUE указывает на '
+                                        'users.login, CHECK на ck_users_role_allowed, NULL даёт NOT '
+                                        'NULL.',
+                                        'Users после rollback: 0. Два разных канонических имени '
+                                        'дополнительно проверены отдельными успешными insert в одном '
+                                        'откатываемом scope.',
+                                        'При повторе upgrade Task/метка не изменились. API и CLI в '
+                                        'новом процессе видят прежние задачи; tags сверены SQL.',
+                                        'Полный pytest проходит с сохранёнными прежними проверками '
+                                        'Task; результат зафиксирован до успешного checkpoint.',
+                                        'Успешный checkpoint открыт и совпал с заполненной рабочей '
+                                        'копией по schema/current/данным.']}},
+                 {'title': 'Выяснить след отказа и восстановить новый экземпляр',
+                  'task': 'Используем только успешный user-head.checkpoint.sqlite3 предыдущей карточки. '
+                          'В новый failed.sqlite3 восстановим его через copy_new; основную filled не '
+                          'портим. В новый failure-history скопируем проектные alembic.ini и migrations '
+                          'со всеми исправными revisions и script.py.mako. Явно настроим '
+                          'script_location и sqlalchemy.url копии на её историю и failed, сохраняя '
+                          'original ini. В этой копии создадим одну дочернюю заготовку после '
+                          'User-revision; её upgrade создаёт только _failure_probe и поднимает '
+                          'показанный RuntimeError. Предскажем место отказа и запустим один раз. Новым '
+                          'read-only соединением запишем фактические schema/current/все прежние строки '
+                          'в state.md: probe может остаться или откатиться, это нужно наблюдать. '
+                          'Закроем failed, не повторяем upgrade и не выполняем stamp. В ещё один новый '
+                          'recovered.sqlite3 восстановим тот же успешный checkpoint. С исходной '
+                          'исправной историей проверим его целостность, User-revision, users/tasks и '
+                          'все Task-значения, затем новым API/CLI прочитаем сохранённое состояние. '
+                          'Failed и одноразовую историю явно исключим из передачи.',
+                  'requirements': ['Отказ выполнялся один раз только на disposable failed с отдельной '
+                                   'дочерней revision; основная история, new/filled и checkpoint '
+                                   'неизменны.',
+                                   'После отказа записаны отдельно схема, метка и прежние строки либо '
+                                   'конкретная ошибка их чтения. Состояние probe не подменено '
+                                   'предположением об откате DDL.',
+                                   'Не было слепого повторного upgrade, stamp head и ручного удаления '
+                                   'таблицы ради метки.',
+                                   'Recovered создан в новом свободном пути, совпадает с успешным '
+                                   'checkpoint по integrity/schema/current/Task и используется с '
+                                   'исправной основной историей без дочернего отказа.',
+                                   'В state.md указаны пригодные URL и исходная исправная история; '
+                                   'failed/failure-history исключены. В users нет фиктивных аккаунтов, '
+                                   'реальных credentials ещё нет.'],
+                  'result': 'Состояние ошибки установлено по трём свидетельствам; новый recovered '
+                            'согласован с User-моделью и исправной историей и готов к repository.',
+                  'hint': 'Сначала прочитаем три свидетельства, затем выберем отдельное '
+                          'restore-назначение. Восстанавливать нужно успешный checkpoint с его '
+                          'исправной историей, а не подменять метку failed.',
+                  'answer': {'explanation': 'Метка может остаться успешной при уже выполненном DDL, '
+                                            'поэтому нельзя выводить полную схему только из current. '
+                                            'Восстановление в новый адрес оставляет ошибочную копию для '
+                                            'разбора и подтверждает согласованную пару модели/БД.',
+                             'steps': ['Из root project в отдельной Python-сессии возьмём copy_new из '
+                                       'полного независимого примера. Восстановим failed и recovered по '
+                                       'разным свободным адресам; recovered создаём только после '
+                                       'наблюдения отказа.',
+                                       'Скопируем исправную историю в новый каталог, сохранив её '
+                                       'конфигурацию. Во временном ini script_location должен указывать '
+                                       'на скопированные migrations, а sqlalchemy.url на failed. '
+                                       'Создадим там заготовку с parent текущей User-revision и заменим '
+                                       'только upgrade/downgrade на приведённое тело.',
+                                       'Один раз применим временный head, зафиксируем ошибку. Новым '
+                                       'соединением читаем sqlite_schema, alembic_version и Task; '
+                                       'записываем результат, закрываем failed.',
+                                       'Восстановим recovered из checkpoint, вернём исходную исправную '
+                                       'конфигурацию истории и сравним все данные/ограничения/метку. '
+                                       'Согласованное состояние предъявим новым процессом API/CLI.'],
+                             'code': 'from contextlib import closing\n'
+                                     'from pathlib import Path\n'
+                                     'import sqlite3\n'
+                                     '\n'
+                                     '\n'
+                                     'def read_tasks(path):\n'
+                                     '    path = Path(path).resolve()\n'
+                                     '    if not path.is_file():\n'
+                                     '        raise FileNotFoundError(path)\n'
+                                     '    with closing(sqlite3.connect(path.as_uri() + "?mode=ro", '
+                                     'uri=True)) as db:\n'
+                                     '        rows = db.execute("SELECT id, title, priority, is_done, '
+                                     'tags, title_normalized FROM tasks ORDER BY id").fetchall()\n'
+                                     '        ddl = db.execute("SELECT sql FROM sqlite_schema WHERE '
+                                     'name=\'tasks\'").fetchone()\n'
+                                     '        version = db.execute("SELECT version_num FROM '
+                                     'alembic_version").fetchall()\n'
+                                     '    return rows, ddl, version\n'
+                                     '\n'
+                                     'def copy_new(source: Path, destination: Path):\n'
+                                     '    source = source.resolve()\n'
+                                     '    destination = destination.resolve()\n'
+                                     '    if not source.is_file() or source == destination:\n'
+                                     '        raise ValueError("Нужен существующий отдельный '
+                                     'источник")\n'
+                                     '    with closing(sqlite3.connect(source.as_uri() + "?mode=ro", '
+                                     'uri=True)) as src:\n'
+                                     '        destination.touch(exist_ok=False)\n'
+                                     '        with closing(sqlite3.connect(destination)) as dst:\n'
+                                     '            src.backup(dst)\n'
+                                     '            if dst.execute("PRAGMA integrity_check").fetchone() '
+                                     '!= ("ok",):\n'
+                                     '                raise RuntimeError("Копия непригодна")\n'
+                                     'import shutil\n'
+                                     '\n'
+                                     '# Часть 1, Python из project. Все источники существуют и '
+                                     'проверены:\n'
+                                     'root = Path("scratch/user-schema-demo").resolve()\n'
+                                     'checkpoint = root / "user-head.checkpoint.sqlite3"\n'
+                                     'failed = root / "failed.sqlite3"\n'
+                                     'recovered = root / "recovered.sqlite3"\n'
+                                     'copy_new(checkpoint, failed)\n'
+                                     'bad = root / "failure-history"\n'
+                                     'bad.mkdir(exist_ok=False)\n'
+                                     'shutil.copyfile(Path("alembic.ini"), bad / "alembic.ini")\n'
+                                     'shutil.copytree(Path("migrations"), bad / "migrations")\n'
+                                     'print("Временный ini:", bad / "alembic.ini")\n'
+                                     'print("Его sqlalchemy.url:", "sqlite:///" + failed.as_posix())\n'
+                                     '# В редакторе временного ini оставляем script_location = '
+                                     '%(here)s/migrations\n'
+                                     '# и записываем напечатанный URL failed. Основной ini не меняем.\n'
+                                     '\n'
+                                     '# Часть 2, PowerShell из project:\n'
+                                     '# python -m alembic -c '
+                                     'scratch/user-schema-demo/failure-history/alembic.ini revision -m '
+                                     '"controlled failure"\n'
+                                     '# В только что созданном файле сохраняем revision/down_revision и '
+                                     'импорты op/sa.\n'
+                                     '# Заменяем тела операций следующими:\n'
+                                     'def upgrade():\n'
+                                     '    op.create_table("_failure_probe", sa.Column("id", '
+                                     'sa.Integer(), primary_key=True))\n'
+                                     '    raise RuntimeError("Учебный отказ после CREATE")\n'
+                                     '\n'
+                                     'def downgrade():\n'
+                                     '    raise RuntimeError("Одноразовый опыт")\n'
+                                     '\n'
+                                     '# Часть 3, PowerShell: один запуск временного head:\n'
+                                     '# python -m alembic -c '
+                                     'scratch/user-schema-demo/failure-history/alembic.ini upgrade '
+                                     'head\n'
+                                     '\n'
+                                     '# Часть 4, Python: определения read_tasks/copy_new и пути из '
+                                     'части 1 доступны.\n'
+                                     'print("После отказа Task/DDL/current:", read_tasks(failed))\n'
+                                     'with closing(sqlite3.connect(failed.as_uri() + "?mode=ro", '
+                                     'uri=True)) as db:\n'
+                                     '    print("Probe:", db.execute("SELECT name, sql FROM '
+                                     'sqlite_schema WHERE name=\'_failure_probe\'").fetchall())\n'
+                                     '# Записываем фактические наблюдения в state.md, затем '
+                                     'восстанавливаем новый адрес:\n'
+                                     'copy_new(checkpoint, recovered)\n'
+                                     'print("Task/DDL/current восстановлены:", read_tasks(checkpoint) '
+                                     '== read_tasks(recovered))\n'
+                                     'with closing(sqlite3.connect(recovered.as_uri() + "?mode=ro", '
+                                     'uri=True)) as db:\n'
+                                     '    print("Целостность:", db.execute("PRAGMA '
+                                     'integrity_check").fetchone())\n'
+                                     '    print("User-колонки:", db.execute("PRAGMA '
+                                     'table_info(users)").fetchall())\n'
+                                     '    print("User-DDL:", db.execute("SELECT sql FROM sqlite_schema '
+                                     'WHERE name=\'users\'").fetchone())\n'
+                                     '    print("Пробных User нет:", db.execute("SELECT COUNT(*) FROM '
+                                     'users").fetchone())\n'
+                                     '    print("Probe отсутствует:", db.execute("SELECT name FROM '
+                                     'sqlite_schema WHERE name=\'_failure_probe\'").fetchall())\n'
+                                     "# Ожидаем True, ('ok',), договорённые поля/ограничения, (0,), "
+                                     '[].\n'
+                                     '# Исходная основная история без временной revision имеет тот же '
+                                     'успешный User-head.\n'
+                                     '# API/CLI запускаем с DATABASE_URL recovered, не со старым '
+                                     'процессом и не с failed.\n',
+                             'checks': ['После ошибки state.md содержит реальные наблюдения по схеме, '
+                                        'метке и данным; различие DDL-режимов не скрыто.',
+                                        'Recovered совпал с успешным checkpoint, users пуста, Task '
+                                        'сохранён. Failed не использован как рабочая цель.',
+                                        'Восстановленный экземпляр читается новым процессом API/CLI с '
+                                        'тем же явным адресом и основной исправной историей.']}}],
+       'result': 'Единое правило имени и UserRow согласованы с применённой историей на новой и '
+                 'заполненной копиях. Task сохранён; после объяснённого отказа получен новый '
+                 'согласованный экземпляр. Реальных аккаунтов для входа пока нет.'}]}
 
-raw = config.get_main_option("sqlalchemy.url")
-expected = config.get_main_option("expected_database_path")
-if not raw or not expected:
-    raise ValueError("Адрес не задан")
-url = make_url(raw)
-if (url.drivername not in ("sqlite", "sqlite+pysqlite") or not url.database
-        or url.database == ":memory:" or url.query or url.host is not None
-        or url.username is not None or url.password is not None or url.port is not None):
-    raise ValueError("Нужен файловый SQLite URL")
-target = Path(url.database).resolve()
-allowed = Path(expected)
-if not allowed.is_absolute():
-    raise ValueError("Контрольный путь должен быть абсолютным")
-allowed = allowed.resolve()
-print("URL:", target, "Ожидаем:", allowed)
-if target != allowed or not target.is_relative_to(Path.cwd().resolve()) or not target.is_file():
-    raise ValueError("Недопустимый адрес")
-
-# После сверки адреса из project/: python -m alembic current
-""",
-                    "checks": ["До каждой команды оба абсолютных адреса совпадают с выбранной учебной базой.", "Несовпадающий или отсутствующий тестовый файл отклонён до подключения; файл не создан.", "Резерв доступен для восстановления, все роли файлов различимы."]
-                }
-            },
-            {
-                "title": "Сравниваем структуру и данные",
-                "task": "У образца и восстановленной копии может совпадать название таблицы, но отличаться правило или дополнительный объект. В учебном project/ откроем обе базы только для чтения и составим опись их структуры. Отдельно сохраним количество и значения всех задач восстановленной копии: это позволит после маркировки увидеть не только номер версии, но и судьбу каждой строки. При непонятном объекте не будем угадывать его значение, а остановимся.",
-                "requirements": [
-                    "Обе базы открыты только для чтения; в опись включены sqlite_schema, table_xinfo('tasks'), index_list('tasks'), index_xinfo каждого индекса и foreign_key_list('tasks').",
-                    "Таблицы, поля, типы, PK, nullable, SQL defaults, CHECK, индексы, FK, триггеры, представления и другие объекты сопоставлены с образцом, ревизией и прежней описью; alembic_version выделена отдельно.",
-                    "Для восстановленной копии сохранены число строк и значения id, title, priority, is_done, tags, title_normalized по возрастанию id.",
-                    "Отсутствие каждого проверяемого вида объекта зафиксировано; при неизвестном объекте или неясном различии работа остановлена."
-                ],
-                "result": "Есть опись сравнения всех признаков и значения всех задач до маркировки, либо записана причина остановки.",
-                "hint": "CHECK ищем в SQL создания таблицы, а не только в перечне колонок. Одинаковое число строк не гарантирует одинаковых значений.",
-                "answer": {
-                    "explanation": "SQLite хранит SQL объектов в sqlite_schema, а PRAGMA показывают дополнительные свойства таблиц, индексов и связей. Сравнение полей задач отдельно защищает содержимое.",
-                    "steps": [
-                        "Для каждого файла создадим read-only соединение через sqlite3.connect(Path(путь).resolve().as_uri() + '?mode=ro', uri=True); после чтения закроем его.",
-                        "Выполним запросы ниже в каждом соединении; для каждого имени из index_list подставим его в index_xinfo и сравним свойства.",
-                        "Сверим CREATE SQL на CHECK и наличие других объектов. Для каждой задачи сопоставим все шесть полей, а не только количество.",
-                        "Если признаки неизвестны или отличаются, не выполняем stamp."
-                    ],
-                    "code": """# Сохраняем как inspect_tasks.py в project/
-import sqlite3
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1]).resolve()
-db = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)
-try:
-    for sql in (
-        "SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY type, name",
-        "PRAGMA table_xinfo('tasks')",
-        "PRAGMA index_list('tasks')",
-        "PRAGMA foreign_key_list('tasks')",
-        "SELECT COUNT(*) FROM tasks",
-        "SELECT id, title, priority, is_done, tags, title_normalized FROM tasks ORDER BY id",
-    ):
-        print(sql, db.execute(sql).fetchall())
-    for index in db.execute("PRAGMA index_list('tasks')").fetchall():
-        print(index[1], db.execute("SELECT * FROM pragma_index_xinfo(?)", (index[1],)).fetchall())
-finally:
-    db.close()
-
-# Из project/: python inspect_tasks.py ПУТЬ_К_БАЗЕ
-""",
-                    "checks": ["Каждый индекс отдельно проверен через PRAGMA index_xinfo('имя_индекса').", "Опись содержит обе исходные строки и все шесть полей, включая внутренние tags."]
-                }
-            },
-            {
-                "title": "Находим расхождение на отдельной копии",
-                "task": "Проверим, что похожую, но несовпадающую базу нельзя включать в историю. В project/ создадим отдельный файл из восстановленной копии с помощью подготовленной обёртки резервирования. Выберем для него новое свободное имя, затем добавим только в этот файл лишнюю таблицу. Сравнение с образцом должно обнаружить отличие, а чтение current до и после покажет, что мы не меняли отметку истории.",
-                "requirements": [
-                    "Через python -m app.DBase.backup_snapshot SOURCE DEST получена открываемая копия; SOURCE является восстановленной базой, DEST ранее отсутствовал и отличается от источника.",
-                    "Оба значения alembic.ini указывают на новую копию, абсолютные пути совпадают, исходный current записан.",
-                    "Только в одноразовой копии создана таблица unexpected_marker с целочисленным id и обнаружена в sqlite_schema.",
-                    "Stamp не выполнялся; после повторной проверки адреса current показывает то же состояние истории."
-                ],
-                "result": "Лишняя таблица найдена, current не изменился, исходная копия и резерв сохранены.",
-                "hint": "Перед созданием таблицы убедимся, что соединение направлено на одноразовый файл. Метка версии не исправляет схему.",
-                "answer": {
-                    "explanation": "Созданная таблица является видимым отличием от образца. Поэтому мы не записываем ревизию и отдельно убеждаемся, что состояние истории осталось прежним.",
-                    "steps": [
-                        "Подставим реальные учебные пути в команду backup_snapshot. Не используем существующее назначение: обёртка должна отказать без перезаписи.",
-                        "Укажем оба параметра ini для одноразовой копии, проверим адреса и выполним current.",
-                        "Откроем только этот файл с записью, выполним CREATE TABLE unexpected_marker (id INTEGER), подтвердим commit и закроем соединение.",
-                        "Вновь прочитаем sqlite_schema и current. Наличие лишней таблицы означает остановку без stamp."
-                    ],
-                    "code": """# Из project/, вместо SOURCE и DEST подставляем проверенные пути
-python -m app.DBase.backup_snapshot SOURCE DEST
-python -m alembic current
-
-# В отдельном файле make_marker.py:
-import sqlite3
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1]).resolve()
-root = Path("demo").resolve()  # Заменяем на разрешённый учебный каталог.
-if not path.is_relative_to(root) or not path.is_file():
-    raise ValueError("Нужна существующая одноразовая копия")
-db = sqlite3.connect(path)
-try:
-    db.execute("CREATE TABLE unexpected_marker (id INTEGER)")
-    db.commit()
-finally:
-    db.close()
-
-# Из project/: python make_marker.py DEST
-# Затем повторяем inspect_tasks.py DEST и python -m alembic current.
-""",
-                    "checks": ["Занятый DEST вызывает отказ без изменения прежнего файла.", "До и после эксперимента current показывает одинаковое состояние; лишний объект обнаружен."]
-                }
-            },
-            {
-                "title": "Отмечаем только совпадающую копию",
-                "task": "Вернёмся к восстановленной заполненной копии. Если её структура совпала с образцом, а адрес и резерв подтверждены, отметим в истории конкретную исходную ревизию из файла migrations/versions. После команды ещё раз прочитаем версию, структуру и все сохранённые поля задач. Если схема отличается или результат команды неизвестен, остановимся и разберём фактическое состояние, не повторяя действие вслепую.",
-                "requirements": [
-                    "Оба параметра ini направлены на восстановленную копию, абсолютные пути совпадают, неожиданной текущей версии нет.",
-                    "После подтверждённого совпадения схемы выполнен python -m alembic stamp с фактическим ID исходной revision из файла, без подстановки head.",
-                    "Повторные current и чтение структуры, количества и шести полей сопоставлены с описью до изменения.",
-                    "Путь отмеченной копии, исходный ID, опись и отдельный резерв подготовлены к передаче; при ошибке фактическое состояние исследовано без слепого повтора."
-                ],
-                "result": "Current показывает исходную revision, схема и все значения задач совпадают с описью до операции.",
-                "hint": "Сначала доказательство совпадения, затем конкретная метка, затем новое чтение. Stamp не выполняет upgrade.",
-                "answer": {
-                    "explanation": "Stamp меняет учёт версии, а не выполняет создание таблиц. Сравнение до и после подтверждает, что задачи и их схема сохранились в выбранной копии.",
-                    "steps": [
-                        "В alembic.ini зададим оба значения для восстановленной копии и сверим абсолютные пути. Проверим current и сравнение схемы.",
-                        "Подставим фактическое значение revision из исходного файла в команду stamp. Угловые скобки в примере обозначают место подстановки и в команду не вводятся.",
-                        "Снова сверим адрес, выполним current и прочитаем все поля и структуру. Сравним с описью.",
-                        "Если есть расхождение или команда закончилась ошибкой, остановимся и зафиксируем фактическое состояние."
-                    ],
-                    "code": "python -m alembic current\npython -m alembic stamp <ID_исходной_revision>\npython -m alembic current",
-                    "checks": ["Current равен ID исходной revision.", "Количество, id, title, priority, is_done, tags и title_normalized каждой задачи не изменились.", "Неверная копия не отмечена."]
-                }
-            }
-        ]
-    }]
-}
+CODE_TASKS = {}

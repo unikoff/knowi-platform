@@ -1,8 +1,11 @@
 from datetime import date
 from datetime import datetime
+from typing import Literal
+from uuid import UUID
 
 
 from pydantic import BaseModel
+from pydantic import Field
 from pydantic import constr
 from pydantic import field_validator
 from pymentor_core.modules.identity.passwords import validate_bcrypt_length
@@ -36,17 +39,32 @@ class UserPublic(BaseModel):
     model_config = {"from_attributes": True, "extra": "forbid"}
 
 
+class CurrentUserPublic(UserPublic):
+    account_ref: UUID
+    subscription_until: datetime | None
+    subscription_plan: str | None
+    has_active_subscription: bool
+    is_admin: bool
+    verified: bool
+    role: Literal['user', 'leader', 'admin']
+    capabilities: list[Literal['course.read', 'course.roster', 'course.search_grant',
+        'course.quota.grant', 'course.subscription.extend', 'course.calendar.manage',
+        'platform.read', 'platform.manage']]
+    course_id: str | None
+    auth_revision: int = Field(ge=0)
+
+
 class AuthResponse(BaseModel):
     model_config = {"extra": "forbid"}
 
     message: str
-    user: UserPublic
+    user: CurrentUserPublic
 
 
 class CurrentUserResponse(BaseModel):
     model_config = {"extra": "forbid"}
 
-    user: UserPublic
+    user: CurrentUserPublic
 
 
 class LogoutResponse(BaseModel):

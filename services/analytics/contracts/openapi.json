@@ -1,0 +1,719 @@
+{
+  "components": {
+    "schemas": {
+      "BatchAck": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ItemAck"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "BatchAck",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "enum": [
+              "invalid_request",
+              "unauthorized",
+              "forbidden",
+              "too_large",
+              "rate_limited",
+              "unavailable"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "correlation_id": {
+            "format": "uuid",
+            "title": "Correlation Id",
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 256,
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "correlation_id"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ItemAck": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "enum": [
+              "committed",
+              "same_payload",
+              "payload_conflict",
+              "invalid",
+              "too_large",
+              "unknown_catalog",
+              "unsupported_version",
+              "future_clock",
+              "too_late"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "event_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Id"
+          },
+          "index": {
+            "exclusiveMaximum": 100.0,
+            "minimum": 0.0,
+            "title": "Index",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "accepted",
+              "duplicate",
+              "conflict",
+              "rejected",
+              "pending"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "event_id",
+          "status",
+          "code"
+        ],
+        "title": "ItemAck",
+        "type": "object"
+      },
+      "ReportRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "course_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Id"
+          },
+          "from_time": {
+            "description": "Timezone-aware RFC 3339 timestamp",
+            "format": "date-time",
+            "title": "From Time",
+            "type": "string"
+          },
+          "limit": {
+            "default": 100,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "subject_ref": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject Ref"
+          },
+          "timezone": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Timezone",
+            "type": "string"
+          },
+          "to_time": {
+            "description": "Timezone-aware RFC 3339 timestamp",
+            "format": "date-time",
+            "title": "To Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course_id",
+          "subject_ref",
+          "from_time",
+          "to_time",
+          "timezone"
+        ],
+        "title": "ReportRequest",
+        "type": "object"
+      },
+      "ReportResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "description": "Timezone-aware RFC 3339 timestamp",
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "lag_seconds": {
+            "minimum": 0.0,
+            "title": "Lag Seconds",
+            "type": "integer"
+          },
+          "metric_version": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "title": "Metric Version",
+            "type": "string"
+          },
+          "projection_version": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "title": "Projection Version",
+            "type": "string"
+          },
+          "quality": {
+            "enum": [
+              "complete",
+              "partial",
+              "unknown"
+            ],
+            "title": "Quality",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ReportRow"
+            },
+            "maxItems": 100,
+            "title": "Rows",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "no_data",
+              "stale",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "timezone": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "as_of",
+          "lag_seconds",
+          "quality",
+          "timezone",
+          "metric_version",
+          "projection_version",
+          "rows"
+        ],
+        "title": "ReportResponse",
+        "type": "object"
+      },
+      "ReportRow": {
+        "additionalProperties": false,
+        "properties": {
+          "active_ms": {
+            "minimum": 0.0,
+            "title": "Active Ms",
+            "type": "integer"
+          },
+          "course_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "title": "Course Id",
+            "type": "string"
+          },
+          "subject_ref": {
+            "format": "uuid",
+            "title": "Subject Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course_id",
+          "subject_ref",
+          "active_ms"
+        ],
+        "title": "ReportRow",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "WireBatch": {
+        "additionalProperties": false,
+        "description": "Envelope accepts arbitrary JSON items for independent item validation and ACK.",
+        "properties": {
+          "events": {
+            "items": {},
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Events",
+            "type": "array"
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "title": "WireBatch",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "AnalyticsGrant": {
+        "bearerFormat": "JWT",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "Collector HTTP exists but durable intake remains unavailable by default; report route is planned only.",
+    "title": "Analytics contract specification",
+    "version": "2.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/analytics/events/batch": {
+      "post": {
+        "operationId": "collectBrowserBatch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "events": [
+                  {
+                    "active_ms": 0,
+                    "catalog_version": "catalog-1",
+                    "course_id": "backend",
+                    "ended_at": "2026-11-16T10:00:00Z",
+                    "event_id": "11111111-1111-4111-8111-111111111111",
+                    "focused": true,
+                    "last_action_at": "2026-11-16T10:00:00Z",
+                    "lesson_id": null,
+                    "payload": {},
+                    "schema_version": 2,
+                    "section": null,
+                    "session_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                    "started_at": "2026-11-16T10:00:00Z",
+                    "type": "course_opened",
+                    "visible": true
+                  },
+                  {
+                    "active_ms": 60000,
+                    "catalog_version": "catalog-1",
+                    "course_id": "backend-copy",
+                    "ended_at": "2026-11-16T10:01:00Z",
+                    "event_id": "22222222-2222-4222-8222-222222222222",
+                    "focused": true,
+                    "last_action_at": "2026-11-16T10:00:00Z",
+                    "lesson_id": "lesson-1",
+                    "payload": {},
+                    "schema_version": 2,
+                    "section": "practice",
+                    "session_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                    "started_at": "2026-11-16T10:00:00Z",
+                    "type": "activity_segment",
+                    "visible": true
+                  }
+                ]
+              },
+              "schema": {
+                "$ref": "#/components/schemas/WireBatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "code": "committed",
+                      "event_id": "11111111-1111-4111-8111-111111111111",
+                      "index": 0,
+                      "status": "accepted"
+                    },
+                    {
+                      "code": "same_payload",
+                      "event_id": "22222222-2222-4222-8222-222222222222",
+                      "index": 1,
+                      "status": "duplicate"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BatchAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid envelope"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid grant",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Scope or subject denied"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Batch too large"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "rate_limited",
+                  "correlation_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+                  "message": "Retry later"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Backpressure",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "minimum": 1.0,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unavailable or outcome unknown"
+          }
+        },
+        "security": [
+          {
+            "AnalyticsGrant": []
+          }
+        ],
+        "summary": "Batch"
+      }
+    },
+    "/api/analytics/reports/activity": {
+      "post": {
+        "operationId": "readActivityReport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "course_id": "backend",
+                "from_time": "2026-11-01T00:00:00Z",
+                "limit": 100,
+                "subject_ref": null,
+                "timezone": "UTC",
+                "to_time": "2026-11-16T00:00:00Z"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "report_no_data": {
+                    "value": {
+                      "as_of": "2026-11-16T10:00:00Z",
+                      "lag_seconds": 2,
+                      "metric_version": "m1",
+                      "projection_version": "p1",
+                      "quality": "complete",
+                      "rows": [],
+                      "status": "no_data",
+                      "timezone": "UTC"
+                    }
+                  },
+                  "report_stale": {
+                    "value": {
+                      "as_of": "2026-11-16T09:00:00Z",
+                      "lag_seconds": 3600,
+                      "metric_version": "m1",
+                      "projection_version": "p1",
+                      "quality": "partial",
+                      "rows": [],
+                      "status": "stale",
+                      "timezone": "UTC"
+                    }
+                  },
+                  "report_unavailable": {
+                    "value": {
+                      "as_of": "2026-11-16T09:00:00Z",
+                      "lag_seconds": 3600,
+                      "metric_version": "m1",
+                      "projection_version": "p1",
+                      "quality": "unknown",
+                      "rows": [],
+                      "status": "unavailable",
+                      "timezone": "UTC"
+                    }
+                  },
+                  "report_zero": {
+                    "value": {
+                      "as_of": "2026-11-16T10:00:00Z",
+                      "lag_seconds": 2,
+                      "metric_version": "m1",
+                      "projection_version": "p1",
+                      "quality": "complete",
+                      "rows": [
+                        {
+                          "active_ms": 0,
+                          "course_id": "backend",
+                          "subject_ref": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+                        }
+                      ],
+                      "status": "ok",
+                      "timezone": "UTC"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid envelope"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid grant"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Scope denied"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Batch too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "rate_limited",
+                  "correlation_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+                  "message": "Retry later"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Backpressure",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "minimum": 1.0,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unavailable"
+          }
+        },
+        "security": [
+          {
+            "AnalyticsGrant": []
+          }
+        ],
+        "summary": "Report",
+        "x-implementation-status": "planned"
+      }
+    }
+  }
+}

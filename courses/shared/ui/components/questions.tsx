@@ -1,12 +1,29 @@
-import React, { useId, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import { plainOptionText } from "./option-text";
 import { CodeBlock } from "@platform/shared/ui/code-editor/CodeEditor";
 import { Check, ChevronDown, RotateCcw } from "lucide-react";
 import { VisualHeading } from "@platform/shared/ui/VisualHeading";
 
-export function RecallCard({ question, answer, hint }: { question: string; answer: React.ReactNode; hint?: string }) {
+export type RecallCardProps = {
+  question: React.ReactNode;
+  answer: React.ReactNode;
+  code?: string;
+  hint?: string;
+};
+
+export function RecallCard(props: RecallCardProps) {
+  return <RevealCard {...props} />;
+}
+
+/** The legacy prediction adapter uses the same disclosure with its original labels. */
+export function RevealCard({ question, answer, code, hint, description, answerKind = "ответ", selfAssessment = true }: RecallCardProps & {
+  description?: string;
+  answerKind?: "ответ" | "вывод";
+  selfAssessment?: boolean;
+}) {
   const id = useId();
   const [isRevealed, setIsRevealed] = useState(false);
+  const [hintRevealed, setHintRevealed] = useState(false);
   const [reflection, setReflection] = useState<"remembered" | "repeat" | null>(null);
 
   return (
@@ -14,40 +31,33 @@ export function RecallCard({ question, answer, hint }: { question: string; answe
       <div className="recall-prompt">
         <VisualHeading kind="recall" />
         <h3 className="recall-question" id={`${id}-question`}>{question}</h3>
-        {hint && <p className="recall-hint">{hint}</p>}
+        {code !== undefined && <CodeBlock code={code} />}
+        <p className="recall-instruction">{description ?? (code !== undefined ? "Предположите результат, затем сверьтесь с ответом." : "Попробуйте ответить своими словами, затем сверьтесь с ответом.")}</p>
       </div>
-      <button
-        className="recall-toggle"
-        type="button"
-        aria-expanded={isRevealed}
-        aria-controls={`${id}-answer`}
-        onClick={() => setIsRevealed(value => !value)}
-      >
-        {isRevealed ? "Скрыть ответ" : "Показать ответ"}
-        <ChevronDown size={15} aria-hidden="true" />
-      </button>
-      <div
-        className={`recall-reveal${isRevealed ? " is-open" : ""}`}
-        id={`${id}-answer`}
-        aria-hidden={!isRevealed}
-        {...(!isRevealed ? { inert: "" } : {})}
-      >
-        <div className="recall-reveal-inner">
-          <div className="recall-reveal-body">
-            <div className="recall-answer">{answer}</div>
-            <div className="recall-actions answer-options" role="group" aria-label="Самооценка">
-              <button className={`answer-option${reflection === "remembered" ? " is-picked" : ""}`} type="button" aria-pressed={reflection === "remembered"} disabled={!isRevealed} onClick={() => setReflection("remembered")}>
-                <Check size={15} aria-hidden="true" /> Вспомнил сам
-              </button>
-              <button className={`answer-option${reflection === "repeat" ? " is-picked" : ""}`} type="button" aria-pressed={reflection === "repeat"} disabled={!isRevealed} onClick={() => setReflection("repeat")}>
-                <RotateCcw size={15} aria-hidden="true" /> Повторю позже
-              </button>
-            </div>
-            {reflection && <p key={reflection} className={`recall-status${reflection === "remembered" ? " is-correct" : ""}`} role="status">
-              {reflection === "remembered" ? "Закройте ответ и повторите своими словами." : "Вернитесь к вопросу после следующего раздела."}
-            </p>}
-          </div>
-        </div>
+      <div className="recall-controls">
+        {hint && <button className="recall-toggle" type="button" aria-expanded={hintRevealed} aria-controls={`${id}-hint`} onClick={() => setHintRevealed(value => !value)}>
+          Подсказка <ChevronDown size={15} aria-hidden="true" />
+        </button>}
+        <button className="recall-toggle recall-answer-toggle" type="button" aria-expanded={isRevealed} aria-controls={`${id}-answer`} onClick={() => setIsRevealed(value => !value)}>
+          {isRevealed ? `Скрыть ${answerKind}` : `Показать ${answerKind}`}
+          <ChevronDown size={15} aria-hidden="true" />
+        </button>
+      </div>
+      {hint && <p className="recall-hint" id={`${id}-hint`} hidden={!hintRevealed}>{hint}</p>}
+      <div className="recall-reveal" id={`${id}-answer`} hidden={!isRevealed}>
+        <div className="recall-answer">{answer}</div>
+        {selfAssessment && <div className="recall-actions answer-options" role="group" aria-label="Самооценка">
+          <button className="answer-option" type="button" aria-pressed={reflection === "remembered"} onClick={() => setReflection("remembered")}>
+            <Check size={15} aria-hidden="true" /> Ответил самостоятельно
+          </button>
+          <button className="answer-option" type="button" aria-pressed={reflection === "repeat"} onClick={() => setReflection("repeat")}>
+            <RotateCcw size={15} aria-hidden="true" /> Повторю позже
+          </button>
+        </div>}
+        {selfAssessment && <p className="recall-status" role="status" hidden={!reflection}>
+          {reflection === "remembered" && "Закройте ответ и попробуйте ещё раз."}
+          {reflection === "repeat" && "Вернитесь к вопросу после следующего раздела."}
+        </p>}
       </div>
     </section>
   );
@@ -76,6 +86,14 @@ export function QuizCard({
 }) {
   const id = useId();
   const [picked, setPicked] = useState<number | null>(null);
+  const firstOptionRef = useRef<HTMLButtonElement>(null);
+  const retryRef = useRef<HTMLButtonElement>(null);
+  const focusAfterChange = useRef<"retry" | "option" | null>(null);
+  useEffect(() => {
+    if (focusAfterChange.current === "retry") retryRef.current?.focus();
+    if (focusAfterChange.current === "option") firstOptionRef.current?.focus();
+    focusAfterChange.current = null;
+  }, [picked]);
   const isDone = picked !== null;
   const accepted = typeof correctIndex === "number" ? [correctIndex] : correctIndex;
   const isCorrect = picked !== null && accepted.includes(picked);
@@ -100,29 +118,30 @@ export function QuizCard({
             return (
               <button
                 key={index}
+                ref={index === 0 ? firstOptionRef : undefined}
                 type="button"
                 className={`quiz-option answer-option ${stateClass}${picked === index ? " is-picked" : ""}`}
                 disabled={isDone}
                 aria-pressed={picked === index}
-                onClick={() => setPicked(index)}
+                onClick={() => { focusAfterChange.current = "retry"; setPicked(index); }}
               >
                 <span className="quiz-option-body">
                   <span className="quiz-option-title">{title}</span>
                   {code && <CodeBlock as="span" code={code} />}
                   {detail && <span className="quiz-option-description">{detail}</span>}
+                  {stateClass && <span className="quiz-option-result">{stateClass === "is-correct" ? "Верный ответ" : "Неверный ответ"}</span>}
                 </span>
               </button>
             );
           })}
         </div>
-        <div className={`choice-feedback${isDone ? " is-visible" : ""}`} aria-hidden={!isDone}>
-          <div className="choice-feedback-inner">
-            <p className={`quiz-explanation ${isCorrect ? "is-correct" : "is-wrong"}`} role="status">
-              {isDone && <>{isCorrect ? "Верно! " : "Не совсем. "}{explanation}</>}
-            </p>
-            {isCorrect && answer && <div className="quiz-answer">{answer}</div>}
-          </div>
+        <div className="choice-feedback" role="status">
+          {isDone && <p className={`quiz-explanation ${isCorrect ? "is-correct" : "is-wrong"}`}>
+            {isCorrect ? "Верно! " : "Не совсем. "}{explanation}
+          </p>}
         </div>
+        {isCorrect && answer && <div className="quiz-answer">{answer}</div>}
+        {isDone && <button ref={retryRef} className="interactive-secondary quiz-retry" type="button" onClick={() => { focusAfterChange.current = "option"; setPicked(null); }}><RotateCcw size={15} aria-hidden="true" /> Попробовать ещё раз</button>}
       </div>
     </div>
   );

@@ -1,13 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircle2, ChevronDown, ChevronRight, Lock, PanelLeftClose, Play } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Lock, PanelLeftClose } from "lucide-react";
 import { getLessonAccessLabel, isLessonUnavailable, type Lesson, type Track } from "../../features/learning";
 
-function formatTrackTitle(track: Track) {
+function trackLabel(track: Track) {
   const match = track.title.match(/^(?:Глава\s*)?(\d+)\s*[:.·-]?\s*(.+)$/i);
   const chapterNumber = match?.[1] ?? track.id.match(/chapter[_-]?(\d+)/i)?.[1];
   const chapterTitle = match?.[2]?.trim() ?? track.title.trim();
-  return chapterNumber ? `${Number(chapterNumber)}: ${chapterTitle}` : track.title;
+  return { number: chapterNumber ? String(Number(chapterNumber)).padStart(2, "0") : "", title: chapterTitle };
 }
 
 export function LessonExplorer({
@@ -48,13 +48,53 @@ export function LessonExplorer({
   onCollapse: () => void;
 }) {
   const trackStatusRef = useRef<HTMLDivElement>(null);
+  const trackMenuRef = useRef<HTMLDivElement | null>(null);
   const [trackMenuStyle, setTrackMenuStyle] = useState<CSSProperties>();
   const [keepTrackMenu, setKeepTrackMenu] = useState(isTrackMenuOpen);
+  const hasTrackMenuPosition = Boolean(trackMenuStyle);
   useEffect(() => {
     if (isTrackMenuOpen) { setKeepTrackMenu(true); return; }
     const timer = window.setTimeout(() => setKeepTrackMenu(false), 140);
     return () => window.clearTimeout(timer);
   }, [isTrackMenuOpen]);
+
+  useEffect(() => {
+    if (!isTrackMenuOpen || !hasTrackMenuPosition) return;
+    const menu = trackMenuRef.current;
+    (menu?.querySelector<HTMLButtonElement>("[aria-current='true']") ?? menu?.querySelector<HTMLButtonElement>("button"))?.focus();
+  }, [isTrackMenuOpen, hasTrackMenuPosition]);
+
+  useEffect(() => {
+    if (!isTrackMenuOpen) return;
+    let dismissed = false;
+    const outside = (event: Event) => {
+      const target = event.target as Node | null;
+      if (target instanceof Element && target.closest(".explorer-resizer")) return;
+      if (!dismissed && target && !trackMenuRef.current?.contains(target) && !trackStatusRef.current?.contains(target)) {
+        dismissed = true;
+        if (event.type === "pointerdown" && trackMenuRef.current?.contains(document.activeElement)) {
+          trackStatusRef.current?.querySelector<HTMLButtonElement>(".track-switch")?.focus();
+        }
+        onToggleTrackMenu();
+      }
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented || dismissed) return;
+      event.preventDefault();
+      event.stopPropagation();
+      dismissed = true;
+      onToggleTrackMenu();
+      trackStatusRef.current?.querySelector<HTMLButtonElement>(".track-switch")?.focus();
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("focusin", outside);
+    document.addEventListener("keydown", escape, true);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("focusin", outside);
+      document.removeEventListener("keydown", escape, true);
+    };
+  }, [isTrackMenuOpen, onToggleTrackMenu]);
 
   useLayoutEffect(() => {
     if (!isTrackMenuOpen) return;
@@ -64,8 +104,8 @@ export function LessonExplorer({
       if (!anchor) return;
 
       const margin = 12;
-      const width = Math.min(anchor.width, window.innerWidth - margin * 2);
-      const left = Math.min(Math.max(margin, anchor.left), window.innerWidth - width - margin);
+      const width = Math.min(anchor.width - 24, window.innerWidth - margin * 2);
+      const left = Math.min(Math.max(margin, anchor.left + 12), window.innerWidth - width - margin);
       const preferredTop = anchor.bottom + 8;
       const maxHeight = Math.min(672, Math.max(120, window.innerHeight - preferredTop - margin));
       const top = Math.min(preferredTop, window.innerHeight - maxHeight - margin);
@@ -94,7 +134,10 @@ export function LessonExplorer({
             type="button"
             onClick={onToggleTrackMenu}
             aria-expanded={isTrackMenuOpen}
-            aria-label="Выбрать трек"
+            aria-label="Выбрать главу"
+            aria-haspopup="dialog"
+            aria-controls="workspace-chapter-picker"
+            title={tracks.find((track) => track.id === activeTrackId)?.title ?? "Курс"}
           >
             <span>{tracks.find((track) => track.id === activeTrackId)?.title ?? "Курс"}</span>
             <ChevronDown size={14} className={isTrackMenuOpen ? "is-flipped" : ""} />
@@ -103,18 +146,18 @@ export function LessonExplorer({
             <PanelLeftClose size={18} />
           </button>
         </div>
-        <strong>{progress}%</strong>
-        <div className="progress-line">
-          <i style={{ width: `${progress}%` }} />
+        <div className="track-status__progress">
+          <div className="progress-line" role="progressbar" aria-label="Прогресс главы" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
+            <i style={{ width: `${progress}%` }} />
+          </div>
+          <strong aria-hidden="true">{progress}%</strong>
         </div>
         {(isTrackMenuOpen || keepTrackMenu) && trackMenuStyle && createPortal(
-          <div className={`track-menu track-menu--overlay${isTrackMenuOpen ? "" : " is-closing"}`} aria-hidden={!isTrackMenuOpen} style={trackMenuStyle} role="dialog" aria-label="Выбор программы обучения">
-            <div className="track-menu__header">
-              <strong>Учебные программы</strong>
-              <span>Выберите главу</span>
-            </div>
-            <div className="track-menu__list" role="listbox" aria-label="Курсы">
+          <div id="workspace-chapter-picker" ref={(element) => { trackMenuRef.current = element; if (element) element.inert = !isTrackMenuOpen; }}
+            className={`track-menu track-menu--overlay${isTrackMenuOpen ? "" : " is-closing"}`} aria-hidden={!isTrackMenuOpen} style={trackMenuStyle} role="dialog" aria-label="Главы курса">
+            <div className="track-menu__list">
               {tracks.map((track) => {
+                const label = trackLabel(track);
                 const trackProgress = track.lessons_countable
                   ? Math.round((track.lessons_completed / track.lessons_countable) * 100)
                   : 0;
@@ -122,15 +165,17 @@ export function LessonExplorer({
                   <button
                     key={track.id}
                     type="button"
-                    role="option"
-                    aria-selected={track.id === activeTrackId}
+                    aria-current={track.id === activeTrackId ? "true" : undefined}
+                    title={track.title}
                     className={track.id === activeTrackId ? "is-active" : ""}
-                    onClick={() => onSelectTrack(track.id)}
+                    onClick={() => {
+                      onSelectTrack(track.id);
+                      trackStatusRef.current?.querySelector<HTMLButtonElement>(".track-switch")?.focus();
+                    }}
                   >
-                    <div>
-                      <strong>{formatTrackTitle(track)}</strong>
-                    </div>
-                    <span>{trackProgress}%</span>
+                    <span className="track-menu__number">{label.number}</span>
+                    <strong>{label.title}</strong>
+                    <span className="track-menu__progress">{trackProgress}%</span>
                   </button>
                 );
               })}
@@ -160,6 +205,8 @@ export function LessonExplorer({
                       className={`lesson-row ${lesson.id === activeLessonId ? "is-active" : ""} ${lesson.completed && !isUnavailable ? "is-completed" : ""} ${isUnavailable ? "is-locked" : ""}`}
                       type="button"
                       key={lesson.id}
+                      aria-current={lesson.id === activeLessonId ? "true" : undefined}
+                      aria-label={lesson.completed && !isUnavailable ? `${lesson.title}, завершено` : undefined}
                       title={lesson.locked_reason || lesson.title}
                       onClick={() => {
                         if (isUnavailable) {
@@ -171,7 +218,7 @@ export function LessonExplorer({
                         onSelectLesson(lesson);
                       }}
                     >
-                      {isUnavailable ? <Lock size={15} /> : lesson.completed ? <CheckCircle2 size={15} className="lesson-done-icon" /> : <Play size={15} />}
+                      {isUnavailable ? <Lock size={15} aria-hidden="true" /> : lesson.completed ? <Check size={16} strokeWidth={2} className="lesson-done-icon" aria-hidden="true" /> : null}
                       <span>{lesson.title}</span>
                       {accessLabel && <small>{accessLabel}</small>}
                     </button>

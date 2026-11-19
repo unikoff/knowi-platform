@@ -1,304 +1,309 @@
-import { Callout, CodeBlock, CodeSequence, Diagram, DiagramArrow, DiagramFlow, DiagramNode, Lead, LinkedNotes, RichHero, RichLesson, Section, TypeCard, TypeCards } from "../../shared";
+import {
+  Callout, CodeBlock, Diagram, DiagramArrow, DiagramFlow, DiagramNode,
+  DiagramNote, InteractiveTable, Lead, LinkedNotes, QuizCard, RichHero,
+  RichLesson, Section,
+} from "../../shared";
 
-const setup = `from pathlib import Path
+const BOOKS_DEMO = String.raw`from pathlib import Path
 import sqlite3
 
-path = Path("books-demo.sqlite3").resolve()
-if path.exists():
-    raise SystemExit("Выберем новое имя для учебной базы")
-connection = sqlite3.connect(path)
-try:
-    connection.execute("CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT NOT NULL, copies INTEGER NOT NULL DEFAULT 3, CONSTRAINT ck_copies CHECK (copies >= 0))")
-    connection.execute("CREATE INDEX ix_books_title ON books (title)")
-    connection.execute("INSERT INTO books (id, title) VALUES (2, 'Atlas')")
-    connection.execute("INSERT INTO books (id, title, copies) VALUES (7, 'Notes', 1)")
-    connection.commit()
-finally:
-    connection.close()
-print("Учебная база создана:", path)`;
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import URL
+from sqlalchemy.orm import Session
 
-const read = `from pathlib import Path
-from contextlib import closing
-import sqlite3
 
-path = Path("books-demo.sqlite3").resolve()
-print("Проверяем путь:", path)
-if not path.is_file():
-    raise SystemExit("Учебный файл не найден")
-if input("Это выбранный учебный файл? Введите да: ").strip().lower() != "да":
-    raise SystemExit("Путь не подтверждён")
-uri = path.as_uri() + "?mode=ro"
-with closing(sqlite3.connect(uri, uri=True)) as connection:
-    print("Таблицы:", connection.execute(
-        "SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name"
-    ).fetchall())
-    print("Столбцы:", connection.execute("PRAGMA table_info('books')").fetchall())`;
+BOOK_SQL = "SELECT id, title, copies FROM books ORDER BY id"
 
-const inspectObjects = `from pathlib import Path
-from contextlib import closing
-import sqlite3
 
-path = Path("books-demo.sqlite3").resolve()
-print("Проверяем путь:", path)
-if not path.is_file():
-    raise SystemExit("Учебный файл не найден")
-if input("Это выбранный учебный файл? Введите да: ").strip().lower() != "да":
-    raise SystemExit("Путь не подтверждён")
-with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)) as db:
-    print("Объекты:", db.execute(
-        "SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY type, name"
-    ).fetchall())
-    print("Все столбцы:", db.execute("PRAGMA table_xinfo('books')").fetchall())
-    indexes = db.execute("PRAGMA index_list('books')").fetchall()
-    print("Индексы:", indexes)
-    print("Внешние ключи:", db.execute("PRAGMA foreign_key_list('books')").fetchall())
-    for index in indexes:
-        name = index[1]
-        print("Поля индекса:", name, db.execute(
-            "SELECT * FROM pragma_index_info(?)", (name,)
-        ).fetchall())
-        print("Подробности индекса:", db.execute(
-            "SELECT * FROM pragma_index_xinfo(?)", (name,)
-        ).fetchall())`;
+def state(connection):
+    return {
+        "schema": connection.execute(
+            "SELECT type, name, tbl_name, sql FROM sqlite_schema "
+            "WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
+        ).fetchall(),
+        "columns": connection.execute(
+            "PRAGMA table_info(books)"
+        ).fetchall(),
+        "rows": connection.execute(BOOK_SQL).fetchall(),
+    }
 
-const inventory = `from pathlib import Path
-from contextlib import closing
-import sqlite3
 
-path = Path("books-demo.sqlite3").resolve()
-print("Проверяем путь:", path)
-if not path.is_file():
-    raise SystemExit("Учебный файл не найден")
-if input("Это выбранный учебный файл? Введите да: ").strip().lower() != "да":
-    raise SystemExit("Путь не подтверждён")
-with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)) as db:
-    print("Количество:", db.execute("SELECT COUNT(*) FROM books").fetchall())
-    print("Строки:", db.execute(
-        "SELECT id, title, copies FROM books ORDER BY id"
-    ).fetchall())`;
-
-const mismatch = `from pathlib import Path
-from contextlib import closing
-import sqlite3
-
-good = Path("books-good.sqlite3").resolve()
-missing = Path("books-missing-check.sqlite3").resolve()
-if good == missing or good.exists() or missing.exists():
-    raise SystemExit("Нужны два новых разных пути")
-for path, sql in [
-    (good, "CREATE TABLE books (id INTEGER PRIMARY KEY, copies INTEGER NOT NULL, CONSTRAINT ck_copies CHECK (copies >= 0))"),
-    (missing, "CREATE TABLE books (id INTEGER PRIMARY KEY, copies INTEGER NOT NULL)"),
-]:
-    with closing(sqlite3.connect(path)) as connection:
-        connection.execute(sql)
-        connection.commit()
-for path in (good, missing):
-    with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)) as connection:
-        print(path.name, connection.execute("PRAGMA table_info('books')").fetchall())
-        print(connection.execute("SELECT sql FROM sqlite_schema WHERE name='books'").fetchone())`;
-
-const nullableProbe = `from pathlib import Path
-from contextlib import closing
-import sqlite3
-
-required = Path("probe-required.sqlite3").resolve()
-optional = Path("probe-nullable.sqlite3").resolve()
-if required == optional or required.exists() or optional.exists():
-    raise SystemExit("Выберем два новых разных пути")
-for path, sql in [
-    (required, "CREATE TABLE supplies (id INTEGER PRIMARY KEY, quantity INTEGER NOT NULL)"),
-    (optional, "CREATE TABLE supplies (id INTEGER PRIMARY KEY, quantity INTEGER)"),
-]:
-    with closing(sqlite3.connect(path)) as db:
-        db.execute(sql)
-        db.commit()
-for path in (required, optional):
-    with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)) as db:
-        print(path.name, db.execute("PRAGMA table_info('supplies')").fetchall())`;
-
-const createAll = `from pathlib import Path
-from contextlib import closing
-import sqlite3
-from sqlalchemy import CheckConstraint, Column, Integer, MetaData, Table, create_engine
-
-path = Path("books-old.sqlite3").resolve()
-if path.exists():
-    raise SystemExit("Нужен новый путь")
-with closing(sqlite3.connect(path)) as connection:
-    connection.execute("CREATE TABLE books (id INTEGER PRIMARY KEY, pages INTEGER NOT NULL)")
-    connection.commit()
-    print("До:", connection.execute("SELECT sql FROM sqlite_schema WHERE name='books'").fetchone()[0])
-metadata = MetaData()
-Table("books", metadata, Column("id", Integer, primary_key=True),
-      Column("pages", Integer, nullable=False),
-      CheckConstraint("pages > 0", name="ck_pages"))
-engine = create_engine("sqlite:///" + path.as_posix())
-try:
-    metadata.create_all(engine)
-finally:
-    engine.dispose()
-with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)) as connection:
-    print("После:", connection.execute("SELECT sql FROM sqlite_schema WHERE name='books'").fetchone()[0])`;
-
-const modelExample = `from sqlalchemy import CheckConstraint, Integer
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-
-class Base(DeclarativeBase):
-    pass
-
-class PackageRow(Base):
-    __tablename__ = "packages"
-    __table_args__ = (CheckConstraint("weight > 0", name="ck_weight"),)
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
-    weight: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
-
-print("Таблица:", PackageRow.__tablename__)
-print("Ключ:", PackageRow.__table__.c.id.primary_key)
-print("Обязательность:", PackageRow.__table__.c.weight.nullable)
-print("Python default:", PackageRow.__table__.c.weight.default.arg)
-print("Правило:", PackageRow.__table_args__[0].name)`;
-
-const relationships = `from pathlib import Path
-from contextlib import closing
-import sqlite3
-
-path = Path("library-links.sqlite3").resolve()
-if path.exists():
-    raise SystemExit("Выберем новый путь")
-with closing(sqlite3.connect(path)) as db:
-    db.execute("CREATE TABLE authors (id INTEGER PRIMARY KEY, name TEXT NOT NULL)")
-    db.execute("CREATE TABLE books (id INTEGER PRIMARY KEY, author_id INTEGER REFERENCES authors(id))")
-    db.execute("CREATE VIEW book_authors AS SELECT id, author_id FROM books")
-    db.commit()
-with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)) as db:
-    print("Связи:", db.execute("PRAGMA foreign_key_list('books')").fetchall())
-    print("Представления:", db.execute("SELECT name FROM sqlite_schema WHERE type='view'").fetchall())`;
-
-const defaults = `from pathlib import Path
-from contextlib import closing
-import sqlite3
-from sqlalchemy import Column, Integer, MetaData, Table, create_engine, insert
-
-path = Path("defaults-demo.sqlite3").resolve()
-if path.exists():
-    raise SystemExit("Выберем новый путь")
-metadata = MetaData()
-items = Table("items", metadata, Column("id", Integer, primary_key=True),
-              Column("amount", Integer, nullable=False, default=3))
-engine = create_engine("sqlite:///" + path.as_posix())
-try:
-    metadata.create_all(engine)
-    with engine.begin() as connection:
-        connection.execute(insert(items).values(id=1))
-finally:
-    engine.dispose()
-with closing(sqlite3.connect(path)) as db:
+def restore(snapshot, destination):
+    snapshot = Path(snapshot).resolve()
+    destination = Path(destination).resolve()
+    if snapshot == destination:
+        raise ValueError("Источник и назначение совпали")
+    if not snapshot.is_file():
+        raise FileNotFoundError(snapshot)
+    source = sqlite3.connect(snapshot.as_uri() + "?mode=ro", uri=True)
     try:
-        db.execute("INSERT INTO items (id) VALUES (2)")
-        db.commit()
-    except sqlite3.IntegrityError:
-        db.rollback()
-        print("Прямой SQL без amount отклонён")
-    print("Строки:", db.execute("SELECT id, amount FROM items").fetchall())
-    print("Определение:", db.execute("PRAGMA table_info('items')").fetchall())`;
+        with destination.open("xb"):
+            pass
+        target = sqlite3.connect(destination)
+        try:
+            source.backup(target)
+        finally:
+            target.close()
+    finally:
+        source.close()
+    return destination
 
-export function Lesson81_1() {
+
+def check_books(path, expected):
+    connection = sqlite3.connect(
+        Path(path).resolve().as_uri() + "?mode=ro", uri=True
+    )
+    try:
+        integrity = connection.execute("PRAGMA integrity_check").fetchall()
+        actual = state(connection)
+    finally:
+        connection.close()
+    if integrity != [("ok",)]:
+        raise ValueError("SQLite сообщила об ошибке целостности")
+    if actual["schema"] != expected["schema"]:
+        raise ValueError("Не совпала схема")
+    if actual["columns"] != expected["columns"]:
+        raise ValueError("Не совпали свойства столбцов")
+    if actual["rows"] != expected["rows"]:
+        raise ValueError("Не совпали все строки книг")
+    return actual
+
+
+def main():
+    folder = Path("data/restore_books_demo").resolve()
+    folder.mkdir(parents=True, exist_ok=False)
+    snapshot = folder / "books_snapshot.sqlite3"
+    restored = folder / "books_restored.sqlite3"
+    bad = folder / "books_incomplete.sqlite3"
+    rejected = folder / "books_rejected.sqlite3"
+
+    memory = sqlite3.connect(":memory:")
+    try:
+        memory.execute(
+            "CREATE TABLE books (id INTEGER PRIMARY KEY, "
+            "title TEXT NOT NULL, "
+            "copies INTEGER NOT NULL CHECK(copies >= 0))"
+        )
+        memory.execute("INSERT INTO books VALUES (?, ?, ?)", (4, "Маяк", 2))
+        memory.execute("INSERT INTO books VALUES (?, ?, ?)", (9, "Сад", 1))
+        memory.commit()
+        expected = state(memory)
+        with snapshot.open("xb"):
+            pass
+        output = sqlite3.connect(snapshot)
+        try:
+            memory.backup(output)
+        finally:
+            output.close()
+    finally:
+        memory.close()
+
+    original_bytes = snapshot.read_bytes()
+    restore(snapshot, restored)
+    actual = check_books(restored, expected)
+    print("Копия:", restored.name)
+    print("Книги:", actual["rows"])
+    print("Схема и значения: совпали")
+
+    restore(snapshot, bad)
+    connection = sqlite3.connect(bad)
+    try:
+        connection.execute("DELETE FROM books WHERE id = ?", (9,))
+        connection.commit()
+    finally:
+        connection.close()
+    restore(bad, rejected)
+    try:
+        check_books(rejected, expected)
+    except ValueError as error:
+        print("Неполная копия: ОТКАЗ.", error)
+
+    url = URL.create("sqlite", database=restored.as_posix())
+    engine = create_engine(url)
+    try:
+        with Session(engine) as session:
+            print("Новая Session:", session.execute(text(BOOK_SQL)).all())
+    finally:
+        engine.dispose()
+    occupied_bytes = restored.read_bytes()
+    try:
+        restore(snapshot, restored)
+    except FileExistsError:
+        print("Занятое назначение: ОТКАЗ")
+    print("Занятый файл сохранён:", restored.read_bytes() == occupied_bytes)
+    missing = folder / "missing.sqlite3"
+    try:
+        restore(missing, folder / "not_created.sqlite3")
+    except FileNotFoundError:
+        print("Отсутствующий источник: ОТКАЗ")
+    print("Ложный источник появился:", missing.exists())
+    print("Резерв не изменён:", snapshot.read_bytes() == original_bytes)
+
+
+if __name__ == "__main__":
+    main()
+`;
+
+const EXTRA_CHECKS = String.raw`occupied_bytes = restored.read_bytes()
+try:
+    restore(snapshot, restored)
+except FileExistsError:
+    print("Занятое назначение: ОТКАЗ")
+print("Занятый файл сохранён:", restored.read_bytes() == occupied_bytes)
+
+missing = folder / "missing.sqlite3"
+try:
+    restore(missing, folder / "not_created.sqlite3")
+except FileNotFoundError:
+    print("Отсутствующий источник: ОТКАЗ")
+print("Ложный источник появился:", missing.exists())
+`;
+
+export function Lesson81_1({ module }: { module?: string }) {
   return (
     <RichLesson>
-      <RichHero chip="SQLite и Planner" title="Сверяем реальную схему" intro="Выясним, что находится в учебном файле базы, и сравним наблюдение с моделью до изменения схемы." />
-      <Section number="00" title="От сохранённых задач к устройству базы">
-        <Lead>В учебном Planner мы можем прочитать задачи после перезапуска. Теперь выясним, какие правила действительно записаны в файле SQLite.</Lead>
+      <RichHero
+        chip={module ?? "Миграции базы"}
+        title="Восстановление базы"
+        intro="Получим отдельную копию данных, проверим её по исходной описи и вернём обычный Planner к сохранённым задачам."
+      />
+      <Section number="00" title="От снимка к рабочей копии">
+        <Lead>Файл резерва появился. Но сможем ли мы продолжить по нему работу, сохранив каждую задачу?</Lead>
         <LinkedNotes items={[
-          { title: "Точка старта", description: "У нас есть адрес отдельной учебной базы и две синтетические задачи после проверки Planner." },
-          { title: "Новый вопрос", description: "Совпадает ли устройство существующей таблицы с моделью приложения?" },
-          { title: "Результат", description: "Составим опись схемы и значений и обнаружим расхождение на отдельном образце." },
+          { title: "Точка старта", description: "Для начала нужны успешный снимок, исходная опись схемы и задач, а также работающий SQL Planner. Если резервирование закончилось ошибкой, сначала возвращаемся к его проверке." },
+          { title: "Новый вопрос", description: "Как отличить полноценное восстановление от файла, который открывается, но уже потерял часть данных?" },
+          { title: "Результат", description: "Восстановим отдельную копию, сравним структуру и все значения, затем прочитаем её обычным Planner и новым процессом." },
         ]} />
-        <p>Проверяемый адрес связывает результаты с нужным файлом. Затем сравниваем его структуру и содержимое с тем, что ожидает приложение.</p>
+        <p>Опись даёт нам независимый эталон. Новый путь сохраняет исходник и резерв, а несколько разных проверок не позволяют принять случайный успех за готовую рабочую базу.</p>
       </Section>
-      <Section number="01" title="Модель, схема и строки">
-        <Lead>Модель описывает ожидаемую таблицу в Python. Схема хранит фактическое описание таблиц в SQLite. Строки содержат значения задач.</Lead>
-        <p>Метод <code>create_all</code> создаёт отсутствующую таблицу, но не добавляет ограничения в уже существующую. Проверим это на отдельном каталоге книг. Сохраним код в <code>create_books_old.py</code> внутри учебного <code>project/</code> и запустим <code>python create_books_old.py</code>. Нужен установленный в учебной среде SQLAlchemy.</p>
-        <CodeBlock caption="Существующая таблица и новая metadata" code={createAll} />
-        <p>Сначала SQL создаёт таблицу. Затем <code>Table</code> описывает ожидаемое правило, а <code>metadata.create_all(engine)</code> находит существующую таблицу. Строки «До:» и «После:» показывают одно и то же определение; <code>dispose()</code> освобождает подключения. Сопоставим ожидаемое правило с результатом чтения файла.</p>
-        <Diagram caption="Сравниваем ожидание с существующей таблицей books" orientation="vertical">
-          <DiagramFlow label="Ожидание, наблюдение и вывод" orientation="vertical">
-            <DiagramNode title="Ожидаем по модели"><p>В таблице books должно быть ограничение <code>ck_pages</code>: pages &gt; 0.</p></DiagramNode>
-            <DiagramArrow label="Сравниваем с CREATE в файле" />
-            <DiagramNode title="Видим в SQLite" shape="database"><p>CREATE содержит поля id и pages, но ограничения <code>ck_pages</code> в нём нет.</p></DiagramNode>
-            <DiagramArrow label="Делаем вывод из расхождения" />
-            <DiagramNode title="Результат сравнения"><p>Ожидаемое правило отсутствует: успешный <code>create_all</code> не добавил его в существующую таблицу.</p></DiagramNode>
+
+      <Section number="01" title="Три файла с разными ролями">
+        <Lead>Резерв нужен для возвращения к сохранённому состоянию. Поэтому приложение получает отдельную восстановленную копию.</Lead>
+        <p>Исходная база остаётся на своём месте. Из неё уже создан согласованный снимок. При восстановлении мы читаем снимок и переносим его содержимое в новый файл. Если дать Planner адрес самого резерва, будущая запись приложения изменит нашу точку возврата.</p>
+        <Diagram caption="Направление переноса данных. Каждый узел означает отдельный файл." orientation="vertical">
+          <DiagramFlow label="Источник, снимок и новая рабочая копия" orientation="vertical">
+            <DiagramNode title="Исходная база" shape="database"><p>Синтетические задачи. Писатели остановлены, исходная опись сохранена.</p></DiagramNode>
+            <DiagramArrow label="Успешное резервирование" />
+            <DiagramNode title="Резерв" shape="database"><p>Сохраняем. При восстановлении открываем только для чтения.</p></DiagramNode>
+            <DiagramArrow label="Восстановление в новый путь" />
+            <DiagramNode title="Новая копия" shape="database"><p>Сначала кандидат. Проверяем структуру и содержимое до запуска Planner.</p></DiagramNode>
           </DiagramFlow>
+          <DiagramNote title="Ещё один адрес остаётся свободным">Для будущего создания исходной истории выберем другой новый путь. Он не совпадает с заполненной восстановленной копией. Сейчас файл по этому адресу не создаём.</DiagramNote>
         </Diagram>
-        <p>Здесь мы прочитали определение таблицы, но не её строки. Для описи сохранённых значений понадобится отдельное чтение: наличие таблицы и её полей само по себе не подтверждает наличие CHECK.</p>
+        <p>Проверка файла и проверка его содержимого тоже имеют разные роли. Сначала SQLite должна прочитать свою структуру без ошибки. Затем мы сравниваем фактическую схему и все строки с описью, снятой до резервирования. Сам снимок не может быть единственным эталоном своей полноты.</p>
+        <p>Путь приводим к абсолютному через <code>Path.resolve()</code>. Это позволяет сравнить адреса, записанные разными относительными способами. Существующий снимок открываем через файловый URI: <code>as_uri()</code> строит адрес файла, <code>?mode=ro</code> задаёт чтение, <code>uri=True</code> включает разбор этих параметров в sqlite3.</p>
+        <CodeBlock caption="Форма открытия существующего снимка, фрагмент" code={String.raw`snapshot = Path("data/books_snapshot.sqlite3").resolve()
+source = sqlite3.connect(snapshot.as_uri() + "?mode=ro", uri=True)`} />
+        <p>В этом фрагменте <code>Path</code> импортирован из pathlib, а sqlite3 является стандартным модулем Python. В полном примере ниже есть все импорты. Обычный <code>sqlite3.connect(path)</code> способен создать отсутствующий файл. Режим <code>ro</code> вместо этого откажет: несуществующий снимок не превратится в пустую базу.</p>
+        <p>Новое назначение сначала резервируем через <code>Path.open("xb")</code>. Буква <code>x</code> требует создать новый файл и вызывает FileExistsError, если имя занято; <code>b</code> означает двоичный режим. После закрытия этого дескриптора SQLite откроет уже наш новый файл. Это учебный локальный опыт с остановленными писателями, без конкурентной подмены путей другим процессом.</p>
+        <p>В книжном опыте контрольные байты помещаются в память программы. Для нескольких отдельных запусков удобнее записать в опись их короткий отпечаток SHA-256. Стандартный hashlib получает байты, sha256 вычисляет отпечаток, hexdigest возвращает его как текст. Повторяем эту команду для исходника и резерва до опыта и после него, подставляя фактический путь при запросе:</p>
+        <CodeBlock caption="PowerShell: отпечаток существующего остановленного файла" code={String.raw`.\.venv\Scripts\python.exe -c "from pathlib import Path; import hashlib; p=Path(input('Путь файла: ')).resolve(); print(p); print(hashlib.sha256(p.read_bytes()).hexdigest())"`} />
+        <p>Записываем адрес и полученный текст. Совпадение отпечатка подтверждает неизменность файла в нашем опыте, но не заменяет сравнение схемы и задач восстановленной копии. Рабочий источник во время сверки остаётся без писателей.</p>
+        <QuizCard
+          question="Есть исходная база, успешный снимок и существующий пустой файл candidate.sqlite3. Можно ли использовать candidate.sqlite3 как новое назначение?"
+          options={["Да, потому что в нём ещё нет таблиц.", "Нет. Имя уже занято, нужен другой отсутствующий файл."]}
+          correctIndex={1}
+          explanation="Защита различает существующий и новый путь, а не полезный и пустой файл. Исключительное создание откажет и для файла нулевой длины."
+        />
+        <p>Теперь у нас есть безопасное направление: существующий резерв читаем, новую цель создаём. Посмотрим, какая операция переносит данные между соединениями.</p>
       </Section>
-      <Section number="02" title="Выбираем файл и открываем его для чтения">
-        <Lead>Перед наблюдением остановим учебные процессы и сверим путь с описью. Обычное подключение к ошибочному пути может создать новый пустой файл.</Lead>
-        <p>Создадим отдельный пример в учебной копии. Сохраним код ниже как <code>make_books.py</code> и запустим из <code>project/</code> командой <code>python make_books.py</code>. Имя уже занято: останавливаемся и выбираем другое, не перезаписываем файл.</p>
-        <CodeBlock caption="Подготовка синтетических книг" code={setup} />
-        <p><code>Path.resolve()</code> показывает абсолютный путь, <code>exists()</code> проверяет занятость, <code>connect</code> создаёт новый файл. <code>execute</code> выполняет SQL, <code>commit</code> сохраняет строки, <code>close</code> закрывает соединение. Значение <code>3</code> для первой книги задаёт SQL DEFAULT. Учебный каталог принадлежит нам и во время опыта никто другой в нём не пишет.</p>
-        <p>Теперь сохраним следующий код как <code>read_books.py</code> и выполним <code>python read_books.py</code> из того же каталога. Программа напечатает абсолютный путь и остановится в ожидании ответа. Сравним его с выбранным учебным файлом: только при совпадении введём <code>да</code>. Любой другой ответ завершит программу до подключения.</p>
-        <CodeBlock caption="Открываем файл и читаем столбцы" code={read} />
-        <p><code>is_file()</code> требует существующий файл. <code>input()</code> ждёт нашего ответа; <code>strip().lower()</code> убирает пробелы по краям и приводит буквы к нижнему регистру. Если путь не совпал с описью, не подтверждаем его. <code>as_uri()</code> преобразует абсолютный путь в файловый URI; <code>mode=ro</code> запрещает запись, а <code>uri=True</code> включает разбор URI. <code>closing</code> закрывает соединение и при ошибке. Если файла нет или ответ не подтверждает путь, код останавливается до подключения. В практике подставляем путь Planner из описи, а не предполагаем его по имени.</p>
-        <p>После подтверждения увидим <code>Таблицы: [('books',)]</code>. Запрос к <code>sqlite_schema</code> выбирает имена объектов типа table, а <code>fetchall()</code> возвращает все найденные строки. Далее идут три кортежа с описанием столбцов. Разберём их по частям.</p>
+
+      <Section number="02" title="Восстановление меняет роли соединений">
+        <Lead>Используем знакомый backup API, но источником теперь служит снимок, а назначением становится новая рабочая копия.</Lead>
+        <CodeBlock caption="Смысл вызова между уже открытыми соединениями" code="source.backup(target)" />
+        <p>Метод вызывается у читаемого источника. В аргументе передаётся соединение назначения. SQLite копирует содержимое источника в назначение и может заменить его прежнее содержимое. Поэтому защита нового пути выполняется до вызова, а не ожидается от самого <code>backup</code>.</p>
+        <p>Вызов завершился, но оба соединения ещё нужно закрыть. <code>close()</code> освобождает соединение. Блок <code>finally</code> выполняется и при успехе, и при исключении, поэтому закрытие не теряется после ошибки. Контекст <code>with connection</code> у sqlite3 управляет commit/rollback, но не закрывает connection. В нашем опыте закрытие показано явно.</p>
+        <Callout>
+          <p><strong>До первого запуска.</strong> Работаем из корня прежнего <code>project/</code> с его готовой <code>.venv</code>. Создадим один файл <code>restore_books_demo.py</code>. Полная программа ниже создаст новый каталог <code>data/restore_books_demo/</code>, два основных SQLite-файла и ещё два файла отрицательного опыта. Повтор всей программы требует нового имени каталога: существующие результаты не перезаписываем.</p>
+        </Callout>
+        <p>Сначала отделим подготовку от нового механизма. Реестр книг живёт в памяти и имеет поля id, title и copies. Параметр <code>":memory:"</code> создаёт временную SQLite, исчезающую после закрытия соединения. Две строки содержат разные ID и количества. Значение <code>CHECK(copies &gt;= 0)</code> запрещает отрицательное количество, а NOT NULL требует название и количество.</p>
+        <p>Подготовка выполняет два INSERT с параметрами: знаки <code>?</code> получают значения из переданного кортежа. <code>commit()</code> завершает запись перед снимком. Функция <code>state</code> читает схему, свойства колонок и строки; её результат сохраняется в <code>expected</code> ещё до backup. Поэтому эталон не получается из проверяемой восстановленной копии.</p>
+        <p>В функции <code>restore</code> сначала проверяются разные адреса и существующий источник, затем создаётся новое назначение. Вложенные try/finally закрывают каждое открытое соединение. Частично созданный после сбоя файл остаётся негодным кандидатом: следующий запуск выбирает новое имя, а не выдаёт его за успешную копию.</p>
+        <p>Полный пример связывает восстановление, проверки следующего раздела и новое чтение Session. Сначала проследим только участок <code>restore(snapshot, restored)</code>: входом служит готовый снимок, результатом является другой файл. К деталям проверок вернёмся сразу после запуска.</p>
+        <CodeBlock caption="restore_books_demo.py: полный независимый опыт" code={BOOKS_DEMO} />
+        <p>Перед первым запуском выберем другое свободное имя для значения <code>restored</code>, например <code>books_work.sqlite3</code>. Все последующие чтения уже используют эту переменную. Самостоятельно прогнозируем, какое имя появится в выводе, затем из корня <code>project/</code> выполняем:</p>
+        <CodeBlock caption="PowerShell: запуск тем же Python" code={String.raw`.\.venv\Scripts\python.exe restore_books_demo.py`} />
+        <CodeBlock caption="Ожидаемый вывод при имени books_work.sqlite3" code={"Копия: books_work.sqlite3\nКниги: [(4, 'Маяк', 2), (9, 'Сад', 1)]\nСхема и значения: совпали\nНеполная копия: ОТКАЗ. Не совпали все строки книг\nНовая Session: [(4, 'Маяк', 2), (9, 'Сад', 1)]\nЗанятое назначение: ОТКАЗ\nЗанятый файл сохранён: True\nОтсутствующий источник: ОТКАЗ\nЛожный источник появился: False\nРезерв не изменён: True"} />
+        <p>Первая полезная проверка уже видна: мы выбрали новое назначение, и оно содержит обе книги. У строки <code>(9, 'Сад', 1)</code> три значения: ID 9, название «Сад», один экземпляр. Сам вызов backup ничего не печатает; вывод добавляет наш код после чтения копии.</p>
+        <p>В конце main уже есть пробы отказов. Рассмотрим этот участок отдельно, не создавая второй демонстрационный файл. Он использует folder, snapshot и restored из полной программы:</p>
+        <CodeBlock caption="Участок полного примера: отказы сохраняют прежние файлы" code={EXTRA_CHECKS} />
+        <p>Попытка повторно занять restored даёт отказ; сравнение его байтов до и после показывает True. Отсутствующий источник тоже даёт отказ и не появляется как пустой файл: missing.exists() возвращает False. <code>read_bytes()</code> читает байты файла, <code>exists()</code> проверяет существование, а не исправность SQLite. Для ещё одной пробы выбираем новое назначение, а не запускаем подготовку на прежнем каталоге.</p>
+        <p>Импорт файла не запускает подготовку: вызов main защищён условием <code>if __name__ == "__main__"</code>. При прямом запуске файла это условие истинно; при импорте доступны функции, а каталог и снимок заново не создаются. Таким способом можно отдельно вызвать restore с новым назначением и уже существующим снимком.</p>
+        <p>В проектной практике мы добавим одну рабочую процедуру к существующему Planner. Из книжного примера переносим направление, защиту пути и закрытие ресурсов, а проверку шести полей Task напишем самостоятельно.</p>
       </Section>
-      <Section number="03" title="Столбцы и значения по умолчанию">
-        <Lead>Разберём вывод <code>table_info</code>. Каждая строка описывает один столбец, а не одну книгу.</Lead>
-        <TypeCards>
-          <TypeCard badge="Поле PRAGMA" title="name и type">Имя столбца и объявленный тип</TypeCard>
-          <TypeCard badge="Поле PRAGMA" title="notnull">1 означает объявленный NOT NULL</TypeCard>
-          <TypeCard badge="Поле PRAGMA" title="dflt_value">SQL DEFAULT из определения таблицы или None</TypeCard>
-          <TypeCard badge="Поле PRAGMA" title="pk">Позиция в первичном ключе; 0 означает, что столбец не входит в ключ</TypeCard>
-        </TypeCards>
-        <p>Например, строка <code>(2, 'copies', 'INTEGER', 1, '3', 0)</code> описывает третий столбец: его имя copies, тип INTEGER, задан NOT NULL, SQL DEFAULT равен 3 и в ключ он не входит. Первое число это позиция в таблице, а не значение книги. В строке <code>(0, 'id', 'INTEGER', 0, None, 1)</code> последний 1 отмечает ключ. Особенность целочисленного ключа обсуждаем ниже.</p>
-        <p>В примере у <code>copies</code> есть SQL DEFAULT 3. У <code>title</code> SQL-default отсутствует. В модели Planner <code>default=2</code> у priority задаётся Python-клиентом SQLAlchemy; без <code>server_default</code> это не SQL DEFAULT таблицы. Для первичного ключа SQLite интерпретируем <code>notnull</code> вместе с CREATE: значение 0 само по себе не описывает все особенности ключа. При скрытых или генерируемых полях используем <code>PRAGMA table_xinfo('books')</code>.</p>
-        <p>Сохраним следующий независимый пример как <code>defaults_demo.py</code> и запустим <code>python defaults_demo.py</code> из учебного <code>project/</code>. В новом файле SQLAlchemy подставляет значение 3 при своей вставке. Прямой SQL не видит Python default и получает ошибку NOT NULL; после отката первая строка остаётся.</p>
-        <CodeBlock caption="Клиентское значение и прямой SQL" code={defaults} />
-        <p><code>insert(items).values(id=1)</code> передаёт вставку SQLAlchemy, <code>engine.begin()</code> подтверждает успешную транзакцию. При ошибке <code>IntegrityError</code> вызываем <code>rollback()</code>. В выводе остаётся <code>[(1, 3)]</code>, а у столбца amount в PRAGMA нет SQL DEFAULT.</p>
-        <p>Посмотрим, как найти те же свойства в независимой модели посылки. Сохраним следующий код как <code>package_model.py</code> и выполним <code>python package_model.py</code> в учебной среде из <code>project/</code>. Этот пример только описывает модель и не открывает базу.</p>
-        <CodeBlock caption="Читаем свойства модели посылки" code={modelExample} />
-        <p>Вывод содержит таблицу packages, ключ True, nullable False, Python default 3 и имя правила ck_weight. <code>Mapped[int]</code> описывает тип атрибута, <code>mapped_column</code> задаёт столбец; <code>__table_args__</code> хранит ограничение. В Planner те же места находятся в <code>app/DBase/models.py</code>. Integer соответствует INTEGER, String представлен строковым типом SQLite, Boolean и JSON имеют свои объявления. Для своей базы сравним реальные результаты, а не будем предполагать их по классу.</p>
-      </Section>
-      <Section number="04" title="Ограничения и другие объекты">
-        <Lead>Одинаковый список столбцов ещё не гарантирует одинаковые правила для строк.</Lead>
-        <p>Сначала прочитаем определение объектов и индексы отдельно от списка столбцов. Сохраним этот полный код в <code>inspect_books_objects.py</code>, выполним <code>python inspect_books_objects.py</code> из <code>project/</code> и подтвердим путь после сверки.</p>
-        <CodeBlock caption="Читаем ограничения и индексы" code={inspectObjects} />
-        <p>В результате <code>sqlite_schema</code> показывает тип, имя, связанную таблицу и SQL объекта. В CREATE таблицы находится <code>ck_copies</code>, а <code>index_list</code> возвращает индекс <code>ix_books_title</code>. Вывод его полей <code>[(0, 1, 'title')]</code> означает: первое ключевое поле индекса находится на позиции 1 в таблице и называется title. <code>table_xinfo</code> дополняет обычный список скрытыми и генерируемыми полями.</p>
-        <p>В <code>pragma_index_info(?)</code> вопросительный знак получает имя отдельно в кортеже <code>(name,)</code>; имя не склеивается с SQL. При сложном индексе дополнительно смотрим <code>pragma_index_xinfo(?)</code> и SQL индекса. <code>foreign_key_list</code> вернул пустой список: в этой таблице нет объявленных ссылок. Он не доказывает включённость проверки внешних ключей.</p>
-        <p>В списке объектов могут встретиться представления и триггеры. SQL автоматического индекса может быть NULL: это не ошибка чтения. Если объект или его смысл неизвестен, не объявляем схемы равными до выяснения.</p>
-        <p>Посмотрим на другую отдельную базу. Сохраним код как <code>library_links.py</code> и запустим <code>python library_links.py</code> из учебного <code>project/</code>.</p>
-        <CodeBlock caption="Внешний ключ и представление" code={relationships} />
-        <p><code>REFERENCES authors(id)</code> объявляет связь с ключом автора. В выводе связи увидим таблицу authors и поля author_id и id; представление <code>book_authors</code> появится в списке. Представление сохраняет запрос, а не отдельный набор строк. Эта проверка читает объявление, но не включает проверку FK на соединениях приложения.</p>
-        <CodeSequence title="Как проверить ограничение" prompt="В учебной таблице книг перечисление столбцов совпало с ожидаемым. Соберём порядок проверки: что читаем и как делаем вывод о CHECK? Лишний вариант оставим." pieces={[
-          { id: "expect", code: "Установить, какое ограничение ожидается в модели" },
-          { id: "ddl", code: "Прочитать CREATE TABLE из sqlite_schema" },
-          { id: "compare", code: "Сравнить выражение CHECK с ожидаемым" },
-          { id: "guess", code: "Объявить совпадение только по имени таблицы" },
-        ]} correctOrder={["expect", "ddl", "compare"]} explanation="Модель задаёт ожидание, CREATE показывает фактическое определение. Сравнение обнаруживает отсутствующий CHECK даже при одинаковых столбцах." incorrectExplanation="Одного имени таблицы недостаточно. Сначала определим ожидаемое правило, затем прочитаем CREATE и сравним конкретное выражение." />
-      </Section>
-      <Section number="05" title="Сравниваем два независимых образца">
-        <Lead>Создадим два новых файла книг. У них одинаковые столбцы, но только первый содержит CHECK.</Lead>
-        <p>Сохраним код как <code>compare_books.py</code> и выполним <code>python compare_books.py</code> из учебного <code>project/</code>. Если хотя бы одно имя занято, программа остановится до открытия обоих файлов.</p>
-        <CodeBlock caption="Одинаковые столбцы, разные ограничения" code={mismatch} />
-        <p>Вывод <code>table_info</code> для двух таблиц совпадает. В SQL первого файла есть <code>ck_copies</code>, во втором его нет. Значит, второй экземпляр неизвестен для исходного договора и не должен автоматически получать отметку соответствия. Текстовое отличие SQL требует анализа: похожая запись не является универсальным доказательством равного смысла.</p>
-        <p>Теперь попробуем другое расхождение самостоятельно. Сохраним следующий код как <code>probe_nullable.py</code> в учебном <code>project/</code>. До запуска предскажем, что покажет <code>notnull</code> у quantity в двух файлах: в одном задано <code>NOT NULL</code>, в другом это ограничение отсутствует. Проверим, что оба имени свободны, и выполним <code>python probe_nullable.py</code>.</p>
-        <CodeBlock caption="Проба обязательности на отдельных файлах" code={nullableProbe} />
-        <p>Для quantity в строке PRAGMA четвёртое значение равно <code>1</code> в первом файле и <code>0</code> во втором. Имя и тип одинаковы, но допустимость NULL различается. Если получили другой результат, сравним CREATE и вернёмся к полю <code>notnull</code>. Занятый путь останавливает пробу до открытия любого из файлов; для повтора выбираем два новых имени.</p>
-      </Section>
-      <Section number="06" title="Считаем и сравниваем содержимое">
-        <Lead>Схема описывает устройство, но не отвечает, сохранились ли нужные значения.</Lead>
-        <p>Сохраним следующий код как <code>inventory_books.py</code> и запустим <code>python inventory_books.py</code> из <code>project/</code>. Программа снова ждёт подтверждения знакомого пути перед открытием.</p>
-        <CodeBlock caption="Количество и полные строки книг" code={inventory} />
-        <p>Количество равно <code>[(2,)]</code>, а строки: <code>[(2, 'Atlas', 3), (7, 'Notes', 1)]</code>. <code>COUNT(*)</code> считает строки, <code>ORDER BY id</code> задаёт порядок по ключу. Другой набор тоже может содержать две строки, но отличаться названием или количеством книг. Поэтому фиксируем число и все поля каждой строки. JSON в SQLite читаем как фактическое значение и сохраняем без потери содержимого.</p>
-        <Callout tone="success">Перед работой с Planner убедимся, что учебный адрес подтверждён, процессы остановлены и есть опись синтетических задач. При неизвестном пути останавливаемся.</Callout>
-      </Section>
-      <Section number="07" title="Что мы будем делать в практике">
-        <Lead>Сначала выпишем ожидания модели, затем откроем отдельный учебный Planner только для чтения и сравним его с этим описанием.</Lead>
-        <LinkedNotes items={[
-          { title: "Сверим схему", description: "Найдём поля, ключ, defaults, CHECK, индексы, связи и другие объекты." },
-          { title: "Зафиксируем данные", description: "Сохраним количество, ID и все шесть значений каждой учебной задачи." },
-          { title: "Проверим расхождение", description: "На новом отдельном файле самостоятельно создадим лишний столбец и обнаружим его." },
+
+      <Section number="03" title="Исправный файл может быть неполным">
+        <Lead>Проверка целостности отвечает на вопрос о внутренней согласованности SQLite. Опись отвечает на другой вопрос: сохранили ли мы то, что ожидали?</Lead>
+        <p>Команда <code>PRAGMA integrity_check</code> проверяет внутреннюю структуру базы. При отсутствии найденных ошибок SQLite возвращает одну строку с единственным значением <code>ok</code>. Метод <code>fetchall()</code> собирает строки результата в список кортежей, поэтому точная форма в Python: <code>[("ok",)]</code>. Запятая внутри круглых скобок обозначает кортеж из одного элемента.</p>
+        <p>Список сообщений об ошибке не равен этому результату. Исключение при открытии или чтении тоже означает отказ. Но даже точное ok не знает, должны ли существовать книги с ID 4 и 9: удаление строки обычным SQL может оставить совершенно согласованную базу. Проверка внешних ключей является отдельной операцией; в нашем текущем книжном реестре и исходной Task-схеме таких связей ещё нет.</p>
+        <p>Функция <code>state</code> в полном примере читает три группы. sqlite_schema хранит SQL-описания объектов; мы выбираем тип, имя, таблицу и SQL, исключая служебные имена sqlite_. <code>PRAGMA table_info(books)</code> возвращает свойства колонок. SELECT читает все книжные значения, а <code>ORDER BY id</code> задаёт один и тот же порядок для сравнения.</p>
+        <InteractiveTable title="Читаем свойства столбца, а не перечень терминов" columns={["Часть строки table_info", "Пример для title", "Вывод"]} rows={[
+          { id: "name", label: "name", values: ["title", "Сопоставляем одно и то же поле."] },
+          { id: "nullable", label: "notnull", values: ["1", "В файле явно записано NOT NULL."] },
+          { id: "default", label: "dflt_value", values: ["None", "SQL-default не задан. Это не значение поля в строке."] },
+          { id: "primary", label: "pk", values: ["0", "title не является первичным ключом."] },
         ]} />
-        <p>При совпадении получим проверенный кандидат исходной схемы и опись. Неизвестный объект или различие означает остановку; сама опись ещё не является резервной копией.</p>
+        <p>Полный порядок значений table_info: номер колонки, name, type, notnull, dflt_value, pk. Например, строка <code>(1, 'title', 'TEXT', 1, None, 0)</code> описывает вторую колонку title: тип TEXT, обязательная, без SQL-default, не PK. Особый случай INTEGER PRIMARY KEY читаем по полю pk, не делаем вывод о нём только из notnull.</p>
+        <p>CHECK находится в SQL определения таблицы, а индексы перечисляет <code>PRAGMA index_list(books)</code>; <code>PRAGMA index_info</code> с именем индекса показывает его колонки. В этом реестре отдельные индексы не создавались, но правило CHECK видно в sqlite_schema. При восстановлении одной и той же схемы достаточно сравнить сохранённые описания и свойства напрямую; универсальный инструмент сравнения разных версий схемы нам пока не нужен.</p>
+        <p>В программе <code>check_books</code> сначала читает файл новой connection и закрывает её, затем отдельно сравнивает целостность, схему, колонки и все строки. Оператор <code>!=</code> замечает различие значений или состава списка. Если строка потеряна, программа не делает из оставшейся строки новый эталон: выдаёт отказ.</p>
+        <QuizCard
+          question="Эталон: (4, 'Маяк', 2), (9, 'Сад', 1). У всех образцов одинаковая схема и integrity_check = ok. Какой вывод обоснован?"
+          description="A: обе строки эталона. B: только (4, 'Маяк', 2). C: (4, 'Маяк', 2) и (9, 'Сад', 7). Сопоставим ID и каждое поле до выбора."
+          options={[
+            "Все три подходят: SQLite уже вернула ok.",
+            "A и C подходят: у них по две строки и одинаковые ID.",
+            "Только A: у B потерян ID 9, у C изменено copies для ID 9.",
+          ]}
+          correctIndex={2}
+          orientation="vertical"
+          explanation="У B отсутствует ожидаемая строка. У C множество ID совпало, но количество экземпляров изменилось с 1 на 7. Только A прошёл все показанные сверки; запуск приложения остаётся отдельным свидетельством."
+          answer={<InteractiveTable title="Что установила каждая проверка" columns={["Образец", "Целостность и схема", "ID и значения"]} rows={[
+            { id: "a", label: "A", values: ["Совпали", "Совпали"] },
+            { id: "b", label: "B", values: ["Совпали", "Нет ID 9"] },
+            { id: "c", label: "C", values: ["Совпали", "copies у ID 9 изменено"] },
+          ]} />}
+        />
+        <p>В отрицательном опыте программа создаёт ещё одну копию снимка, удаляет ID 9 только в ней и выполняет commit. Кортеж <code>(9,)</code> в вызове DELETE передаёт один параметр для знака вопроса. Затем неполный снимок восстанавливается в новый books_rejected.sqlite3. Его структура исправна, но check_books отвергает неполный набор. Хороший снимок и принятая копия всё это время сохраняются.</p>
+        <QuizCard
+          question="В новом образце строки показаны в обратном порядке: (9, 'Сад!', 1), (4, 'Маяк', 2). Число строк, ID и copies совпали. Что осталось проверить?"
+          options={["Только порядок отображения: данные уже доказаны.", "Название по ID: у ID 9 изменилось title, поэтому образец непригоден."]}
+          correctIndex={1}
+          explanation="Порядок показанных строк сам по себе не потеря данных: сопоставляем записи по ID. Но «Сад!» отличается от сохранённого «Сад», и это содержательное расхождение."
+        />
+        <p>У Planner сверка шире книжной: сохраняем id, title, priority, is_done, tags и title_normalized. API и CLI показывают только публичные поля, поэтому внутренние tags и title_normalized читаем SQL отдельно. В SQLite is_done представлен 0/1, в API false/true. Для tags сравниваем исходное сохранённое SQL-представление с таким же чтением после restore, включая порядок элементов; не пересчитываем title_normalized по придуманному правилу.</p>
+        <p>В исходной Task-схеме проверяем и ограничения: положительный ID, priority от 1 до 5, PK, обязательность, реальные SQL-default и индексы из описи. Python-default модели не добавляет автоматически SQL-default в уже существующий файл. При расхождении возвращаемся к описи и резерву, а не вставляем потерянные задачи вручную.</p>
+      </Section>
+
+      <Section number="04" title="Новый адрес, новая Session, новый процесс">
+        <Lead>Правильная SQL-копия ещё не гарантирует, что уже запущенное приложение читает именно её.</Lead>
+        <p>В конце книжного примера <code>URL.create</code> строит SQLAlchemy URL. Имя драйвера sqlite задаёт тип базы, аргумент database получает абсолютный путь. <code>create_engine</code> создаёт объект доступа к этой базе. Новая <code>Session(engine)</code> читает данные через него, а <code>text(BOOK_SQL)</code> обозначает текстовый SQL-запрос. Метод all собирает все строки результата. Контекст Session закрывает её при выходе, затем <code>engine.dispose()</code> освобождает соединения engine.</p>
+        <p>Вывод новой Session содержит обе исходные книги. Он получен после закрытия соединений восстановления. Однако весь книжный пример работал в одном Python-процессе. Для Planner отдельно проверим новый процесс: он заново загрузит настройки и создаст свои ресурсы, вместо использования старых объектов в памяти.</p>
+        <p>В существующем Planner настройка <code>DATABASE_URL</code> читается при сборке engine. Переменная окружения имеет приоритет над .env. Если поменять окружение после запуска, старый engine не переедет в другой файл. Поэтому сначала завершаем прежние процессы, задаём URL восстановленной копии и проверяем эффективную настройку. Постоянный .env не меняем.</p>
+        <CodeBlock caption="PowerShell из project/: сохраняем окружение и выбираем файл" code={String.raw`$HadDatabaseUrl = Test-Path Env:DATABASE_URL
+$PreviousDatabaseUrl = $env:DATABASE_URL
+$env:DATABASE_URL = Read-Host "Абсолютный SQLite URL принятой копии"
+.\.venv\Scripts\python.exe -c "from app.core.config import load_settings; print(load_settings().database_url)"
+.\.venv\Scripts\python.exe -m app.main`} />
+        <p>Read-Host запрашивает значение в терминале. У URL Windows вид <code>sqlite:///C:/каталог/копия.sqlite3</code>; выбираем свой фактический путь. Это SQLAlchemy URL, не read-only URI с mode=ro. В меню Planner вводим <code>list</code>, сверяем ID и публичные значения, затем <code>exit</code>. Эти слова вводятся в меню приложения, а не как команды PowerShell.</p>
+        <CodeBlock caption="После exit: API с тем же окружением" code={String.raw`.\.venv\Scripts\python.exe -m uvicorn app.api:app --host 127.0.0.1 --port 8000`} />
+        <p>Открываем локальный <code>http://127.0.0.1:8000/docs</code>, находим GET /tasks, нажимаем Try it out, оставляем фильтры выключенными, задаём limit 50 и выполняем Execute. Ответ должен содержать обе синтетические задачи с ожидаемыми id, title, priority и is_done. Статус /health доказывает доступность HTTP, но не чтение задач. Если выбран другой свободный порт, меняем его и в команде, и в адресе браузера.</p>
+        <p>Останавливаем API сочетанием Ctrl+C в его терминале, затем заново запускаем <code>python -m app.main</code> тем же Python и выполняем list/exit. Новый процесс должен показать тот же набор без add, done, delete и повторной инициализации. Для проверки достаточно последовательных запусков. Если используем второй терминал, задаём и проверяем URL в нём отдельно.</p>
+        <CodeBlock caption="После всех чтений возвращаем прежнее окружение терминала" code={String.raw`if ($HadDatabaseUrl) {
+    $env:DATABASE_URL = $PreviousDatabaseUrl
+} else {
+    Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+}`} />
+        <p>Первая переменная запомнила, было ли значение до опыта, вторая хранит само значение. После опыта возвращаем его либо удаляем только добавленную переменную окружения. Базы и .env эта команда не удаляет. Если чтение пустое или таблица не найдена, сначала проверяем эффективный URL и принятую копию. Init_db не восстанавливает потерянные строки и не является исправлением такого результата.</p>
+      </Section>
+
+      <Section number="05" title="Что мы будем делать в практике">
+        <Lead>Перенесём механизм на существующий Planner: получим проверенную заполненную копию, сохранив исходник и успешный резерв.</Lead>
+        <LinkedNotes items={[
+          { title: "Выберем независимые адреса", description: "Покажем резерв и исходную опись, назначим новое восстановление и отдельный свободный адрес будущей истории." },
+          { title: "Напишем восстановление и проверку", description: "Самостоятельно применим guard и backup, сопоставим схему и все шесть Task-полей. Неполный отдельный образец получит отказ с причиной." },
+          { title: "Вернём обычный Planner к данным", description: "Прочитаем принятую копию через API, CLI и новый CLI-процесс. Передадим резерв, опись, совместимый код, рабочую копию и другой отсутствующий путь." },
+        ]} />
+        <p>Книжный пример подготавливает операции и объясняет разные свидетельства. В практике остаются собственная процедура для Task, выбор реальных адресов и решение о пригодности каждого кандидата. За ролями путей возвращаемся к схеме, за сравнением к разбору целостности, за запуском к настройке нового процесса.</p>
       </Section>
     </RichLesson>
   );

@@ -12,10 +12,11 @@
 
 .form-error {
   padding: var(--space-3) var(--space-3);
-  border: 1px solid color-mix(in srgb, var(--border-tint-negative) 34%, transparent);
+  border: 1px solid var(--line-strong);
+  border-inline-start-width: 3px;
   border-radius: var(--radius-sm);
-  color: var(--negative);
-  background: color-mix(in srgb, var(--negative) 8%, transparent);
+  color: var(--text);
+  background: var(--surface-2);
 }
 
 .primary-action,
@@ -29,19 +30,29 @@
 }
 
 .primary-action {
-  background: var(--brand);
-  color: var(--brand-contrast);
-  font-weight: 900;
+  background: var(--accent-solid);
+  color: var(--on-accent);
+  font-weight: 750;
+  /* Apply paired text/fill together when the accent changes. */
+  transition: transform 160ms ease;
+}
+
+.primary-action:hover:not(:disabled) {
+  background: var(--accent-solid-hover);
+}
+
+.primary-action:active:not(:disabled) {
+  background: var(--accent-solid-pressed);
 }
 
 :root[data-color-scheme="light"] .primary-action {
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 7%, transparent);
+  box-shadow: none;
 }
 
 :root[data-color-scheme="light"] .secondary-action,
 :root[data-color-scheme="light"] .theme-switch,
 :root[data-color-scheme="light"] .profile-button {
-  background: color-mix(in srgb, var(--card-highlight) 66%, transparent);
+  background: var(--surface);
   border-color: var(--line);
 }
 
@@ -56,6 +67,11 @@
 .primary-action:disabled {
   cursor: wait;
   opacity: 0.72;
+}
+
+.secondary-action:hover:not(:disabled) {
+  background: var(--surface-3);
+  border-color: var(--line-strong);
 }
 
 .secondary-action {

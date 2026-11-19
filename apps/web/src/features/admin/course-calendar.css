@@ -1,0 +1,15 @@
+.course-calendar .admin-calendar__scroll { display: block; flex: none; height: auto; overflow: visible; }
+.course-calendar .admin-calendar__month { display: grid; min-width: 0; height: auto; grid-template-rows: auto auto; }
+.course-calendar .admin-calendar__grid { grid-template-rows: none; grid-auto-rows: minmax(110px, auto); }
+.course-calendar .admin-calendar__booking { cursor: default; }
+@container admin-screen (max-width: 650px) {
+  .course-calendar .admin-calendar__scroll { padding: 6px; }
+  .course-calendar .admin-calendar__weekdays, .course-calendar .admin-calendar__grid { gap: 3px; }
+  .course-calendar .admin-calendar__grid { grid-auto-rows: minmax(48px, auto); }
+  .course-calendar .admin-calendar__day-events { display: none; }
+  .course-calendar .admin-calendar__date { padding: 4px; }
+}
+.course-calendar .admin-calendar__date { inset: 0 0 auto; height: 34px; min-height: 34px; }
+@container admin-screen (max-width: 650px) {
+  .course-calendar .admin-calendar__date { inset: 0; height: 100%; }
+}

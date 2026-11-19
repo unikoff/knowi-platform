@@ -119,6 +119,7 @@ def clients(monkeypatch, runtime_db):
     admin = RawASGIClient()
     response = admin.post("/api/user/login", json={"email": "c2-1-3-admin@example.test", "password": "Core-contract-admin-password"})
     assert response.status_code == 200
+    http.assert_identity_fields(response.json()["user"], is_admin=True)
     yield RawASGIClient(), admin, sessions
 
 
@@ -271,8 +272,10 @@ def _response_fixture(response, *, catalog: bool = False, track_id: str | None =
         body = json_module.loads(json_module.dumps(body, ensure_ascii=False))
     if isinstance(body, dict) and "user" in body:
         body["user"]["id"] = "<synthetic-user-id>"
-        # Historical fixture predates the additive email verification flag.
-        body["user"].pop("verified", None)
+        # Validate new identity fields before comparing the pre-extension historical fixture.
+        http.assert_identity_fields(body["user"])
+        for field in ("verified", "role", "capabilities", "account_ref", "course_id", "auth_revision"):
+            body["user"].pop(field)
         if body["user"].get("subscription_until") is not None:
             body["user"]["subscription_until"] = "<utc-iso8601>"
     return {"status": response.status_code, "headers": safe_headers, "body": body}
@@ -428,7 +431,9 @@ def test_all_frontend_operations_asgi_contracts_and_legacy_errors(clients):
     assert set(registered["user"]) == {
         "id", "username", "email", "subscription_until", "subscription_plan",
         "has_active_subscription", "is_admin", "verified",
+        "role", "capabilities", "account_ref", "course_id", "auth_revision",
     }
+    http.assert_identity_fields(registered["user"])
     assert registered["user"]["verified"] is False
     _validate(AuthResponse, registered)
     student_id = registered["user"]["id"]
@@ -467,6 +472,8 @@ def test_all_frontend_operations_asgi_contracts_and_legacy_errors(clients):
     login_body = response.json()
     assert set(login_body) == {"message", "user"}
     assert login_body["message"] == "Login successful"
+    http.assert_identity_fields(login_body["user"])
+    assert login_body["user"]["account_ref"] == registered["user"]["account_ref"]
     _validate(AuthResponse, login_body)
     record("login", response)
     student_token = response.cookies.get("session")

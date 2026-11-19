@@ -6,6 +6,7 @@ from urllib.request import Request as URLRequest, urlopen
 from concurrent.futures import ThreadPoolExecutor
 import os
 from copy import deepcopy
+from datetime import date, datetime, timezone
 from time import perf_counter
 from typing import Any
 
@@ -45,8 +46,11 @@ from pymentor_core.modules.learning.catalog import find_track
 from pymentor_core.modules.learning.catalog import get_public_lessons
 from pymentor_core.modules.learning.catalog import get_tracks_summary
 from pymentor_core.modules.identity import public as accounts
+from pymentor_core.modules.identity.activity_policy import MOSCOW_TZ
 from pymentor_core.modules.learning import progress
 from pymentor_core.modules.learning.progress_policy import is_overview_lesson, uses_persisted_task_progress, uses_card_completion, lesson_progress_policy
+from pymentor_core.modules.learning.progress_policy import lesson_completion_requirements as _lesson_completion_requirements
+from pymentor_core.modules.learning.progress_policy import needs_chapter_one_self_check_progress as _chapter_one_needs_self_check_progress
 from pymentor_core.modules.learning.api.access import get_optional_user
 from pymentor_core.modules.learning.api.access import get_lesson_access
 from pymentor_core.modules.learning.api.schemas import CodeSubmitRequest
@@ -77,14 +81,6 @@ def _uses_persisted_task_progress(lesson: dict) -> bool:
     return uses_persisted_task_progress(lesson)
 
 
-def _chapter_one_needs_self_check_progress(lesson: dict) -> bool:
-    return (
-        _is_chapter_one_lesson(lesson)
-        and bool(lesson.get("self_check"))
-        and (bool(lesson.get("manual_practice")) or not lesson.get("tasks"))
-    )
-
-
 def _lesson_progress_task_ids(lesson: dict) -> list[str]:
     if not _uses_persisted_task_progress(lesson):
         return []
@@ -109,50 +105,42 @@ def _lesson_tasks_are_complete(lesson: dict, user_id: int, db: Session) -> bool:
 def _lesson_completion_status(
     lesson: dict, completed_ids: set[str], task_revisions: dict[str, str]
 ) -> bool:
-    if is_overview_lesson(lesson):
-        return True
-    if lesson["id"] not in completed_ids:
-        stored_lesson_completion = False
-    else:
-        stored_lesson_completion = True
-
-    if _is_chapter_one_lesson(lesson):
-        # Historical lesson-only rows predate per-card revision tracking. Keep
-        # them visible; all completions created by this version use current
-        # task revisions (and a private self-check key for mixed practice).
-        if stored_lesson_completion:
-            return True
-        legacy = lesson_progress_policy(lesson).get("legacy_task_completions", {})
-        if any(task_revisions.get(task_id) == revision for task_id, revision in legacy.items()):
-            return True
-        tasks = lesson.get("tasks", [])
-        required_tasks = progress.required_lesson_tasks(lesson)
-        all_tasks_complete = all(
-            task_revisions.get(task["id"]) == task.get("revision")
-            for task in required_tasks
-        )
-        if required_tasks and not all_tasks_complete:
-            return False
-        if lesson.get("manual_practice") or not tasks:
-            if not _chapter_one_needs_self_check_progress(lesson):
-                return False
-            marker_id = progress.chapter_one_completion_task_id(lesson["id"])
-            return task_revisions.get(
-                marker_id
-            ) == progress.chapter_one_completion_revision(lesson)
-        return bool(required_tasks) and all_tasks_complete
-
-    if not _uses_persisted_task_progress(lesson) or not lesson.get("tasks"):
-        return stored_lesson_completion
-
-    all_tasks_complete = all(
-        task_revisions.get(task["id"]) == task.get("revision")
-        for task in lesson["tasks"]
+    return is_overview_lesson(lesson) or any(
+        (not lesson_required or lesson["id"] in completed_ids)
+        and all(task_revisions.get(task_id) == revision for task_id, revision in tasks)
+        for lesson_required, tasks in _lesson_completion_requirements(lesson)
     )
-    if lesson.get("manual_practice"):
-        return stored_lesson_completion and all_tasks_complete
-    return all_tasks_complete
 
+
+def _counts_toward_statistics(lesson: dict, countable_ids: set[str]) -> bool:
+    return lesson["id"] in countable_ids and not is_overview_lesson(lesson)
+
+
+def _lesson_completion_date(
+    lesson: dict,
+    lesson_timestamp: datetime | None,
+    task_facts: dict[str, tuple[str, datetime]],
+) -> date | None:
+    """Date the earliest surviving proof using the latest of its required receipts."""
+    proven_at: list[datetime] = []
+    for lesson_required, tasks in _lesson_completion_requirements(lesson):
+        timestamps: list[datetime] = []
+        if lesson_required:
+            if lesson_timestamp is None:
+                continue
+            timestamps.append(lesson_timestamp)
+        for task_id, revision in tasks:
+            fact = task_facts.get(task_id)
+            if fact is None or fact[0] != revision:
+                break
+            timestamps.append(fact[1])
+        else:
+            if timestamps:
+                # Legacy naive timestamps are stored in UTC.
+                proven_at.append(max(value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+                                     for value in timestamps))
+    earliest = min(proven_at, default=None)
+    return earliest.astimezone(MOSCOW_TZ).date() if earliest is not None else None
 
 
 class _LocalContent:
@@ -170,7 +158,7 @@ class _PreparedContent:
         self._default = default_track_id() if kind in {"tracks", "lessons", "catalog"} else None
         self._revision = get_content_revision() if kind in {"tracks", "catalog"} else None
         self._lesson = find_lesson(lesson_id) if lesson_id is not None else None
-        self._summaries = get_tracks_summary() if kind in {"tracks", "catalog", "material"} else []
+        self._summaries = get_tracks_summary() if kind in {"tracks", "catalog", "material", "completion-count"} else []
         ids = [item["id"] for item in self._summaries]
         if kind == "lessons":
             ids = [track or self._default] if (track or self._default) else []
@@ -193,6 +181,41 @@ class _PreparedContent:
 
 def prepare_request_content(kind, **kwargs):
     return _PreparedContent(kind, **kwargs)
+
+
+def count_completed_lessons(
+    db: Session, principal: Principal, from_date: date, to_date: date, *, content
+) -> int:
+    from pymentor_core.modules.analytics_delivery.grants import authorize_grant
+
+    claims = authorize_grant(
+        db, principal, purpose="self_report", course_id=None, target_ref=None
+    )
+    if claims["role"] != "user":
+        raise HTTPException(403, "Learner progress unavailable for this role")
+    lesson_facts, task_facts = progress.get_completion_facts(
+        principal.id, db, course_id=current_course_id()
+    )
+    completed = set()
+    for summary in content.get_tracks_summary():
+        track = content.find_track(summary["id"])
+        if track is None:
+            continue
+        countable_ids = set(summary["countable_lesson_ids"])
+        for lesson in track["lessons"]:
+            lesson_id = lesson["id"]
+            if lesson_id in completed or not _counts_toward_statistics(lesson, countable_ids):
+                continue
+            relevant_tasks = {
+                task_id: task_facts[task_id]
+                for task_id in _lesson_progress_task_ids(lesson)
+                if task_id in task_facts
+            }
+            day = _lesson_completion_date(lesson, lesson_facts.get(lesson_id), relevant_tasks)
+            if day is not None and from_date <= day <= to_date:
+                completed.add(lesson_id)
+    return len(completed)
+
 
 def build_lessons_payload(
     track_id: str, user: Principal | None, db: Session, lesson_id: str | None = None,
@@ -300,21 +323,23 @@ def list_lessons(request: Request, track: str | None, db: Session, *, principal=
 def learning_catalog(request: Request, db: Session, *, principal=_PRINCIPAL_UNSET, content=None):
     """Complete navigation in one request, without lesson bodies or task text."""
     user = get_optional_user(request=request, db=db) if principal is _PRINCIPAL_UNSET else principal
-    completed_ids = progress.get_completed_lesson_ids(user.id, db, course_id=current_course_id()) if user else set()
-    summaries = (content or _LocalContent).get_tracks_summary()
-    source_tracks = {track["id"]: (content or _LocalContent).find_track(track["id"]) for track in summaries}
-    task_ids = [
-        task_id
-        for track in source_tracks.values()
-        if track
-        for lesson in track["lessons"]
-        for task_id in _lesson_progress_task_ids(lesson)
-    ]
-    revisions = (
-        progress.get_completed_task_revisions(user.id, task_ids, db, course_id=current_course_id())
-        if user and task_ids
-        else {}
+    return build_catalog_progress(
+        db, user_id=user.id if user else None, content=content,
+        lesson_access=lambda lesson: get_lesson_access(lesson, user),
     )
+
+
+def build_catalog_progress(db: Session, *, user_id: int | None, content=None, lesson_access=None):
+    """Project current progress for an already authorized course and account."""
+    content = content or _LocalContent
+    lesson_facts, task_facts = (
+        progress.get_completion_facts(user_id, db, course_id=current_course_id())
+        if user_id is not None else ({}, {})
+    )
+    completed_ids = set(lesson_facts)
+    summaries = content.get_tracks_summary()
+    source_tracks = {track["id"]: content.find_track(track["id"]) for track in summaries}
+    revisions = {task_id: fact[0] for task_id, fact in task_facts.items()}
     courses = {}
     for track in summaries:
         countable_ids = set(track.pop("countable_lesson_ids"))
@@ -335,10 +360,18 @@ def learning_catalog(request: Request, db: Session, *, principal=_PRINCIPAL_UNSE
                 )
                 if key in lesson
             }
-            available, reason = get_lesson_access(lesson, user)
+            if lesson_access is not None:
+                available, reason = lesson_access(lesson)
+                item.update(is_available=available, locked_reason=reason)
             completed = _lesson_completion_status(lesson, completed_ids, revisions)
+            completed_on = (
+                _lesson_completion_date(lesson, lesson_facts.get(lesson["id"]), task_facts)
+                if completed and not is_overview_lesson(lesson) else None
+            )
             item.update(
-                is_available=available, locked_reason=reason, completed=completed
+                completed=completed,
+                completed_on=completed_on,
+                counts_toward_statistics=_counts_toward_statistics(lesson, countable_ids),
             )
             lessons.append(item)
             block_title = str(lesson.get("module") or "Другие уроки")
@@ -365,8 +398,8 @@ def learning_catalog(request: Request, db: Session, *, principal=_PRINCIPAL_UNSE
     return {
         "tracks": summaries,
         "courses": courses,
-        "default_track": (content or _LocalContent).default_track_id(),
-        "content_revision": (content or _LocalContent).get_content_revision(),
+        "default_track": content.default_track_id(),
+        "content_revision": content.get_content_revision(),
     }
 
 
@@ -441,6 +474,8 @@ def complete_lesson(
     port_kwargs = {"uow": uow} if uow is not None else {}
     if principal is _PRINCIPAL_UNSET:
         principal = accounts.get_current_principal(request=request, db=db, **port_kwargs)
+    from pymentor_core.modules.analytics_delivery.integration import enabled as capture_enabled
+    ref_kwargs = {"expected_account_ref": getattr(principal, "account_ref", None)} if capture_enabled() else {}
     lesson = (content or _LocalContent).find_lesson(lesson_id)
 
     policy = CompletionPolicy(
@@ -453,8 +488,8 @@ def complete_lesson(
         is_chapter_one=_is_chapter_one_lesson,
     )
     writes = CompletionWrites(
-        mark_chapter_one_self_check=lambda user_id, item: progress.mark_task_completed(user_id=user_id, task_id=progress.chapter_one_completion_task_id(item['id']), task_revision=progress.chapter_one_completion_revision(item), db=db, **port_kwargs, course_id=current_course_id()),
-        mark_lesson=lambda user_id, stable_id: progress.mark_lesson_completed(user_id=user_id, lesson_id=stable_id, db=db, **port_kwargs, course_id=current_course_id()),
+        mark_chapter_one_self_check=lambda user_id, item: progress.mark_task_completed(user_id=user_id, task_id=progress.chapter_one_completion_task_id(item['id']), task_revision=progress.chapter_one_completion_revision(item), db=db, **port_kwargs, **ref_kwargs, course_id=current_course_id()),
+        mark_lesson=lambda user_id, stable_id: progress.mark_lesson_completed(user_id=user_id, lesson_id=stable_id, db=db, **port_kwargs, **ref_kwargs, course_id=current_course_id()),
     )
     try:
         return complete_lesson_use_case(
@@ -521,8 +556,12 @@ def _prepare_task_for_principal(task_id: str, revision: str | None, user: Princi
     task = _get_available_task(task_id, user)
     _require_current_task_revision(task, revision)
     lesson = find_lesson_by_task(task_id)
-    return {"user_id": user.id if user is not None else None,
-            "task": deepcopy(task), "lesson": deepcopy(lesson)}
+    from pymentor_core.modules.analytics_delivery.integration import enabled as capture_enabled
+    result = {"user_id": user.id if user is not None else None,
+              "task": deepcopy(task), "lesson": deepcopy(lesson)}
+    if capture_enabled():
+        result["account_ref"] = getattr(user, "account_ref", None) if user is not None else None
+    return result
 
 
 def _prepare_task(task_id: str, revision: str | None, request: Request) -> dict:
@@ -537,13 +576,15 @@ def _write_task_progress(context: dict, db, composition_root: Any | None = None)
         return
     port_kwargs = ({"uow": composition_root.for_request(db).uow}
                    if composition_root is not None else {})
+    from pymentor_core.modules.analytics_delivery.integration import enabled as capture_enabled
+    ref_kwargs = {"expected_account_ref": context.get("account_ref")} if capture_enabled() or "account_ref" in context else {}
     save_progress(
         user_id=user_id, lesson=lesson, task=task,
         uses_persisted_tasks=_uses_persisted_task_progress,
         tasks_complete=lambda item, uid: _lesson_tasks_are_complete(item, uid, db),
         is_chapter_one=_is_chapter_one_lesson,
-        mark_task=lambda uid, task_id, revision: progress.mark_task_completed(user_id=uid, task_id=task_id, task_revision=revision, db=db, **port_kwargs, course_id=current_course_id()),
-        mark_lesson=lambda uid, lesson_id: progress.mark_lesson_completed(user_id=uid, lesson_id=lesson_id, db=db, **port_kwargs, course_id=current_course_id()),
+        mark_task=lambda uid, task_id, revision: progress.mark_task_completed(user_id=uid, task_id=task_id, task_revision=revision, db=db, **port_kwargs, **ref_kwargs, course_id=current_course_id()),
+        mark_lesson=lambda uid, lesson_id: progress.mark_lesson_completed(user_id=uid, lesson_id=lesson_id, db=db, **port_kwargs, **ref_kwargs, course_id=current_course_id()),
     )
 
 

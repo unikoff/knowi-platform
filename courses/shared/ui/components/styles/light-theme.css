@@ -1,0 +1,31 @@
+/* Light-theme contrast and state adjustments retain the shared component styling. */
+:root[data-color-scheme="light"] :is(.rich-section-title span, .linked-note h3, .type-card-badge, .interactive-heading svg, .interactive-heading span, .quiz-question svg, .lesson-acceptance-table thead th) { color: var(--accent); }
+:root[data-color-scheme="light"] .linked-note::before { background: var(--accent); }
+:root[data-color-scheme="light"] .linked-note:not(:last-child)::after { background: var(--line); }
+
+:root[data-color-scheme="light"] .type-card:is(:hover, :focus-within) {
+  border-color: var(--accent-border);
+  background: var(--surface);
+  box-shadow: none;
+}
+:root[data-color-scheme="light"] .code-block :is(figcaption, .code-block-caption) { background: var(--code-bg); }
+:root[data-color-scheme="light"] .takeaways-option:hover { background: var(--accent-soft); }
+:root[data-color-scheme="light"] .takeaways-checkbox { border-color: var(--line-strong); }
+:root[data-color-scheme="light"] .takeaways-option input:checked + .takeaways-checkbox { border-color: var(--accent-solid); background: var(--accent-solid); }
+:root[data-color-scheme="light"] .takeaways-option input:checked + .takeaways-checkbox svg { color: var(--on-accent); }
+
+:root[data-color-scheme="light"] .interactive-primary { border-color: var(--accent-solid); background: var(--accent-solid); color: var(--on-accent); transition: transform 140ms ease; }
+:root[data-color-scheme="light"] .interactive-primary:hover:not(:disabled) { background: var(--accent-solid-hover); }
+:root[data-color-scheme="light"] .interactive-primary:active:not(:disabled) { background: var(--accent-solid-pressed); }
+:root[data-color-scheme="light"] .answer-option:not(:disabled):hover:not(:where(.is-picked, .is-active, .is-selected, .is-correct, .is-wrong, .is-matched, [aria-pressed="true"])) { border-color: var(--accent-border); background: var(--surface); }
+:root[data-color-scheme="light"] .answer-option:is(.is-picked, .is-active, .is-selected, .is-correct, .is-matched, [aria-pressed="true"]):not(.is-wrong) { border-color: var(--accent-border); background: var(--accent-soft); }
+
+:root[data-color-scheme="light"] :is(.lesson-emphasis, :where(.rich-lesson, .markdown-body) mark, .lesson-template-highlight) { background: var(--surface-2); }
+:root[data-color-scheme="light"] :where(.rich-lesson, .markdown-body) code:where(:not(pre code, .code-block > code)),
+:root[data-color-scheme="light"] .lesson-token { background: var(--code-bg); }
+:root[data-color-scheme="light"] :is(.lesson-token--danger, .rich-lead code.lesson-token--danger, .lesson-practice-steps code.lesson-token--danger) { color: var(--code-text); background: var(--code-bg); }
+:root[data-color-scheme="light"] :is(.rich-lesson, .markdown-body) :where(p, li, dd, dt, blockquote, td, th) a[href] { color: var(--accent); text-decoration-color: currentColor; }
+
+:root[data-color-scheme="light"] :is(.lesson11-flow-node--question, .lesson11-flow-node--common) { border-color: var(--line); background: var(--surface-2); }
+:root[data-color-scheme="light"] :is(.lesson-diagram-branch > h4, .lesson11-branch-option) { color: var(--text); }
+:root[data-color-scheme="light"] .flip-card:hover { border-color: var(--accent-border); box-shadow: none; }

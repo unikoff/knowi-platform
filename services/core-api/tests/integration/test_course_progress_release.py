@@ -149,7 +149,8 @@ def test_release_migration_transaction_and_course_isolation(disposable_database)
                         cur.execute("INSERT INTO user_task_progress (id,user_id,task_id,task_revision,course_id) VALUES (203,91,'historical-задача','x','backend')")
             conn.rollback()
         stable = _snapshot(conn)
-        assert _migrate(url, "upgrade", "head").returncode == 0
+        # Rehearse c504 specifically even after later release heads are introduced.
+        assert _migrate(url, "upgrade", NEW).returncode == 0
         assert _snapshot(conn) == stable
         refused = _migrate(url, "downgrade", OLD)
         assert refused.returncode != 0 and "Refusing to merge or discard" in refused.stderr

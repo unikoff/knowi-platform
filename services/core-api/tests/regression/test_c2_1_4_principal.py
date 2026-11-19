@@ -29,6 +29,6 @@ def test_admin_permission_comes_from_the_verified_user_record():
     user = SimpleNamespace(id=13, username="admin", email="admin@example.test", is_admin=True,
                            subscription_until=None)
     principal = Principal.from_user(user)
-    assert principal.roles == frozenset({"student", "admin"})
+    assert principal.roles == frozenset({"admin"})
     assert "admin.access" in principal.permissions
     assert require_admin(principal) is principal

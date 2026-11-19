@@ -12,10 +12,13 @@ from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
 from sqlalchemy import Index
 from sqlalchemy import Integer
+from sqlalchemy import JSON
 from sqlalchemy import String
 from sqlalchemy import Text
 from sqlalchemy import UniqueConstraint
 from sqlalchemy import func
+from sqlalchemy import text
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 
@@ -186,13 +189,19 @@ class BookingSlot(Base):
 
     __tablename__ = "booking_slots"
     __table_args__ = (
-        UniqueConstraint("slot_date", "start_time", name="uq_booking_slot_datetime"),
+        Index("uq_booking_slot_owner_datetime", "calendar_owner_id", "slot_date", "start_time", unique=True,
+              postgresql_where=text("calendar_owner_id IS NOT NULL AND archived_at IS NULL")),
+        Index("uq_booking_slot_legacy_datetime", "slot_date", "start_time", unique=True,
+              postgresql_where=text("calendar_owner_id IS NULL AND archived_at IS NULL")),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     slot_date: Mapped[date] = mapped_column(Date, index=True, nullable=False)
     start_time: Mapped[str] = mapped_column(String(5), nullable=False)  # "HH:MM"
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
+    course_id: Mapped[str | None] = mapped_column(String(80), nullable=True, default="backend")
+    calendar_owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     student_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id"), index=True, nullable=True, default=None
     )
@@ -206,16 +215,121 @@ class BookingQuota(Base):
 
     __tablename__ = "booking_quotas"
     __table_args__ = (
-        UniqueConstraint("user_id", "year", "month", name="uq_booking_quota_month"),
+        Index("uq_booking_quota_course_month", "course_id", "user_id", "year", "month", unique=True,
+              postgresql_where=text("course_id IS NOT NULL")),
+        Index("uq_booking_quota_legacy_backend", "user_id", "year", "month", unique=True,
+              postgresql_where=text("course_id IS NULL OR course_id = 'backend'")),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id"), index=True, nullable=False
     )
+    course_id: Mapped[str | None] = mapped_column(String(80), nullable=True, default="backend")
     year: Mapped[int] = mapped_column(Integer, nullable=False)
     month: Mapped[int] = mapped_column(Integer, nullable=False)
     granted_slots: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class CourseLeadership(Base):
+    __tablename__ = 'course_leadership'
+    __table_args__ = (
+        Index('uq_course_leadership_active_course', 'course_id', unique=True,
+              postgresql_where=text('revoked_at IS NULL')),
+        Index('uq_course_leadership_active_user', 'user_id', unique=True,
+              postgresql_where=text('revoked_at IS NULL')),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    course_id: Mapped[str] = mapped_column(String(80), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    account_ref: Mapped[str] = mapped_column(String(36), nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    assigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    assigned_by: Mapped[int | None] = mapped_column(ForeignKey('users.id', ondelete='SET NULL'))
+
+
+class RoleAdminRevision(Base):
+    __tablename__ = 'role_admin_revisions'
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, server_default='0')
+
+
+class RoleAdminBootstrapMarker(Base):
+    __tablename__ = 'role_admin_bootstrap_markers'
+    marker: Mapped[str] = mapped_column(String(80), primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey('users.id', ondelete='SET NULL'))
+    account_ref: Mapped[str | None] = mapped_column(String(36))
+    applied_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class BookingHistory(Base):
+    __tablename__ = 'booking_history'
+    __table_args__ = (
+        Index('ix_booking_history_course_student', 'course_id', 'student_id'),
+        Index('uq_booking_history_active_slot', 'slot_id', unique=True,
+              postgresql_where=text("status = 'booked'")),
+        Index('uq_booking_history_legacy_slot', 'slot_id', unique=True,
+              postgresql_where=text('legacy_coverage')),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    slot_id: Mapped[int] = mapped_column(ForeignKey('booking_slots.id', ondelete='RESTRICT'), nullable=False)
+    course_id: Mapped[str] = mapped_column(String(80), nullable=False)
+    student_id: Mapped[int] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    owner_at_booking_id: Mapped[int | None] = mapped_column(ForeignKey('users.id', ondelete='SET NULL'))
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, server_default=func.now())
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    legacy_coverage: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default='false')
+
+
+class RoleAdminAudit(Base):
+    __tablename__ = 'role_admin_audit'
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    command_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    actor_id: Mapped[int | None] = mapped_column(ForeignKey('users.id', ondelete='SET NULL'))
+    actor_account_ref: Mapped[str | None] = mapped_column(String(36))
+    actor_role: Mapped[str] = mapped_column(String(16), nullable=False)
+    authority_course_id: Mapped[str | None] = mapped_column(String(80))
+    target_user_id: Mapped[int | None] = mapped_column(ForeignKey('users.id', ondelete='SET NULL'))
+    target_account_ref: Mapped[str | None] = mapped_column(String(36))
+    scope: Mapped[str] = mapped_column(String(16), nullable=False)
+    course_id: Mapped[str | None] = mapped_column(String(80))
+    action: Mapped[str] = mapped_column(String(80), nullable=False)
+    before_value: Mapped[dict | None] = mapped_column(JSON)
+    after_value: Mapped[dict | None] = mapped_column(JSON)
+    subject_user_ids: Mapped[list[int]] = mapped_column(ARRAY(Integer), nullable=False, server_default=text("'{}'::integer[]"))
+    reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    anonymized: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default='false')
+
+
+class RoleAdminCommand(Base):
+    __tablename__ = 'role_admin_commands'
+    __table_args__ = (UniqueConstraint('actor_account_ref', 'operation', 'command_id', name='uq_role_admin_command'),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    actor_id: Mapped[int] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    actor_account_ref: Mapped[str] = mapped_column(String(36), nullable=False)
+    target_user_id: Mapped[int | None] = mapped_column(ForeignKey('users.id', ondelete='SET NULL'))
+    target_account_ref: Mapped[str | None] = mapped_column(String(36))
+    operation: Mapped[str] = mapped_column(String(80), nullable=False)
+    command_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    response_status: Mapped[int] = mapped_column(Integer, nullable=False)
+    response_body: Mapped[dict] = mapped_column(JSON, nullable=False)
+    subject_user_ids: Mapped[list[int]] = mapped_column(ARRAY(Integer), nullable=False, server_default=text("'{}'::integer[]"))
+    redacted: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default='false')
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class RoleAdminCutover(Base):
+    __tablename__ = 'role_admin_cutover'
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    scoped_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default='false')
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class BookingNotificationOutbox(Base):
@@ -234,6 +348,9 @@ class BookingNotificationOutbox(Base):
     )
     event_type: Mapped[str] = mapped_column(String(32), nullable=False)
     slot_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    course_id: Mapped[str | None] = mapped_column(String(80))
+    calendar_owner_id: Mapped[int | None] = mapped_column(ForeignKey('users.id', ondelete='SET NULL'))
+    booking_id: Mapped[int | None] = mapped_column(Integer)
     username: Mapped[str] = mapped_column(String(50), nullable=False)
     email: Mapped[str] = mapped_column(String(100), nullable=False)
     slot_date: Mapped[date] = mapped_column(Date, nullable=False)

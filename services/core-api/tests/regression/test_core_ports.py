@@ -316,11 +316,17 @@ def test_admin_subscription_change_uses_identity_and_user_repositories_with_one_
     request = SimpleNamespace(cookies={"session": "admin-session"}, app=SimpleNamespace(
         state=SimpleNamespace(identity_sessions=IdentityStub({"admin-session": 1}))))
 
+    db = Mock()
+    db.execute.return_value.scalar_one_or_none.return_value = False
+
     async def exercise():
         return await anyio.to_thread.run_sync(lambda: admin.change_subscription(
-            user_id=2, payload=payloads.SubscriptionChange(days=None), request=request, db=None, uow=uow))
+            user_id=2, payload=payloads.SubscriptionChange(days=None), request=request, db=db, uow=uow))
     result = anyio.run(exercise)
 
+    db.execute.assert_called_once()
+    assert "role_admin_cutover" in str(db.execute.call_args.args[0])
+    assert "FOR SHARE" in str(db.execute.call_args.args[0])
     assert target_user.subscription_until is None
     assert target_user.subscription_plan is None
     assert result["user"]["has_active_subscription"] is False
@@ -355,7 +361,7 @@ def test_each_example_module_accepts_a_stub_repository_without_a_database():
     booking_uow.repository.return_value = booking_repo
     assert bookings.get_quota(7, 2026, 11, None, uow=booking_uow) == 4
     booking_uow.repository.assert_called_once_with(models.BookingQuota)
-    booking_repo.find_one.assert_called_once_with(user_id=7, year=2026, month=11)
+    booking_repo.find_one.assert_called_once_with(user_id=7, year=2026, month=11, course_id="backend")
     booking_uow.commit.assert_not_called()
 
 

@@ -1,0 +1,46 @@
+{
+  "description": "Synthetic Core public response target, not an executed cross-service parity check",
+  "today": "2026-11-17",
+  "subject_visits": [
+    {"activity_date": "2026-11-15", "visited_at": null},
+    {"activity_date": "2026-11-16", "visited_at": "2026-11-16T23:30:00+00:00"}
+  ],
+  "completed_at": ["2026-11-16T21:30:00+00:00"],
+  "calendar": {
+    "days": ["2026-11-15", "2026-11-16"],
+    "visits": [
+      {"activity_date": "2026-11-15", "visited_at": null},
+      {"activity_date": "2026-11-16", "visited_at": "2026-11-16T23:30:00+00:00"}
+    ]
+  },
+  "summary": {
+    "current_streak": 2, "visited_today": false, "total_active_days": 2,
+    "weekly_activity": [
+      {"activity_date": "2026-11-11", "active": false},
+      {"activity_date": "2026-11-12", "active": false},
+      {"activity_date": "2026-11-13", "active": false},
+      {"activity_date": "2026-11-14", "active": false},
+      {"activity_date": "2026-11-15", "active": true},
+      {"activity_date": "2026-11-16", "active": true},
+      {"activity_date": "2026-11-17", "active": false}
+    ],
+    "weekly_lessons_completed": [
+      {"activity_date": "2026-11-11", "lessons_completed": 0},
+      {"activity_date": "2026-11-12", "lessons_completed": 0},
+      {"activity_date": "2026-11-13", "lessons_completed": 0},
+      {"activity_date": "2026-11-14", "lessons_completed": 0},
+      {"activity_date": "2026-11-15", "lessons_completed": 0},
+      {"activity_date": "2026-11-16", "lessons_completed": 0},
+      {"activity_date": "2026-11-17", "lessons_completed": 1}
+    ]
+  },
+  "admin_case": {
+    "subjects": [
+      {"subject": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "is_admin": false, "activity_date": "2026-11-17"},
+      {"subject": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", "is_admin": true, "activity_date": "2026-11-17"}
+    ],
+    "platform_activity_today": {"date": "2026-11-17", "unique_users": 2, "coverage_since": null, "partial_day": true},
+    "platform_course_activity_today": {"date": "2026-11-17", "unique_users": null, "coverage_since": null, "partial_day": false},
+    "legacy_dashboard_active_students_7d": 1
+  }
+}

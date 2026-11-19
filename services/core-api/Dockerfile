@@ -35,4 +35,17 @@ COPY --chown=app:app services/core-api/alembic-runtime.ini /app/services/core-ap
 ENTRYPOINT ["python", "-m", "alembic", "-c", "/app/services/core-api/alembic-runtime.ini"]
 CMD ["upgrade", "head"]
 
+# Explicit operator artifact. The default serving image below has no migration CLI.
+# The tools keep their synthetic-only identity/sentinel guards inside this image.
+FROM runtime-base AS analytics-tools
+COPY --chown=app:app services/core-api/tools/analytics_transfer /app/services/core-api/tools/analytics_transfer
+ENTRYPOINT ["python", "/app/services/core-api/tools/analytics_transfer/migrate.py"]
+CMD ["--help"]
+
+# Independently supervised publisher. Admission remains default-off in the module.
+# Its process has no HTTP listener; the serving runtime's healthcheck is inapplicable.
+FROM runtime-base AS analytics-publisher
+HEALTHCHECK NONE
+CMD ["python", "-m", "pymentor_core.app.analytics_publisher"]
+
 FROM runtime-base AS runtime

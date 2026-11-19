@@ -132,14 +132,19 @@ def _send(db, user, purpose):
 async def update_profile(payload: ProfileRequest, request: Request):
     from pymentor_core.modules.identity.api.sessions import _local_async_identity, async_current_principal
     from pymentor_core.modules.identity.api.router import _run_identity_sql
-    from pymentor_core.app.wiring import identity_repository
+    from pymentor_core.app.wiring import lock_lifecycle_user
     identity = _local_async_identity(request)
-    user_id = (await async_current_principal(request)).user_id if identity else None
+    principal = await async_current_principal(request) if identity else None
+    user_id = principal.user_id if principal else None
     def update(db):
-        user = identity_repository(db).user_by_id(user_id) if identity else get_current_user(request, db)
+        user = lock_lifecycle_user(db, user_id, principal.account_ref) if identity else get_current_user(request, db)
         if user is None:
             raise HTTPException(status_code=401, detail="User not found")
-        return {"user": _serialize_user(get_bindings().email_auth.update_username(db, user, payload.username))}
+        from pymentor_core.app.wiring import role_identity_projection as project
+        current = project(db, user)
+        if principal and principal.account_ref and current['account_ref'] != principal.account_ref:
+            raise HTTPException(status_code=401, detail='User lifecycle changed')
+        return {"user": project(db, get_bindings().email_auth.update_username(db, user, payload.username))}
     return await _run_identity_sql(request, identity, update)
 
 

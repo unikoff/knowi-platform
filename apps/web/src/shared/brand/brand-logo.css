@@ -1,0 +1,5 @@
+.brand-logo { display: inline-block; width: 112px; max-width: 100%; line-height: 0; }
+.brand-logo img { display: block; width: 100%; height: auto; }
+.brand-logo .brand-logo__light { display: none; }
+:root[data-color-scheme="light"] .brand-logo .brand-logo__dark { display: none; }
+:root[data-color-scheme="light"] .brand-logo .brand-logo__light { display: block; }

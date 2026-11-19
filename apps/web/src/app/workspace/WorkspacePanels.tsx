@@ -1,11 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { IDockviewPanelProps } from "dockview-react";
 import { AccountWorkspace } from "../../features/account";
+import { CourseAdmin } from "../../features/admin/CourseAdmin";
 import { AdminScreen } from "../../features/admin";
 import { isLessonUnavailable, LearningPracticeView, LearningTheoryView, LessonNavigationProvider, LockedLessonView,
   useLearningCourse, OnlineInterpreter, type Lesson } from "../../features/learning";
 import type { UserProfile, CalendarMonth } from "../../shared/api/contracts";
 import type { CourseId } from "../../course-runtime/course-registry";
+import type { ToolId } from "../../features/analytics-tracker/tracker";
 import { LessonExplorer } from "./LessonExplorer";
 import { AsyncBoundary } from "../../shared/ui/async-boundary/AsyncBoundary";
 import { LessonLoading, LessonTransition } from "../../features/learning/LessonLoading";
@@ -27,6 +29,7 @@ export type WorkspacePanelContextValue = {
   onLogout: () => void;
   onUserChange: (user: UserProfile) => void;
   onCloseLessons: () => void;
+  onAccountToolChange: (tool: ToolId) => void;
 };
 export const WorkspacePanelContext = createContext<WorkspacePanelContextValue | null>(null);
 function useWorkspace() {
@@ -121,14 +124,17 @@ function AccountDockPanel({ api }: IDockviewPanelProps) {
   const context = useWorkspace();
   const opened = usePanelOpened(api);
   if (!context.user || !opened) return null;
-  return <div className="dock-scroll"><AsyncBoundary><AccountWorkspace user={context.user} tracks={context.course.tracks} courseEntries={context.course.courses}
+  return <div className="dock-scroll"><AsyncBoundary><AccountWorkspace courseId={context.courseId} user={context.user} tracks={context.course.tracks} courseEntries={context.course.courses}
     tracksLoaded={context.course.tracksLoaded} calendarMonth={context.calendarMonth}
-    onMonthChange={context.setCalendarMonth} onLogout={context.onLogout} onUserChange={context.onUserChange} /></AsyncBoundary></div>;
+    onMonthChange={context.setCalendarMonth} onLogout={context.onLogout} onUserChange={context.onUserChange}
+    onToolChange={context.onAccountToolChange} /></AsyncBoundary></div>;
 }
 function AdminDockPanel({ api }: IDockviewPanelProps) {
-  const { user, ownerKey } = useWorkspace();
+  const { user, courseId } = useWorkspace();
   const opened = usePanelOpened(api);
-  return user?.is_admin && opened ? <div className="dock-scroll"><AsyncBoundary><AdminScreen /></AsyncBoundary></div> : null;
+  const allowed = user?.capabilities?.includes("course.read") && (user.role === "admin" || (user.role === "leader" && user.course_id === courseId));
+  if (user?.role === undefined && user?.is_admin && opened) return <div className="dock-scroll"><p>Совместимость: общее администрирование платформы</p><AsyncBoundary><AdminScreen /></AsyncBoundary></div>;
+  return user && allowed && opened ? <div className="dock-scroll"><AsyncBoundary><CourseAdmin courseId={courseId} user={user} /></AsyncBoundary></div> : null;
 }
 function InterpreterDockPanel({ api }: IDockviewPanelProps) {
   const { user, ownerKey, courseId } = useWorkspace();

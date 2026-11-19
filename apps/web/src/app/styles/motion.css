@@ -18,26 +18,15 @@
   translate: 0 0;
 }
 
-.lesson-row {
-  transition: background 220ms var(--motion-ease), border-color 220ms ease,
-    color 180ms ease, box-shadow 220ms ease,
-    scale 210ms var(--motion-ease), translate 210ms var(--motion-ease);
+.lesson-tree .lesson-row {
+  transition: background-color var(--motion-normal) ease, border-color var(--motion-normal) ease,
+    color var(--motion-fast) ease, box-shadow var(--motion-normal) ease;
 }
-.lesson-row > svg { transition: color 180ms ease, background-color 220ms ease, box-shadow 220ms ease; }
-@media (hover: hover) and (pointer: fine) {
-  .lesson-row:hover:not(:disabled):not(.is-locked) {
-    position: relative;
-    z-index: 1;
-    scale: 1.04;
-    translate: 0 -1px;
-  }
-  .lesson-row:hover:not(:disabled):not(.is-locked):not(.is-active):not(.is-completed) {
-    border-color: color-mix(in srgb, var(--border-tint-accent) 22%, var(--line));
-    background: linear-gradient(125deg,
-      color-mix(in srgb, var(--accent) 8%, var(--surface-2)),
-      color-mix(in srgb, var(--accent) 3%, var(--surface-2)));
-  }
+.lesson-row > svg {
+  transition: color var(--motion-fast) ease;
 }
+.lesson-row::before { transition: opacity var(--motion-normal) ease, transform var(--motion-normal) var(--motion-ease); }
+.lesson-row::after { transition: opacity var(--motion-normal) ease; }
 .module-lessons {
   display: grid;
   opacity: 0;

@@ -1,0 +1,217 @@
+{
+  "$defs": {
+    "BrowserEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "active_ms": {
+          "maximum": 60000,
+          "minimum": 0,
+          "title": "Active Ms",
+          "type": "integer"
+        },
+        "catalog_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Catalog Version",
+          "type": "string"
+        },
+        "course_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Course Id",
+          "type": "string"
+        },
+        "ended_at": {
+          "description": "Timezone-aware RFC 3339 timestamp",
+          "format": "date-time",
+          "title": "Ended At",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "focused": {
+          "const": true,
+          "title": "Focused",
+          "type": "boolean"
+        },
+        "last_action_at": {
+          "description": "Timezone-aware RFC 3339 timestamp",
+          "format": "date-time",
+          "title": "Last Action At",
+          "type": "string"
+        },
+        "lesson_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Lesson Id"
+        },
+        "payload": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EmptyPayload"
+            },
+            {
+              "$ref": "#/$defs/ToolPayload"
+            }
+          ],
+          "title": "Payload"
+        },
+        "schema_version": {
+          "const": 2,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "section": {
+          "anyOf": [
+            {
+              "enum": [
+                "theory",
+                "practice"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Section"
+        },
+        "session_id": {
+          "format": "uuid",
+          "title": "Session Id",
+          "type": "string"
+        },
+        "started_at": {
+          "description": "Timezone-aware RFC 3339 timestamp",
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "course_opened",
+            "activity_segment",
+            "tool_segment"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "visible": {
+          "const": true,
+          "title": "Visible",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "schema_version",
+        "event_id",
+        "type",
+        "course_id",
+        "catalog_version",
+        "lesson_id",
+        "section",
+        "session_id",
+        "started_at",
+        "ended_at",
+        "last_action_at",
+        "visible",
+        "focused",
+        "active_ms",
+        "payload"
+      ],
+      "title": "BrowserEvent",
+      "type": "object"
+    },
+    "EmptyPayload": {
+      "additionalProperties": false,
+      "properties": {},
+      "title": "EmptyPayload",
+      "type": "object"
+    },
+    "ToolPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "tool_id": {
+          "enum": [
+            "workspace",
+            "lessons",
+            "theory",
+            "practice",
+            "interpreter",
+            "account",
+            "account-profile",
+            "account-statistics",
+            "account-history",
+            "account-booking",
+            "account-settings",
+            "account-payments",
+            "account-achievements",
+            "catalog",
+            "catalog-preview",
+            "course-about",
+            "course-personal"
+          ],
+          "title": "Tool Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool_id"
+      ],
+      "title": "ToolPayload",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "event": {
+      "$ref": "#/$defs/BrowserEvent"
+    },
+    "producer_namespace": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Producer Namespace",
+      "type": "string"
+    },
+    "received_at": {
+      "description": "Timezone-aware RFC 3339 timestamp",
+      "format": "date-time",
+      "title": "Received At",
+      "type": "string"
+    },
+    "source": {
+      "const": "browser",
+      "title": "Source",
+      "type": "string"
+    },
+    "subject_ref": {
+      "format": "uuid",
+      "title": "Subject Ref",
+      "type": "string"
+    }
+  },
+  "required": [
+    "producer_namespace",
+    "subject_ref",
+    "source",
+    "event",
+    "received_at"
+  ],
+  "title": "AcceptedEvent",
+  "type": "object"
+}

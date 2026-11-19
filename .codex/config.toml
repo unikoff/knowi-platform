@@ -10,15 +10,3 @@ description = "Независимый визуальный аудит задан
 config_file = "agents/visual.toml"
 
 # Project-scoped course metadata; migrated 2026-11-14.
-[mcp_servers.course-state]
-command = 'C:\Users\Unik\.codex\local-mcp\course-state\.venv\Scripts\python.exe'
-args = ['C:\Users\Unik\.codex\local-mcp\course-state\launch_pymentor.py']
-cwd = 'C:\Users\Unik\.codex\local-mcp\course-state'
-enabled = false
-startup_timeout_sec = 60
-tool_timeout_sec = 30
-
-
-[mcp_servers.course-state.env]
-PYMENTOR_PROJECT = 'C:\Project Python\Pymentor_platform'
-

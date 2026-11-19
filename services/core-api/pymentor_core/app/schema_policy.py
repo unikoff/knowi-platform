@@ -1,6 +1,6 @@
 """Required externally managed PostgreSQL schema; runtime never performs DDL."""
 
-SCHEMA_REVISION = "c504_course_progress"
+SCHEMA_REVISION = "c528_course_leaders"
 REQUIRED_TABLES = (
     "users",
     "consumed_email_changes",
@@ -8,10 +8,18 @@ REQUIRED_TABLES = (
     "admins",
     "sessions",
     "user_activity_days",
+    "course_leader_bindings",
     "user_lesson_progress",
     "user_task_progress",
     "booking_slots",
     "booking_quotas",
+    "course_leadership",
+    "role_admin_revisions",
+    "role_admin_bootstrap_markers",
+    "booking_history",
+    "role_admin_audit",
+    "role_admin_commands",
+    "role_admin_cutover",
     "booking_reminders",
     "booking_notification_outbox",
     "booking_notification_delivery_state",

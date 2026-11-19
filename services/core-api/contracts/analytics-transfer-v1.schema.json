@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pymentor.ru/contracts/core-analytics-transfer/v1",
+  "title": "Core analytics transfer v1",
+  "description": "Internal outbox contract. The task_progress extension requires an upgraded Analytics receiver and processor.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event_id", "schema_version", "kind", "subject_ref", "revision", "payload"],
+  "properties": {
+    "event_id": {"type": "string", "format": "uuid"},
+    "schema_version": {"const": 1},
+    "kind": {"enum": ["legacy_activity_day", "lesson_progress", "task_progress", "subject_deleted"]},
+    "subject_ref": {"type": "string", "format": "uuid"},
+    "revision": {"type": "integer", "minimum": 0},
+    "payload": {"type": "object"}
+  },
+  "allOf": [
+    {"if": {"properties": {"kind": {"const": "legacy_activity_day"}}}, "then": {"properties": {"payload": {
+      "additionalProperties": false, "required": ["activity_date", "visited_at", "provenance"], "properties": {
+        "activity_date": {"type": "string", "format": "date"},
+        "visited_at": {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]},
+        "provenance": {"const": "legacy_global"}
+      }}}}},
+    {"if": {"properties": {"kind": {"const": "lesson_progress"}}}, "then": {"properties": {"payload": {
+      "additionalProperties": false, "required": ["course_id", "lesson_id", "completed_at"], "properties": {
+        "course_id": {"type": "string", "minLength": 1}, "lesson_id": {"type": "string", "minLength": 1},
+        "completed_at": {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]}
+      }}}}},
+    {"if": {"properties": {"kind": {"const": "task_progress"}}}, "then": {"properties": {"payload": {
+      "additionalProperties": false, "required": ["course_id", "task_id", "task_revision", "completed_at"], "properties": {
+        "course_id": {"type": "string", "minLength": 1, "maxLength": 80},
+        "task_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "task_revision": {"type": "string", "minLength": 1, "maxLength": 64},
+        "completed_at": {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]}
+      }}}}},
+    {"if": {"properties": {"kind": {"const": "subject_deleted"}}}, "then": {
+      "properties": {"revision": {"minimum": 1}, "payload": {"maxProperties": 0}}}}
+  ]
+}

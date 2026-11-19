@@ -1,0 +1,29 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: knowi-analytics-01a1df75-v2
+servers: 1
+agents: 0
+image: rancher/k3s:v1.35.5-k3s1
+kubeAPI:
+  host: 127.0.0.1
+  hostIP: 127.0.0.1
+  hostPort: "57443"
+options:
+  k3d:
+    wait: true
+    timeout: 180s
+    disableRollback: true
+    disableLoadbalancer: true
+  k3s:
+    extraArgs:
+      - arg: --disable=traefik,servicelb
+        nodeFilters: [server:0]
+  kubeconfig:
+    updateDefaultKubeconfig: false
+    switchCurrentContext: false
+  runtime:
+    serversMemory: 2g
+    labels:
+      - label: knowi.analytics.synthetic=true
+        nodeFilters: [server:0]

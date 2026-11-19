@@ -1,0 +1,65 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "course_id": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Course Id"
+    },
+    "from_time": {
+      "description": "Timezone-aware RFC 3339 timestamp",
+      "format": "date-time",
+      "title": "From Time",
+      "type": "string"
+    },
+    "limit": {
+      "default": 100,
+      "maximum": 100,
+      "minimum": 1,
+      "title": "Limit",
+      "type": "integer"
+    },
+    "subject_ref": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Subject Ref"
+    },
+    "timezone": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Timezone",
+      "type": "string"
+    },
+    "to_time": {
+      "description": "Timezone-aware RFC 3339 timestamp",
+      "format": "date-time",
+      "title": "To Time",
+      "type": "string"
+    }
+  },
+  "required": [
+    "course_id",
+    "subject_ref",
+    "from_time",
+    "to_time",
+    "timezone"
+  ],
+  "title": "ReportRequest",
+  "type": "object"
+}

@@ -39,7 +39,7 @@
 }
 
 :root[data-color-scheme="light"] .practice-dashboard {
-  --code-bg: color-mix(in srgb, var(--surface) 35%, var(--bg));
+  --code-bg: var(--surface-2);
   --code-text: var(--reading);
   --syntax-comment: var(--muted);
 }

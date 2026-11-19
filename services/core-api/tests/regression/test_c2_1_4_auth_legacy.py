@@ -41,7 +41,12 @@ ADMIN_DENIED = {"detail": "Требуются права администрат�
 PUBLIC_FIELDS = {
     "id", "username", "email", "subscription_until",
     "subscription_plan", "has_active_subscription", "is_admin", "verified",
+    "role", "capabilities", "account_ref", "course_id", "auth_revision",
 }
+ADMIN_CAPABILITIES = [
+    "course.read", "course.roster", "course.search_grant", "course.quota.grant",
+    "course.subscription.extend", "course.calendar.manage", "platform.read", "platform.manage",
+]
 
 
 @dataclass
@@ -124,8 +129,18 @@ def login(*, email=EMAIL, password=PASSWORD, **claims):
     return call("POST", "/api/user/login", body=payload, headers={"Idempotency-Key": str(uuid4())})
 
 
-def assert_user(user, *, email=EMAIL, is_admin=False):
+def assert_identity_fields(user, *, is_admin=False, revision=0):
     assert set(user) == PUBLIC_FIELDS
+    assert user["role"] == ("admin" if is_admin else "user")
+    assert user["capabilities"] == (ADMIN_CAPABILITIES if is_admin else [])
+    assert user["course_id"] is None
+    assert type(user["auth_revision"]) is int and user["auth_revision"] == revision
+    assert isinstance(user["account_ref"], str)
+    assert str(UUID(user["account_ref"])) == user["account_ref"]
+
+
+def assert_user(user, *, email=EMAIL, is_admin=False):
+    assert_identity_fields(user, is_admin=is_admin)
     assert user["email"] == email
     assert user["username"] == "Synthetic Student"
     assert user["is_admin"] is is_admin
@@ -745,6 +760,7 @@ def test_client_cannot_forge_admin_role_and_student_is_forbidden(runtime_db):
     admin_me = call("GET", "/api/user/me", cookie=admin_token)
     assert admin_me.status == 200
     assert admin_me.data["user"]["is_admin"] is True
+    assert_identity_fields(admin_me.data["user"], is_admin=True)
     assert call("GET", "/api/admin/overview", cookie=admin_token).status == 200
 
 
@@ -783,9 +799,11 @@ def test_permission_changes_apply_to_the_next_request_without_relogin(runtime_db
         user.is_admin = True
         db.commit()
     assert call("GET", "/api/admin/overview", cookie=token).status == 200
+    assert_identity_fields(call("GET", "/api/user/me", cookie=token).data["user"], is_admin=True, revision=1)
     with runtime_db() as db:
         user = db.scalar(select(models.User).where(models.User.email == EMAIL))
         user.is_admin = False
         db.commit()
     denied = call("GET", "/api/admin/overview", cookie=token)
     assert denied.status == 403 and denied.data == ADMIN_DENIED
+    assert_identity_fields(call("GET", "/api/user/me", cookie=token).data["user"], revision=2)

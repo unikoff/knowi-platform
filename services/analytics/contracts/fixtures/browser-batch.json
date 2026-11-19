@@ -1,0 +1,6 @@
+{
+  "events": [
+    {"schema_version": 2, "event_id": "11111111-1111-4111-8111-111111111111", "type": "course_opened", "course_id": "backend", "catalog_version": "catalog-1", "lesson_id": null, "section": null, "session_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "started_at": "2026-11-16T10:00:00Z", "ended_at": "2026-11-16T10:00:00Z", "last_action_at": "2026-11-16T10:00:00Z", "visible": true, "focused": true, "active_ms": 0, "payload": {}},
+    {"schema_version": 2, "event_id": "22222222-2222-4222-8222-222222222222", "type": "activity_segment", "course_id": "backend-copy", "catalog_version": "catalog-1", "lesson_id": "lesson-1", "section": "practice", "session_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "started_at": "2026-11-16T10:00:00Z", "ended_at": "2026-11-16T10:01:00Z", "last_action_at": "2026-11-16T10:00:00Z", "visible": true, "focused": true, "active_ms": 60000, "payload": {}}
+  ]
+}

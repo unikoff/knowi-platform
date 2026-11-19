@@ -3,8 +3,22 @@ import assert from "node:assert/strict";
 import { generateCourses } from "../../tools/course-registry.mjs";
 generateCourses();
 const { courseUrls, normalizedBase, resolveCourseRoute } = await import("./course-paths.ts");
+const { catalogPreviewUrl } = await import("./course-paths.ts");
+const { catalogPreviewCourses } = await import("./catalog-preview-courses.ts");
 
 for (const base of ["/", "/platform/"]) {
+  test(`catalogue preview courses have separate routes under ${base}`, () => {
+    for (const course of catalogPreviewCourses) {
+      const url = catalogPreviewUrl(base, course.slug);
+      assert.equal(url, `${base}catalog/${course.slug}`);
+      assert.deepEqual(resolveCourseRoute(url, base), { kind: "catalog-preview", slug: course.slug });
+      assert.deepEqual(resolveCourseRoute(`${url}/`, base), { kind: "catalog-preview", slug: course.slug });
+      assert.throws(() => courseUrls(base, course.slug), /Unknown course/);
+    }
+    for (const path of ["catalog/unknown", "catalog/ege-informatika/extra", "catalog/ege%2finformatika"]) {
+      assert.deepEqual(resolveCourseRoute(`${base}${path}`, base), { kind: "not-found" });
+    }
+  });
   test(`course URLs and all direct routes under ${base}`, () => {
     for (const course of ["backend", "backend_copy"]) {
       const urls = courseUrls(base, course);
@@ -14,11 +28,13 @@ for (const base of ["/", "/platform/"]) {
         assert.deepEqual(resolveCourseRoute(`${urls[page]}/`, base), { kind, courseId: course, legacy: false });
       }
     }
-    assert.deepEqual(resolveCourseRoute(base, base), { kind: "catalog" });
+    assert.deepEqual(resolveCourseRoute(base, base), { kind: "redirect", to: `${base}backend` });
+    assert.deepEqual(resolveCourseRoute(`${base}catalog`, base), { kind: "catalog" });
+    assert.deepEqual(resolveCourseRoute(`${base}catalog/`, base), { kind: "catalog" });
   });
 
   test(`old courses-prefixed URLs redirect to canonical routes under ${base}`, () => {
-    assert.deepEqual(resolveCourseRoute(`${base}courses`, base), { kind: "redirect", to: base });
+    assert.deepEqual(resolveCourseRoute(`${base}courses`, base), { kind: "redirect", to: `${base}catalog` });
     for (const course of ["backend", "backend_copy"]) {
       for (const suffix of ["", "/personal", "/about", "/personal/privacy-policy"]) {
         assert.deepEqual(resolveCourseRoute(`${base}courses/${course}${suffix}`, base), {

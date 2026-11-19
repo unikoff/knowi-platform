@@ -2,6 +2,21 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { checkLessonSource, checkCssOwnership, checkPaletteUsage } = require('./check_lesson_visuals.cjs');
+const { checkLesson } = require('./lesson_structure.cjs');
+
+test('lesson structure and visual guard agree on LinkedNotes props', () => {
+  const source = `import { LinkedNotes, Section } from '@course-ui';
+    export function Lesson() { return <Section number="00"><LinkedNotes items={[
+      {title:'Точка старта', description:'Начало'},
+      {title:'Новый вопрос', description:'Вопрос'},
+      {title:'Результат', description:'Итог'}
+    ]}/></Section>; }`;
+  assert.equal(checkLesson(source, 'Lesson')[0].status, 'PASS');
+  assert.deepEqual(checkLessonSource(source), []);
+  const retired = source.replace('<LinkedNotes ', '<LinkedNotes variant="connected" ');
+  assert.equal(checkLesson(retired, 'Lesson')[0].status, 'FAIL');
+  assert.equal(checkLessonSource(retired).length, 1);
+});
 
 test('current shared components and custom teaching diagrams remain valid', () => {
   const source = `import { Callout, ContentList } from '../shared';

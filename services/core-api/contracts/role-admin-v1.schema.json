@@ -1,0 +1,2726 @@
+{
+  "$defs": {
+    "ActivityToday": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "unique_users": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Unique Users"
+        },
+        "coverage_since": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Coverage Since"
+        },
+        "partial_day": {
+          "title": "Partial Day",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "date",
+        "unique_users",
+        "coverage_since",
+        "partial_day"
+      ],
+      "title": "ActivityToday",
+      "type": "object"
+    },
+    "AdminRoleCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "is_admin": {
+          "title": "Is Admin",
+          "type": "boolean"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "confirmed": {
+          "const": true,
+          "title": "Confirmed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "is_admin",
+        "reason",
+        "confirmed"
+      ],
+      "title": "AdminRoleCommand",
+      "type": "object"
+    },
+    "AdminRoleResult": {
+      "additionalProperties": false,
+      "properties": {
+        "user_id": {
+          "exclusiveMinimum": 0,
+          "title": "User Id",
+          "type": "integer"
+        },
+        "is_admin": {
+          "title": "Is Admin",
+          "type": "boolean"
+        },
+        "auth_revision": {
+          "minimum": 0,
+          "title": "Auth Revision",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "user_id",
+        "is_admin",
+        "auth_revision"
+      ],
+      "title": "AdminRoleResult",
+      "type": "object"
+    },
+    "AvailableCourseStudyTime": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "available",
+          "title": "Status",
+          "type": "string"
+        },
+        "quality": {
+          "const": "unknown",
+          "title": "Quality",
+          "type": "string"
+        },
+        "daily": {
+          "items": {
+            "$ref": "#/$defs/CourseStudyTimeDay"
+          },
+          "maxItems": 30,
+          "minItems": 30,
+          "title": "Daily",
+          "type": "array"
+        }
+      },
+      "required": [
+        "status",
+        "quality",
+        "daily"
+      ],
+      "title": "AvailableCourseStudyTime",
+      "type": "object"
+    },
+    "AvailableCourseTrend": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "available",
+          "title": "Status",
+          "type": "string"
+        },
+        "daily": {
+          "items": {
+            "$ref": "#/$defs/CourseTrendDay"
+          },
+          "maxItems": 30,
+          "minItems": 30,
+          "title": "Daily",
+          "type": "array"
+        },
+        "quality": {
+          "anyOf": [
+            {
+              "enum": [
+                "unknown",
+                "complete"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quality"
+        }
+      },
+      "required": [
+        "status",
+        "daily"
+      ],
+      "title": "AvailableCourseTrend",
+      "type": "object"
+    },
+    "Booking": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "exclusiveMinimum": 0,
+          "title": "Id",
+          "type": "integer"
+        },
+        "course_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Course Id",
+          "type": "string"
+        },
+        "slot_id": {
+          "exclusiveMinimum": 0,
+          "title": "Slot Id",
+          "type": "integer"
+        },
+        "student_id": {
+          "exclusiveMinimum": 0,
+          "title": "Student Id",
+          "type": "integer"
+        },
+        "owner_at_booking_id": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Owner At Booking Id"
+        },
+        "status": {
+          "enum": [
+            "booked",
+            "cancelled",
+            "completed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "starts_at": {
+          "format": "date-time",
+          "title": "Starts At",
+          "type": "string"
+        },
+        "ends_at": {
+          "format": "date-time",
+          "title": "Ends At",
+          "type": "string"
+        },
+        "created_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Created At"
+        },
+        "cancelled_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cancelled At"
+        },
+        "completed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Completed At"
+        },
+        "legacy_coverage": {
+          "title": "Legacy Coverage",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "course_id",
+        "slot_id",
+        "student_id",
+        "owner_at_booking_id",
+        "status",
+        "starts_at",
+        "ends_at",
+        "created_at",
+        "cancelled_at",
+        "completed_at",
+        "legacy_coverage"
+      ],
+      "title": "Booking",
+      "type": "object"
+    },
+    "BookingContext": {
+      "additionalProperties": false,
+      "properties": {
+        "course_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Course Id",
+          "type": "string"
+        },
+        "active_owner_id": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Active Owner Id"
+        },
+        "active_owner_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Active Owner Name"
+        },
+        "my_upcoming_bookings": {
+          "items": {
+            "$ref": "#/$defs/Booking"
+          },
+          "title": "My Upcoming Bookings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "course_id",
+        "active_owner_id",
+        "active_owner_name",
+        "my_upcoming_bookings"
+      ],
+      "title": "BookingContext",
+      "type": "object"
+    },
+    "BookingEnvelope": {
+      "additionalProperties": false,
+      "properties": {
+        "booking": {
+          "$ref": "#/$defs/Booking"
+        },
+        "quota": {
+          "$ref": "#/$defs/Quota"
+        }
+      },
+      "required": [
+        "booking",
+        "quota"
+      ],
+      "title": "BookingEnvelope",
+      "type": "object"
+    },
+    "CalendarContext": {
+      "additionalProperties": false,
+      "properties": {
+        "course_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Course Id",
+          "type": "string"
+        },
+        "owners": {
+          "items": {
+            "$ref": "#/$defs/CalendarOwner"
+          },
+          "maxItems": 1,
+          "title": "Owners",
+          "type": "array"
+        }
+      },
+      "required": [
+        "course_id",
+        "owners"
+      ],
+      "title": "CalendarContext",
+      "type": "object"
+    },
+    "CalendarOwner": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "exclusiveMinimum": 0,
+          "title": "Id",
+          "type": "integer"
+        },
+        "username": {
+          "title": "Username",
+          "type": "string"
+        },
+        "active": {
+          "title": "Active",
+          "type": "boolean"
+        },
+        "pending_slots": {
+          "minimum": 0,
+          "title": "Pending Slots",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "active",
+        "pending_slots"
+      ],
+      "title": "CalendarOwner",
+      "type": "object"
+    },
+    "CompletedItem": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "completed_at": {
+          "format": "date-time",
+          "title": "Completed At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "completed_at"
+      ],
+      "title": "CompletedItem",
+      "type": "object"
+    },
+    "CourseOverview": {
+      "additionalProperties": false,
+      "properties": {
+        "course_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Course Id",
+          "type": "string"
+        },
+        "period": {
+          "$ref": "#/$defs/Period"
+        },
+        "roster_count": {
+          "minimum": 0,
+          "title": "Roster Count",
+          "type": "integer"
+        },
+        "booking_count": {
+          "minimum": 0,
+          "title": "Booking Count",
+          "type": "integer"
+        },
+        "lessons_granted": {
+          "minimum": 0,
+          "title": "Lessons Granted",
+          "type": "integer"
+        },
+        "lessons_used": {
+          "minimum": 0,
+          "title": "Lessons Used",
+          "type": "integer"
+        },
+        "completed_lessons": {
+          "minimum": 0,
+          "title": "Completed Lessons",
+          "type": "integer"
+        },
+        "course_activity_days": {
+          "title": "Course Activity Days",
+          "type": "null"
+        },
+        "dashboard": {
+          "$ref": "#/$defs/Dashboard"
+        },
+        "course_trends": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CourseTrends"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "course_id",
+        "period",
+        "roster_count",
+        "booking_count",
+        "lessons_granted",
+        "lessons_used",
+        "completed_lessons",
+        "course_activity_days",
+        "dashboard"
+      ],
+      "title": "CourseOverview",
+      "type": "object"
+    },
+    "CourseStudyTime": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AvailableCourseStudyTime"
+        },
+        {
+          "$ref": "#/$defs/UnavailableCourseStudyTime"
+        }
+      ],
+      "title": "CourseStudyTime"
+    },
+    "CourseStudyTimeCohort": {
+      "additionalProperties": false,
+      "properties": {
+        "active_ms": {
+          "exclusiveMinimum": 0,
+          "maximum": 86400000000,
+          "title": "Active Ms",
+          "type": "integer"
+        },
+        "learners": {
+          "exclusiveMinimum": 0,
+          "maximum": 1000,
+          "title": "Learners",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "active_ms",
+        "learners"
+      ],
+      "title": "CourseStudyTimeCohort",
+      "type": "object"
+    },
+    "CourseStudyTimeDay": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "with_subscription": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CourseStudyTimeCohort"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "without_subscription": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CourseStudyTimeCohort"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "date",
+        "with_subscription",
+        "without_subscription"
+      ],
+      "title": "CourseStudyTimeDay",
+      "type": "object"
+    },
+    "CourseSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "course_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Course Id",
+          "type": "string"
+        },
+        "leader_id": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Leader Id"
+        }
+      },
+      "required": [
+        "course_id",
+        "leader_id"
+      ],
+      "title": "CourseSummary",
+      "type": "object"
+    },
+    "CourseTrendDay": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "with_subscription": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "With Subscription"
+        },
+        "without_subscription": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Without Subscription"
+        }
+      },
+      "required": [
+        "date",
+        "with_subscription",
+        "without_subscription"
+      ],
+      "title": "CourseTrendDay",
+      "type": "object"
+    },
+    "CourseTrends": {
+      "additionalProperties": false,
+      "properties": {
+        "visits": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AvailableCourseTrend"
+            },
+            {
+              "$ref": "#/$defs/UnavailableCourseTrend"
+            }
+          ],
+          "title": "Visits"
+        },
+        "completions": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AvailableCourseTrend"
+            },
+            {
+              "$ref": "#/$defs/UnavailableCourseTrend"
+            }
+          ],
+          "title": "Completions"
+        }
+      },
+      "required": [
+        "visits",
+        "completions"
+      ],
+      "title": "CourseTrends",
+      "type": "object"
+    },
+    "Courses": {
+      "additionalProperties": false,
+      "properties": {
+        "courses": {
+          "items": {
+            "$ref": "#/$defs/CourseSummary"
+          },
+          "title": "Courses",
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Next Cursor"
+        }
+      },
+      "required": [
+        "courses",
+        "next_cursor"
+      ],
+      "title": "Courses",
+      "type": "object"
+    },
+    "Dashboard": {
+      "additionalProperties": false,
+      "properties": {
+        "total_students": {
+          "title": "Total Students",
+          "type": "integer"
+        },
+        "active_students_7d": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Active Students 7D"
+        },
+        "inactive_students_7d": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Inactive Students 7D"
+        },
+        "active_subscriptions_count": {
+          "title": "Active Subscriptions Count",
+          "type": "integer"
+        },
+        "lessons_completed_7d": {
+          "title": "Lessons Completed 7D",
+          "type": "integer"
+        },
+        "expiring_subscriptions_count": {
+          "title": "Expiring Subscriptions Count",
+          "type": "integer"
+        },
+        "expiring_subscriptions": {
+          "items": {
+            "$ref": "#/$defs/DashboardSubscription"
+          },
+          "title": "Expiring Subscriptions",
+          "type": "array"
+        },
+        "slots_30d": {
+          "$ref": "#/$defs/DashboardSlotsMonth"
+        },
+        "slots_7d": {
+          "$ref": "#/$defs/DashboardSlots"
+        },
+        "upcoming_bookings": {
+          "items": {
+            "$ref": "#/$defs/DashboardBooking"
+          },
+          "title": "Upcoming Bookings",
+          "type": "array"
+        },
+        "most_active_students": {
+          "items": {
+            "$ref": "#/$defs/DashboardActive"
+          },
+          "title": "Most Active Students",
+          "type": "array"
+        },
+        "daily_active_students": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/DashboardDayActive"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Daily Active Students"
+        },
+        "daily_lessons_completed": {
+          "items": {
+            "$ref": "#/$defs/DashboardDayLessons"
+          },
+          "title": "Daily Lessons Completed",
+          "type": "array"
+        }
+      },
+      "required": [
+        "total_students",
+        "active_students_7d",
+        "inactive_students_7d",
+        "active_subscriptions_count",
+        "lessons_completed_7d",
+        "expiring_subscriptions_count",
+        "expiring_subscriptions",
+        "slots_30d",
+        "slots_7d",
+        "upcoming_bookings",
+        "most_active_students",
+        "daily_active_students",
+        "daily_lessons_completed"
+      ],
+      "title": "Dashboard",
+      "type": "object"
+    },
+    "DashboardActive": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "username": {
+          "title": "Username",
+          "type": "string"
+        },
+        "lessons_completed": {
+          "title": "Lessons Completed",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "lessons_completed"
+      ],
+      "title": "DashboardActive",
+      "type": "object"
+    },
+    "DashboardBooking": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "date": {
+          "title": "Date",
+          "type": "string"
+        },
+        "start_time": {
+          "title": "Start Time",
+          "type": "string"
+        },
+        "duration_minutes": {
+          "title": "Duration Minutes",
+          "type": "integer"
+        },
+        "student": {
+          "$ref": "#/$defs/DashboardStudent"
+        }
+      },
+      "required": [
+        "id",
+        "date",
+        "start_time",
+        "duration_minutes",
+        "student"
+      ],
+      "title": "DashboardBooking",
+      "type": "object"
+    },
+    "DashboardDayActive": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "title": "Date",
+          "type": "string"
+        },
+        "active_students": {
+          "title": "Active Students",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "date",
+        "active_students"
+      ],
+      "title": "DashboardDayActive",
+      "type": "object"
+    },
+    "DashboardDayLessons": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "title": "Date",
+          "type": "string"
+        },
+        "lessons_completed": {
+          "title": "Lessons Completed",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "date",
+        "lessons_completed"
+      ],
+      "title": "DashboardDayLessons",
+      "type": "object"
+    },
+    "DashboardSlots": {
+      "additionalProperties": false,
+      "properties": {
+        "booked": {
+          "title": "Booked",
+          "type": "integer"
+        },
+        "total": {
+          "title": "Total",
+          "type": "integer"
+        },
+        "free": {
+          "title": "Free",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "booked",
+        "total",
+        "free"
+      ],
+      "title": "DashboardSlots",
+      "type": "object"
+    },
+    "DashboardSlotsMonth": {
+      "additionalProperties": false,
+      "properties": {
+        "booked": {
+          "title": "Booked",
+          "type": "integer"
+        },
+        "total": {
+          "title": "Total",
+          "type": "integer"
+        },
+        "free": {
+          "title": "Free",
+          "type": "integer"
+        },
+        "occupancy_percent": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Occupancy Percent"
+        }
+      },
+      "required": [
+        "booked",
+        "total",
+        "free"
+      ],
+      "title": "DashboardSlotsMonth",
+      "type": "object"
+    },
+    "DashboardStudent": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "username": {
+          "title": "Username",
+          "type": "string"
+        },
+        "email": {
+          "title": "Email",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "email"
+      ],
+      "title": "DashboardStudent",
+      "type": "object"
+    },
+    "DashboardSubscription": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "username": {
+          "title": "Username",
+          "type": "string"
+        },
+        "subscription_plan": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Subscription Plan"
+        },
+        "subscription_until": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Subscription Until"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "subscription_plan",
+        "subscription_until"
+      ],
+      "title": "DashboardSubscription",
+      "type": "object"
+    },
+    "Error": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "code": {
+          "title": "Code",
+          "type": "string"
+        }
+      },
+      "required": [
+        "detail",
+        "code"
+      ],
+      "title": "Error",
+      "type": "object"
+    },
+    "Me": {
+      "additionalProperties": false,
+      "properties": {
+        "user": {
+          "$ref": "#/$defs/User"
+        }
+      },
+      "required": [
+        "user"
+      ],
+      "title": "Me",
+      "type": "object"
+    },
+    "Operation": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "title": "Command Id",
+          "type": "string"
+        },
+        "actor_id": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Actor Id"
+        },
+        "actor_account_ref": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Actor Account Ref"
+        },
+        "actor_role": {
+          "enum": [
+            "user",
+            "leader",
+            "admin",
+            "system"
+          ],
+          "title": "Actor Role",
+          "type": "string"
+        },
+        "authority_course_id": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Authority Course Id"
+        },
+        "target_user_id": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Target User Id"
+        },
+        "target_account_ref": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Target Account Ref"
+        },
+        "scope": {
+          "enum": [
+            "platform",
+            "course"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "course_id": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Course Id"
+        },
+        "action": {
+          "title": "Action",
+          "type": "string"
+        },
+        "before": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Before"
+        },
+        "after": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "After"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reason"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "anonymized": {
+          "title": "Anonymized",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "command_id",
+        "actor_id",
+        "actor_account_ref",
+        "actor_role",
+        "authority_course_id",
+        "target_user_id",
+        "target_account_ref",
+        "scope",
+        "course_id",
+        "action",
+        "before",
+        "after",
+        "reason",
+        "created_at",
+        "anonymized"
+      ],
+      "title": "Operation",
+      "type": "object"
+    },
+    "Operations": {
+      "additionalProperties": false,
+      "properties": {
+        "operations": {
+          "items": {
+            "$ref": "#/$defs/Operation"
+          },
+          "title": "Operations",
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Next Cursor"
+        }
+      },
+      "required": [
+        "operations",
+        "next_cursor"
+      ],
+      "title": "Operations",
+      "type": "object"
+    },
+    "Period": {
+      "additionalProperties": false,
+      "properties": {
+        "year": {
+          "maximum": 2100,
+          "minimum": 2000,
+          "title": "Year",
+          "type": "integer"
+        },
+        "month": {
+          "maximum": 12,
+          "minimum": 1,
+          "title": "Month",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "year",
+        "month"
+      ],
+      "title": "Period",
+      "type": "object"
+    },
+    "Person": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "exclusiveMinimum": 0,
+          "title": "Id",
+          "type": "integer"
+        },
+        "account_ref": {
+          "format": "uuid",
+          "title": "Account Ref",
+          "type": "string"
+        },
+        "username": {
+          "title": "Username",
+          "type": "string"
+        },
+        "masked_email": {
+          "title": "Masked Email",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "account_ref",
+        "username",
+        "masked_email"
+      ],
+      "title": "Person",
+      "type": "object"
+    },
+    "PlatformOverview": {
+      "additionalProperties": false,
+      "properties": {
+        "users": {
+          "minimum": 0,
+          "title": "Users",
+          "type": "integer"
+        },
+        "active_subscribers": {
+          "minimum": 0,
+          "title": "Active Subscribers",
+          "type": "integer"
+        },
+        "courses": {
+          "minimum": 0,
+          "title": "Courses",
+          "type": "integer"
+        },
+        "course_id": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Course Id"
+        },
+        "timezone": {
+          "const": "Europe/Moscow",
+          "title": "Timezone",
+          "type": "string"
+        },
+        "activity_today": {
+          "$ref": "#/$defs/ActivityToday"
+        },
+        "dashboard": {
+          "$ref": "#/$defs/Dashboard"
+        }
+      },
+      "required": [
+        "users",
+        "active_subscribers",
+        "courses",
+        "course_id",
+        "timezone",
+        "activity_today",
+        "dashboard"
+      ],
+      "title": "PlatformOverview",
+      "type": "object"
+    },
+    "PlatformUser": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "exclusiveMinimum": 0,
+          "title": "Id",
+          "type": "integer"
+        },
+        "account_ref": {
+          "format": "uuid",
+          "title": "Account Ref",
+          "type": "string"
+        },
+        "username": {
+          "title": "Username",
+          "type": "string"
+        },
+        "email": {
+          "title": "Email",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "user",
+            "leader",
+            "admin"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "subscription": {
+          "$ref": "#/$defs/Subscription"
+        },
+        "quotas": {
+          "items": {
+            "$ref": "#/$defs/Quota"
+          },
+          "title": "Quotas",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "account_ref",
+        "username",
+        "email",
+        "role",
+        "subscription",
+        "quotas"
+      ],
+      "title": "PlatformUser",
+      "type": "object"
+    },
+    "PlatformUsers": {
+      "additionalProperties": false,
+      "properties": {
+        "users": {
+          "items": {
+            "$ref": "#/$defs/PlatformUser"
+          },
+          "title": "Users",
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Next Cursor"
+        }
+      },
+      "required": [
+        "users",
+        "next_cursor"
+      ],
+      "title": "PlatformUsers",
+      "type": "object"
+    },
+    "ProfileBooking": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "exclusiveMinimum": 0,
+          "title": "Id",
+          "type": "integer"
+        },
+        "starts_at": {
+          "format": "date-time",
+          "title": "Starts At",
+          "type": "string"
+        },
+        "ends_at": {
+          "format": "date-time",
+          "title": "Ends At",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "booked",
+            "cancelled",
+            "completed"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "starts_at",
+        "ends_at",
+        "status"
+      ],
+      "title": "ProfileBooking",
+      "type": "object"
+    },
+    "Progress": {
+      "additionalProperties": false,
+      "properties": {
+        "course_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Course Id",
+          "type": "string"
+        },
+        "user_id": {
+          "exclusiveMinimum": 0,
+          "title": "User Id",
+          "type": "integer"
+        },
+        "completed_lessons": {
+          "items": {
+            "$ref": "#/$defs/CompletedItem"
+          },
+          "title": "Completed Lessons",
+          "type": "array"
+        },
+        "completed_tasks": {
+          "items": {
+            "$ref": "#/$defs/CompletedItem"
+          },
+          "title": "Completed Tasks",
+          "type": "array"
+        },
+        "lessons_count": {
+          "minimum": 0,
+          "title": "Lessons Count",
+          "type": "integer"
+        },
+        "tasks_count": {
+          "minimum": 0,
+          "title": "Tasks Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "course_id",
+        "user_id",
+        "completed_lessons",
+        "completed_tasks",
+        "lessons_count",
+        "tasks_count"
+      ],
+      "title": "Progress",
+      "type": "object"
+    },
+    "Quota": {
+      "additionalProperties": false,
+      "properties": {
+        "course_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Course Id",
+          "type": "string"
+        },
+        "user_id": {
+          "exclusiveMinimum": 0,
+          "title": "User Id",
+          "type": "integer"
+        },
+        "year": {
+          "maximum": 2100,
+          "minimum": 2000,
+          "title": "Year",
+          "type": "integer"
+        },
+        "month": {
+          "maximum": 12,
+          "minimum": 1,
+          "title": "Month",
+          "type": "integer"
+        },
+        "granted": {
+          "minimum": 0,
+          "title": "Granted",
+          "type": "integer"
+        },
+        "used": {
+          "minimum": 0,
+          "title": "Used",
+          "type": "integer"
+        },
+        "remaining": {
+          "minimum": 0,
+          "title": "Remaining",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "course_id",
+        "user_id",
+        "year",
+        "month",
+        "granted",
+        "used",
+        "remaining"
+      ],
+      "title": "Quota",
+      "type": "object"
+    },
+    "QuotaEnvelope": {
+      "additionalProperties": false,
+      "properties": {
+        "quota": {
+          "$ref": "#/$defs/Quota"
+        }
+      },
+      "required": [
+        "quota"
+      ],
+      "title": "QuotaEnvelope",
+      "type": "object"
+    },
+    "QuotaGrant": {
+      "additionalProperties": false,
+      "properties": {
+        "year": {
+          "maximum": 2100,
+          "minimum": 2000,
+          "title": "Year",
+          "type": "integer"
+        },
+        "month": {
+          "maximum": 12,
+          "minimum": 1,
+          "title": "Month",
+          "type": "integer"
+        },
+        "add": {
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Add",
+          "type": "integer"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "year",
+        "month",
+        "add",
+        "reason"
+      ],
+      "title": "QuotaGrant",
+      "type": "object"
+    },
+    "ReasonCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "title": "ReasonCommand",
+      "type": "object"
+    },
+    "Roster": {
+      "additionalProperties": false,
+      "properties": {
+        "course_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Course Id",
+          "type": "string"
+        },
+        "users": {
+          "items": {
+            "$ref": "#/$defs/RosterPerson"
+          },
+          "title": "Users",
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Next Cursor"
+        },
+        "history_coverage": {
+          "enum": [
+            "complete",
+            "legacy_partial"
+          ],
+          "title": "History Coverage",
+          "type": "string"
+        }
+      },
+      "required": [
+        "course_id",
+        "users",
+        "next_cursor",
+        "history_coverage"
+      ],
+      "title": "Roster",
+      "type": "object"
+    },
+    "RosterBooking": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "upcoming",
+            "latest"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "starts_at": {
+          "format": "date-time",
+          "title": "Starts At",
+          "type": "string"
+        },
+        "ends_at": {
+          "format": "date-time",
+          "title": "Ends At",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "booked",
+            "completed"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "starts_at",
+        "ends_at",
+        "status"
+      ],
+      "title": "RosterBooking",
+      "type": "object"
+    },
+    "RosterPerson": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "exclusiveMinimum": 0,
+          "title": "Id",
+          "type": "integer"
+        },
+        "account_ref": {
+          "format": "uuid",
+          "title": "Account Ref",
+          "type": "string"
+        },
+        "username": {
+          "title": "Username",
+          "type": "string"
+        },
+        "masked_email": {
+          "title": "Masked Email",
+          "type": "string"
+        },
+        "last_booking_status": {
+          "anyOf": [
+            {
+              "enum": [
+                "booked",
+                "cancelled",
+                "completed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Booking Status"
+        },
+        "display_booking": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RosterBooking"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "subscription_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Subscription Until"
+        },
+        "remaining_lessons": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remaining Lessons"
+        }
+      },
+      "required": [
+        "id",
+        "account_ref",
+        "username",
+        "masked_email",
+        "last_booking_status",
+        "subscription_until"
+      ],
+      "title": "RosterPerson",
+      "type": "object"
+    },
+    "SearchResult": {
+      "additionalProperties": false,
+      "properties": {
+        "course_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Course Id",
+          "type": "string"
+        },
+        "users": {
+          "items": {
+            "$ref": "#/$defs/Person"
+          },
+          "maxItems": 10,
+          "title": "Users",
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Next Cursor"
+        }
+      },
+      "required": [
+        "course_id",
+        "users",
+        "next_cursor"
+      ],
+      "title": "SearchResult",
+      "type": "object"
+    },
+    "Slot": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "exclusiveMinimum": 0,
+          "title": "Id",
+          "type": "integer"
+        },
+        "course_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Course Id",
+          "type": "string"
+        },
+        "owner_id": {
+          "exclusiveMinimum": 0,
+          "title": "Owner Id",
+          "type": "integer"
+        },
+        "starts_at": {
+          "format": "date-time",
+          "title": "Starts At",
+          "type": "string"
+        },
+        "ends_at": {
+          "format": "date-time",
+          "title": "Ends At",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "free",
+            "booked",
+            "archived"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "student_id": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Student Id"
+        }
+      },
+      "required": [
+        "id",
+        "course_id",
+        "owner_id",
+        "starts_at",
+        "ends_at",
+        "status",
+        "student_id"
+      ],
+      "title": "Slot",
+      "type": "object"
+    },
+    "SlotCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "owner_id": {
+          "exclusiveMinimum": 0,
+          "title": "Owner Id",
+          "type": "integer"
+        },
+        "slot_date": {
+          "format": "date",
+          "title": "Slot Date",
+          "type": "string"
+        },
+        "start_time": {
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "title": "Start Time",
+          "type": "string"
+        },
+        "duration_minutes": {
+          "enum": [
+            60,
+            90,
+            120
+          ],
+          "title": "Duration Minutes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "owner_id",
+        "slot_date",
+        "start_time",
+        "duration_minutes"
+      ],
+      "title": "SlotCreate",
+      "type": "object"
+    },
+    "SlotEnvelope": {
+      "additionalProperties": false,
+      "properties": {
+        "slot": {
+          "$ref": "#/$defs/Slot"
+        }
+      },
+      "required": [
+        "slot"
+      ],
+      "title": "SlotEnvelope",
+      "type": "object"
+    },
+    "Slots": {
+      "additionalProperties": false,
+      "properties": {
+        "course_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Course Id",
+          "type": "string"
+        },
+        "owner_id": {
+          "exclusiveMinimum": 0,
+          "title": "Owner Id",
+          "type": "integer"
+        },
+        "period": {
+          "$ref": "#/$defs/Period"
+        },
+        "slots": {
+          "items": {
+            "$ref": "#/$defs/Slot"
+          },
+          "title": "Slots",
+          "type": "array"
+        }
+      },
+      "required": [
+        "course_id",
+        "owner_id",
+        "period",
+        "slots"
+      ],
+      "title": "Slots",
+      "type": "object"
+    },
+    "StatisticsBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "completed": {
+          "minimum": 0,
+          "title": "Completed",
+          "type": "integer"
+        },
+        "total": {
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        },
+        "lesson_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Lesson Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "completed",
+        "total",
+        "lesson_ids"
+      ],
+      "title": "StatisticsBlock",
+      "type": "object"
+    },
+    "StatisticsLesson": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "completed": {
+          "title": "Completed",
+          "type": "boolean"
+        },
+        "completed_on": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Completed On"
+        },
+        "counts_toward_statistics": {
+          "title": "Counts Toward Statistics",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "completed",
+        "completed_on",
+        "counts_toward_statistics"
+      ],
+      "title": "StatisticsLesson",
+      "type": "object"
+    },
+    "StatisticsTrack": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "lessons_completed": {
+          "minimum": 0,
+          "title": "Lessons Completed",
+          "type": "integer"
+        },
+        "lessons_countable": {
+          "minimum": 0,
+          "title": "Lessons Countable",
+          "type": "integer"
+        },
+        "blocks": {
+          "items": {
+            "$ref": "#/$defs/StatisticsBlock"
+          },
+          "title": "Blocks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "lessons_completed",
+        "lessons_countable",
+        "blocks"
+      ],
+      "title": "StatisticsTrack",
+      "type": "object"
+    },
+    "StudentProfileDetails": {
+      "additionalProperties": false,
+      "properties": {
+        "course_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Course Id",
+          "type": "string"
+        },
+        "user_id": {
+          "exclusiveMinimum": 0,
+          "title": "User Id",
+          "type": "integer"
+        },
+        "account_ref": {
+          "format": "uuid",
+          "title": "Account Ref",
+          "type": "string"
+        },
+        "period": {
+          "$ref": "#/$defs/Period"
+        },
+        "subscription_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Subscription Until"
+        },
+        "subscription_plan": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Subscription Plan"
+        },
+        "bookings": {
+          "items": {
+            "$ref": "#/$defs/ProfileBooking"
+          },
+          "maxItems": 100,
+          "title": "Bookings",
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Next Cursor"
+        }
+      },
+      "required": [
+        "course_id",
+        "user_id",
+        "account_ref",
+        "period",
+        "subscription_until",
+        "subscription_plan",
+        "bookings",
+        "next_cursor"
+      ],
+      "title": "StudentProfileDetails",
+      "type": "object"
+    },
+    "StudentSlot": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "exclusiveMinimum": 0,
+          "title": "Id",
+          "type": "integer"
+        },
+        "course_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Course Id",
+          "type": "string"
+        },
+        "owner_id": {
+          "exclusiveMinimum": 0,
+          "title": "Owner Id",
+          "type": "integer"
+        },
+        "starts_at": {
+          "format": "date-time",
+          "title": "Starts At",
+          "type": "string"
+        },
+        "ends_at": {
+          "format": "date-time",
+          "title": "Ends At",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "free",
+            "mine"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "can_cancel": {
+          "title": "Can Cancel",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "course_id",
+        "owner_id",
+        "starts_at",
+        "ends_at",
+        "status",
+        "can_cancel"
+      ],
+      "title": "StudentSlot",
+      "type": "object"
+    },
+    "StudentSlots": {
+      "additionalProperties": false,
+      "properties": {
+        "course_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Course Id",
+          "type": "string"
+        },
+        "owner_id": {
+          "exclusiveMinimum": 0,
+          "title": "Owner Id",
+          "type": "integer"
+        },
+        "period": {
+          "$ref": "#/$defs/Period"
+        },
+        "slots": {
+          "items": {
+            "$ref": "#/$defs/StudentSlot"
+          },
+          "title": "Slots",
+          "type": "array"
+        },
+        "quota": {
+          "$ref": "#/$defs/Quota"
+        }
+      },
+      "required": [
+        "course_id",
+        "owner_id",
+        "period",
+        "slots",
+        "quota"
+      ],
+      "title": "StudentSlots",
+      "type": "object"
+    },
+    "StudentStatistics": {
+      "additionalProperties": false,
+      "properties": {
+        "course_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Course Id",
+          "type": "string"
+        },
+        "user_id": {
+          "exclusiveMinimum": 0,
+          "title": "User Id",
+          "type": "integer"
+        },
+        "account_ref": {
+          "format": "uuid",
+          "title": "Account Ref",
+          "type": "string"
+        },
+        "tracks": {
+          "items": {
+            "$ref": "#/$defs/StatisticsTrack"
+          },
+          "title": "Tracks",
+          "type": "array"
+        },
+        "courses": {
+          "additionalProperties": {
+            "items": {
+              "$ref": "#/$defs/StatisticsLesson"
+            },
+            "type": "array"
+          },
+          "title": "Courses",
+          "type": "object"
+        }
+      },
+      "required": [
+        "course_id",
+        "user_id",
+        "account_ref",
+        "tracks",
+        "courses"
+      ],
+      "title": "StudentStatistics",
+      "type": "object"
+    },
+    "Subscription": {
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "const": "platform",
+          "title": "Scope",
+          "type": "string"
+        },
+        "user_id": {
+          "exclusiveMinimum": 0,
+          "title": "User Id",
+          "type": "integer"
+        },
+        "subscription_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Subscription Until"
+        },
+        "subscription_plan": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Subscription Plan"
+        }
+      },
+      "required": [
+        "scope",
+        "user_id",
+        "subscription_until",
+        "subscription_plan"
+      ],
+      "title": "Subscription",
+      "type": "object"
+    },
+    "SubscriptionExtend": {
+      "additionalProperties": false,
+      "properties": {
+        "days": {
+          "maximum": 3650,
+          "minimum": 1,
+          "title": "Days",
+          "type": "integer"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "days",
+        "reason"
+      ],
+      "title": "SubscriptionExtend",
+      "type": "object"
+    },
+    "SubscriptionQuotaGrant": {
+      "additionalProperties": false,
+      "properties": {
+        "days": {
+          "maximum": 3650,
+          "minimum": 1,
+          "title": "Days",
+          "type": "integer"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "year": {
+          "maximum": 2100,
+          "minimum": 2000,
+          "title": "Year",
+          "type": "integer"
+        },
+        "month": {
+          "maximum": 12,
+          "minimum": 1,
+          "title": "Month",
+          "type": "integer"
+        },
+        "add": {
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Add",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "days",
+        "reason",
+        "year",
+        "month",
+        "add"
+      ],
+      "title": "SubscriptionQuotaGrant",
+      "type": "object"
+    },
+    "SubscriptionQuotaResult": {
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "const": "platform",
+          "title": "Scope",
+          "type": "string"
+        },
+        "user_id": {
+          "exclusiveMinimum": 0,
+          "title": "User Id",
+          "type": "integer"
+        },
+        "subscription_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Subscription Until"
+        },
+        "subscription_plan": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Subscription Plan"
+        },
+        "quota": {
+          "$ref": "#/$defs/Quota"
+        }
+      },
+      "required": [
+        "scope",
+        "user_id",
+        "subscription_until",
+        "subscription_plan",
+        "quota"
+      ],
+      "title": "SubscriptionQuotaResult",
+      "type": "object"
+    },
+    "SubscriptionReset": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "confirmed": {
+          "const": true,
+          "title": "Confirmed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "reason",
+        "confirmed"
+      ],
+      "title": "SubscriptionReset",
+      "type": "object"
+    },
+    "UnavailableCourseStudyTime": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "unavailable",
+          "title": "Status",
+          "type": "string"
+        },
+        "quality": {
+          "const": "unknown",
+          "title": "Quality",
+          "type": "string"
+        },
+        "daily": {
+          "items": {
+            "$ref": "#/$defs/CourseStudyTimeDay"
+          },
+          "maxItems": 0,
+          "title": "Daily",
+          "type": "array"
+        }
+      },
+      "required": [
+        "status",
+        "quality",
+        "daily"
+      ],
+      "title": "UnavailableCourseStudyTime",
+      "type": "object"
+    },
+    "UnavailableCourseTrend": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "unavailable",
+          "title": "Status",
+          "type": "string"
+        },
+        "daily": {
+          "items": {
+            "$ref": "#/$defs/CourseTrendDay"
+          },
+          "maxItems": 0,
+          "title": "Daily",
+          "type": "array"
+        },
+        "quality": {
+          "anyOf": [
+            {
+              "enum": [
+                "unknown",
+                "complete"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quality"
+        }
+      },
+      "required": [
+        "status",
+        "daily"
+      ],
+      "title": "UnavailableCourseTrend",
+      "type": "object"
+    },
+    "User": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "exclusiveMinimum": 0,
+          "title": "Id",
+          "type": "integer"
+        },
+        "account_ref": {
+          "format": "uuid",
+          "title": "Account Ref",
+          "type": "string"
+        },
+        "username": {
+          "title": "Username",
+          "type": "string"
+        },
+        "email": {
+          "title": "Email",
+          "type": "string"
+        },
+        "subscription_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Subscription Until"
+        },
+        "subscription_plan": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Subscription Plan"
+        },
+        "has_active_subscription": {
+          "title": "Has Active Subscription",
+          "type": "boolean"
+        },
+        "is_admin": {
+          "title": "Is Admin",
+          "type": "boolean"
+        },
+        "verified": {
+          "title": "Verified",
+          "type": "boolean"
+        },
+        "role": {
+          "enum": [
+            "user",
+            "leader",
+            "admin"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "capabilities": {
+          "items": {
+            "enum": [
+              "course.read",
+              "course.roster",
+              "course.search_grant",
+              "course.quota.grant",
+              "course.subscription.extend",
+              "course.calendar.manage",
+              "platform.read",
+              "platform.manage"
+            ],
+            "type": "string"
+          },
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "course_id": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Course Id"
+        },
+        "auth_revision": {
+          "minimum": 0,
+          "title": "Auth Revision",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "account_ref",
+        "username",
+        "email",
+        "subscription_until",
+        "subscription_plan",
+        "has_active_subscription",
+        "is_admin",
+        "verified",
+        "role",
+        "capabilities",
+        "course_id",
+        "auth_revision"
+      ],
+      "title": "User",
+      "type": "object"
+    }
+  },
+  "title": "Role admin v1 DTOs",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

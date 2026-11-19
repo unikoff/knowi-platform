@@ -76,7 +76,7 @@ async def request(app, method, path, *, cookie=None, payload=None):
 
 
 @pytest.fixture
-def repository_app():
+def repository_app(monkeypatch):
     app = FastAPI()
     attach_identity(app, {"admin": 1, "student": 2})
     app.include_router(user_router, prefix="/user")
@@ -100,9 +100,18 @@ def repository_app():
     opened = []
     uows = []
     commit_effect = []
+    from pymentor_core.modules.identity.api import router as identity_router
+    from pymentor_core.modules.identity.access import serialize_user
+    projection = Mock(side_effect=lambda db, user: {
+        **serialize_user(user), "role": "user", "capabilities": [],
+        "account_ref": "00000000-0000-4000-8000-000000000002",
+        "course_id": None, "auth_revision": 0,
+    })
+    monkeypatch.setattr(identity_router, "role_projection", projection)
 
     def override_db():
-        db = object()
+        db = Mock()
+        db.execute.return_value.scalar_one_or_none.return_value = False
         opened.append(db)
         yield db
 
@@ -119,7 +128,7 @@ def repository_app():
     app.state.composition_root = make_root(make_uow)
     return SimpleNamespace(
         app=app, student=student, repositories=repositories,
-        opened=opened, uows=uows, commit_effect=commit_effect,
+        opened=opened, uows=uows, commit_effect=commit_effect, projection=projection,
     )
 
 
@@ -131,6 +140,11 @@ def test_http_identity_and_admin_use_substituted_repositories(repository_app):
         assert (await request(h.app, "GET", "/user/me", cookie="invalid"))[0] == 401
         status, body = await request(h.app, "GET", "/user/me", cookie="student")
         assert status == 200 and body["user"]["id"] == 2
+        assert {key: body["user"][key] for key in ("role", "capabilities", "account_ref", "course_id", "auth_revision")} == {
+            "role": "user", "capabilities": [], "account_ref": "00000000-0000-4000-8000-000000000002",
+            "course_id": None, "auth_revision": 0,
+        }
+        h.projection.assert_called_once_with(h.opened[-1], h.student)
         h.repositories[models.User].find_one.reset_mock()
         status, _ = await request(
             h.app, "PATCH", "/admin/users/2/subscription", cookie="student", payload={"days": None}
@@ -147,6 +161,9 @@ def test_http_identity_and_admin_use_substituted_repositories(repository_app):
             h.app, "PATCH", "/admin/users/2/subscription", cookie="admin", payload={"days": None}
         )
         assert status == 200 and body["user"]["subscription_until"] is None
+        h.opened[-1].execute.assert_called_once()
+        assert "role_admin_cutover" in str(h.opened[-1].execute.call_args.args[0])
+        assert "FOR SHARE" in str(h.opened[-1].execute.call_args.args[0])
         h.uows[-1].commit.assert_called_once_with()
         h.uows[-1].refresh.assert_called_once_with(h.student)
         assert len(h.opened) == len(h.uows)

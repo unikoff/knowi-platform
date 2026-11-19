@@ -1,8 +1,9 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { ArrowLeft, ArrowRight, Moon, Sun } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { RichLesson } from "../ui";
-import { applyTheme, type ThemeId } from "@platform/shared/theme";
+import { ThemeProvider } from "@platform/shared/theme";
+import { ThemeToggle } from "@platform/shared/ui/theme-toggle/ThemeToggle";
 import type { CatalogExample } from "./catalog";
 import { catalogGroups } from "./examples";
 import "@platform/app/styles/tokens.css";
@@ -91,26 +92,18 @@ function ComponentPreview({ item }: { item: CatalogExample }) {
 
 function Demo() {
   const [category, setCategory] = useState("all");
-  const [theme, setTheme] = useState<ThemeId>("dark");
   useEffect(() => { window.scrollTo(0, 0); }, [category]);
-  useEffect(() => { applyTheme(theme); }, [theme]);
   const exampleCount = catalogGroups.reduce((sum, group) => sum + group.examples.length, 0);
   const selectedCategory = catalogGroups.some(group => group.id === category) ? category : "all";
   const visibleGroups = catalogGroups.filter(group => selectedCategory === "all" || group.id === selectedCategory);
 
-  function toggleTheme() {
-    setTheme(current => current === "dark" ? "light" : "dark");
-  }
   return <div className="demo-page">
     <aside className="demo-sidebar">
       <nav aria-label="Разделы каталога">
         <button type="button" aria-pressed={selectedCategory === "all"} onClick={() => setCategory("all")}>Весь каталог<small>{exampleCount}</small></button>
         {catalogGroups.map(group => <button type="button" key={group.id} aria-pressed={selectedCategory === group.id} onClick={() => setCategory(group.id)}>{group.title}<small>{group.examples.length}</small></button>)}
       </nav>
-      <button className="demo-theme" type="button" onClick={toggleTheme} aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}>
-        {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
-        {theme === "dark" ? "Светлая тема" : "Тёмная тема"}
-      </button>
+      <ThemeToggle />
     </aside>
     <main className="demo-catalog" aria-label="Каталог компонентов">
       <h1 className="demo-sr-only">Каталог визуала и интерактива</h1>
@@ -127,4 +120,4 @@ declare global {
 }
 const root = window.__lessonDemoRoot ?? createRoot(document.getElementById("root")!);
 window.__lessonDemoRoot = root;
-root.render(<Demo />);
+root.render(<ThemeProvider><Demo /></ThemeProvider>);

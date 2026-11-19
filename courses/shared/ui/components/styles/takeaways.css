@@ -1,11 +1,9 @@
 /* ---- Универсальный интерактивный чек-лист ---- */
 .takeaways {
-  padding: var(--space-5) var(--space-5);
-  border: 1px solid color-mix(in srgb, var(--border-tint-accent) 26%, var(--line));
+  padding: var(--space-5);
+  border: 1px solid var(--line-soft);
   border-radius: var(--radius-md);
-  background:
-    radial-gradient(circle at 92% 10%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 48%),
-    var(--surface);
+  background: var(--surface);
 }
 
 .takeaways-head {
@@ -33,9 +31,24 @@
   font-variant-numeric: tabular-nums;
 }
 
+.takeaways-meter {
+  height: 4px;
+  margin: 0 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--line);
+}
+
+.takeaways-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width var(--motion-fast);
+}
+
 .takeaways ul {
   display: grid;
-  gap: 2px;
+  gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -53,13 +66,19 @@
   gap: 12px;
   min-height: 44px;
   box-sizing: border-box;
-  padding: 10px 8px;
+  padding: 11px 12px;
+  border: 1px solid var(--line-soft);
   border-radius: 10px;
   cursor: pointer;
 }
 
-.takeaways-option:hover {
-  background: color-mix(in srgb, var(--accent) 5%, transparent);
+@media (hover: hover) and (pointer: fine) {
+  .takeaways-option:hover { border-color: var(--border-tint-accent); }
+}
+
+.takeaways-option:has(input:checked) {
+  border-color: var(--border-tint-accent);
+  background: var(--accent-soft);
 }
 
 .takeaways-option input {
@@ -103,6 +122,22 @@
   min-width: 0;
   color: var(--text);
   overflow-wrap: anywhere;
+}
+
+.takeaways-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  color: var(--muted);
+  font-size: .875rem;
+}
+
+.takeaways-footer button {
+  min-height: 44px;
+  font-size: inherit;
 }
 
 @media (max-width: 640px) {

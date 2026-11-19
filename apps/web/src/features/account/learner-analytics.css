@@ -1,0 +1,9 @@
+.learner-analytics__metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 16px 0; }
+.learner-analytics__metrics div { display: grid; gap: 4px; }
+.learner-analytics__metrics strong { font-size: 1.25rem; }
+.learner-analytics__details { margin-top: 24px; }
+.learner-analytics__details ul { list-style: none; padding: 0; }
+.learner-analytics__details li { display: grid; gap: 4px; padding: 10px 0; }
+.learner-analytics__details li.learner-analytics__lesson { padding-inline-start: 16px; }
+.learner-analytics__details li button { text-align: left; justify-self: start; }
+.learner-analytics__pages { display: flex; gap: 8px; }

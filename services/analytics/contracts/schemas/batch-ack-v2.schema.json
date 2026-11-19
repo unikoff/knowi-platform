@@ -1,0 +1,78 @@
+{
+  "$defs": {
+    "ItemAck": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "committed",
+            "same_payload",
+            "payload_conflict",
+            "invalid",
+            "too_large",
+            "unknown_catalog",
+            "unsupported_version",
+            "future_clock",
+            "too_late"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "event_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Event Id"
+        },
+        "index": {
+          "exclusiveMaximum": 100,
+          "minimum": 0,
+          "title": "Index",
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "accepted",
+            "duplicate",
+            "conflict",
+            "rejected",
+            "pending"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "index",
+        "event_id",
+        "status",
+        "code"
+      ],
+      "title": "ItemAck",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "items": {
+      "items": {
+        "$ref": "#/$defs/ItemAck"
+      },
+      "maxItems": 100,
+      "minItems": 1,
+      "title": "Items",
+      "type": "array"
+    }
+  },
+  "required": [
+    "items"
+  ],
+  "title": "BatchAck",
+  "type": "object"
+}

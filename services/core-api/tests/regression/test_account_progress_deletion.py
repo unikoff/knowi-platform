@@ -1,5 +1,4 @@
 """Managed PostgreSQL checks for progress retention and account deletion."""
-from types import SimpleNamespace
 from threading import Event
 from threading import Thread
 from datetime import date
@@ -12,6 +11,7 @@ from pymentor_core.adapters.sql import models
 from test_c2_1_4_auth_legacy import runtime_db
 from pymentor_core.adapters.sql import administration as storage
 from pymentor_core.modules.administration.api import service
+from pymentor_core.modules.identity.principal import Principal
 
 
 @pytest.fixture
@@ -35,17 +35,27 @@ def add_user(db, username, *, seed_progress=True):
     return user.id
 
 
+def add_admin(db):
+    admin_id = add_user(db, 'synthetic-admin', seed_progress=False)
+    user = db.get(models.User, admin_id)
+    user.is_admin = True
+    db.commit()
+    reference = db.scalar(text('SELECT lifecycle_id FROM account_lifecycles WHERE user_id=:uid'), {'uid': admin_id})
+    assert reference
+    return Principal.from_user(user, account_ref=reference)
+
+
 def counts(db, user_id):
     return tuple(db.query(model).filter_by(user_id=user_id).count()
                  for model in (models.UserActivityDay, models.UserLessonProgress, models.UserTaskProgress))
 
 
-def test_admin_deletion_removes_only_target_progress(database, monkeypatch):
+def test_admin_deletion_removes_only_target_progress(database):
     _, factory = database
     with factory() as db:
         target, other = add_user(db, 'synthetic-target'), add_user(db, 'synthetic-other')
-        monkeypatch.setattr(service, 'require_admin', lambda *_: SimpleNamespace(id=99999))
-        assert service.delete_user(target, None, db) == {'deleted': target}
+        actor = add_admin(db)
+        assert service.delete_user(target, None, db, actor=actor) == {'deleted': target}
         assert counts(db, target) == (0, 0, 0)
         assert counts(db, other) == (1, 1, 1)
 

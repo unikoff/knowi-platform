@@ -1,5 +1,5 @@
 /* Embedded examples belong to their parent visual and do not repeat its heading. */
-:is(.quiz-card, .recall-card, .predict-card, .type-card, .sequence-card, .fill-card, .branch-card, .tracer) .code-block > :is(figcaption, .code-block-caption) { display: none; }
+:is(.quiz-card, .recall-card, .type-card, .sequence-card, .fill-card, .branch-card, .tracer) .code-block > :is(figcaption, .code-block-caption) { display: none; }
 
 /* Diagrams retain their own captions and hierarchy. */
 .lesson-diagram .visual-heading { display: none; }

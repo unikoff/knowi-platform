@@ -1,17 +1,25 @@
+from datetime import date
+
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import Query
 from fastapi import Request
+from fastapi import Response
+from fastapi import Security
+from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import Session
 from pymentor_core.app.context import RequestContext
 from pymentor_core.app.dependencies import get_db
 from pymentor_core.app.dependencies import get_request_context
 from pymentor_core.shared.api_contracts import api_contract_responses
 from pymentor_core.shared.api_contracts import legacy_error_responses
+from pymentor_core.modules.identity.api.sessions import async_current_principal
+from pymentor_core.modules.identity.api.sessions import session_cookie_scheme
 from pymentor_core.modules.learning.api import service
 from pymentor_core.modules.learning.api.schemas import CodeRunResponse
 from pymentor_core.modules.learning.api.schemas import CodeSubmitRequest
 from pymentor_core.modules.learning.api.schemas import CodeSubmitResponse
+from pymentor_core.modules.learning.api.schemas import CompletedLessonsCountResponse
 from pymentor_core.modules.learning.api.schemas import InterpreterRunRequest
 from pymentor_core.modules.learning.api.schemas import LearningCatalogResponse
 from pymentor_core.modules.learning.api.schemas import LessonCompletionResponse
@@ -64,6 +72,47 @@ async def list_lessons(request: Request, track: str | None = Query(default=None,
 async def learning_catalog(request: Request):
     "Complete navigation in one request, without lesson bodies or task text."
     return await _learning_sql(request, lambda db, principal, content: service.learning_catalog(request=request, db=db, principal=principal, content=content), kind="catalog")
+
+
+@learning_router.get(
+    "/progress/completed-count",
+    response_model=CompletedLessonsCountResponse,
+    responses=legacy_error_responses(401, 403),
+    dependencies=[Security(session_cookie_scheme)],
+)
+async def completed_lesson_count(
+    request: Request,
+    response: Response,
+    course_id: str = Query(min_length=1, max_length=80),
+    from_date: date = Query(alias="from"),
+    to_date: date = Query(alias="to"),
+):
+    """Count dated completions in the current course catalog over inclusive Moscow dates."""
+    from pymentor_core.app.async_request import run_request_sql
+    from starlette.concurrency import run_in_threadpool
+
+    params = request.query_params
+    expected = {"course_id": course_id, "from": from_date.isoformat(), "to": to_date.isoformat()}
+    if (
+        set(params) != set(expected)
+        or any(params.getlist(key) != [value] for key, value in expected.items())
+        or not 2000 <= from_date.year <= to_date.year <= 2100
+        or not 0 <= (to_date - from_date).days <= 30
+    ):
+        raise RequestValidationError([
+            {"loc": ("query",), "msg": "Invalid progress period", "type": "value_error"}
+        ])
+    principal = await async_current_principal(request)
+    content = await run_in_threadpool(service.prepare_request_content, "completion-count")
+    count = await run_request_sql(
+        request, lambda db: service.count_completed_lessons(
+            db, principal, from_date, to_date, content=content
+        )
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return CompletedLessonsCountResponse(
+        course_id=course_id, from_date=from_date, to_date=to_date, completed_lessons=count
+    )
 
 
 @learning_router.get(

@@ -1,0 +1,8 @@
+# Optional settings exercised by the synthetic 50-learner benchmark.
+activityProjection:
+  processorPollMs: 50
+roles:
+  processor:
+    replicas: 2
+  query:
+    poolSize: 4

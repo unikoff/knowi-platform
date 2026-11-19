@@ -1,0 +1,35 @@
+.top-courses {
+  min-width: 0;
+  margin-bottom: 40px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-2);
+}
+
+.top-courses__header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.top-courses__eyebrow { display: block; margin-bottom: 6px; color: var(--accent); font-size: 11px; font-weight: 700; }
+.top-courses__title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.top-courses__title-row h2 { margin: 0; color: var(--text); font-size: 22px; line-height: 1.25; }
+.top-courses__badge { padding: 4px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 10px; }
+.top-courses__controls { display: flex; flex: 0 0 auto; gap: 8px; }
+.top-courses__controls button { display: grid; width: 44px; height: 44px; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text); font-size: 20px; cursor: pointer; }
+.top-courses__controls button:not([aria-disabled="true"]):hover { border-color: var(--accent); }
+.top-courses__controls button[aria-disabled="true"] { color: var(--muted); opacity: .5; cursor: default; }
+.top-courses__controls button:focus-visible, .top-courses__track:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.top-courses__track { --top-courses-columns: 1; display: flex; min-width: 0; gap: 16px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0; padding: 4px 0; list-style: none; }
+.top-courses__track::-webkit-scrollbar { display: none; }
+.top-courses__track--moving { scroll-snap-type: none; }
+.top-courses__track > li { min-width: 0; flex: 0 0 calc((100% - (var(--top-courses-columns) - 1) * 16px) / var(--top-courses-columns)); scroll-snap-align: start; }
+.top-courses__progress { display: flex; justify-content: center; gap: 6px; margin-top: 16px; }
+.top-courses__progress span { width: 6px; height: 6px; border-radius: 999px; background: var(--line-strong); }
+.top-courses__progress span.is-active { width: 18px; background: var(--accent); }
+
+@media (min-width: 600px) { .top-courses__track { --top-courses-columns: 2; } }
+@media (min-width: 900px) { .top-courses__track { --top-courses-columns: 3; } }
+
+@media (max-width: 480px) {
+  .top-courses { padding: 16px; }
+  .top-courses__header { align-items: start; gap: 8px; }
+  .top-courses__title-row h2 { font-size: 19px; }
+}

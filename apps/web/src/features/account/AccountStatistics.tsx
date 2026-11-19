@@ -1,13 +1,14 @@
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { Activity, BarChart3, BookCheck, CalendarDays, Check, ChevronDown, Flame, TrendingUp } from "lucide-react";
-import type { QuotaStatus } from "../../shared/api/contracts/account";
+import { useAccountStatistics } from "./useAccountStatistics";
 
-type CourseLessonProgress = { id: string; title: string; completed: boolean };
+type CourseLessonProgress = { id: string; title: string; completed: boolean; completedOn?: string | null };
 type CourseBlockProgress = {
   id: string;
   title: string;
   completed: number;
   total: number;
+  lesson_ids?: string[];
   lessons: CourseLessonProgress[];
 };
 
@@ -18,7 +19,6 @@ export interface AccountStatisticsData {
   overallProgress: number;
   activeDays: number | null;
   currentStreak: number | null;
-  weeklyActivity: { activity_date: string; active: boolean }[] | null;
   weeklyLessonsCompleted: { activity_date: string; lessons_completed: number }[] | null;
   courses: { id: string; title: string; completed: number; total: number; blocks: CourseBlockProgress[] }[];
 }
@@ -33,12 +33,12 @@ function formatDayCount(value: number): string {
 }
 
 function formatWeekday(value: string): { short: string; day: string; full: string } {
-  const date = new Date(`${value}T12:00:00`);
+  const date = new Date(`${value}T12:00:00Z`);
   if (Number.isNaN(date.getTime())) return { short: "—", day: "—", full: value };
   return {
-    short: new Intl.DateTimeFormat("ru-RU", { weekday: "short" }).format(date).replace(".", ""),
-    day: String(date.getDate()),
-    full: new Intl.DateTimeFormat("ru-RU", { weekday: "long", day: "numeric", month: "long" }).format(date),
+    short: new Intl.DateTimeFormat("ru-RU", { weekday: "short", timeZone: "Europe/Moscow" }).format(date).replace(".", ""),
+    day: new Intl.DateTimeFormat("ru-RU", { day: "numeric", timeZone: "Europe/Moscow" }).format(date),
+    full: new Intl.DateTimeFormat("ru-RU", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Moscow" }).format(date),
   };
 }
 
@@ -201,113 +201,48 @@ export function WeeklyTrendChart({ points, title, unit, demo = false, valueDescr
   );
 }
 
-export function AccountStatistics({ data, bookingQuota }: {
+export function AccountStatistics({ data, courseId, userId, analyticsEnabled = false }: {
   data: AccountStatisticsData;
-  bookingQuota: QuotaStatus | null;
+  courseId: string;
+  userId: number;
+  analyticsEnabled?: boolean;
 }) {
+  const [days, setDays] = useState<7 | 30>(7);
+  const { status, report, retry } = useAccountStatistics(userId, courseId, days);
   const statsReady = data.tracksLoaded;
-  const activeWeekCount = data.weeklyActivity?.filter((day) => day.active).length ?? null;
-  const lessonPoints = data.weeklyLessonsCompleted?.map((day) => ({
-    activity_date: day.activity_date,
-    value: day.lessons_completed,
-  })) ?? null;
-  const demoMinutes = [24, 38, 16, 52, 43, 18, 31];
-  const timePoints = data.weeklyActivity?.map((day, index) => ({ activity_date: day.activity_date, value: demoMinutes[index] })) ?? null;
-  const metrics = [
-    {
-      label: "Серия занятий",
-      value: data.currentStreak === null ? "—" : formatDayCount(data.currentStreak),
-      note: "подряд с активностью",
-      icon: Flame,
-      tone: "mint",
-    },
-    {
-      label: "Занятий осталось",
-      value: bookingQuota ? `${bookingQuota.remaining} / ${bookingQuota.granted}` : "—",
-      note: "лимит на этот месяц",
-      icon: CalendarDays,
-      tone: "blue",
-    },
-    {
-      label: "Прогресс курса",
-      value: statsReady ? `${data.overallProgress}%` : "—",
-      note: statsReady ? `${data.completedLessons} из ${data.totalLessons} уроков` : "загружаем прогресс",
-      icon: TrendingUp,
-      tone: "amber",
-      progress: statsReady ? data.overallProgress : null,
-    },
-    {
-      label: "Дней на платформе",
-      value: data.activeDays === null ? "—" : data.activeDays.toLocaleString("ru-RU"),
-      note: "за всё время",
-      icon: Activity,
-      tone: "mint",
-    },
-    {
-      label: "Уроков завершено",
-      value: statsReady ? data.completedLessons.toLocaleString("ru-RU") : "—",
-      note: statsReady ? "по всем направлениям" : "загружаем прогресс",
-      icon: BookCheck,
-      tone: "blue",
-    },
-  ];
-
+  const visibleCourses = data.courses.filter((course) => course.id === courseId);
+  const summary = report?.summary;
+  const lessonPoints = report?.days.map((day) => ({ activity_date: day.date, value: day.completed_lessons })) ?? null;
   return (
-    <div className="account-section-stack">
-      <div className="account-metrics">
-        {metrics.map(({ label, value, note, icon: Icon, tone, progress }) => (
-          <section className={`account-surface account-metric account-metric--${tone}`} key={label}>
-            <span className="account-metric__label"><Icon size={17} aria-hidden="true" />{label}</span>
-            <strong>{value}</strong>
-            {progress !== undefined && progress !== null && (
-              <span className="account-progress-track" role="progressbar" aria-label="Прогресс по всем направлениям"
-                aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
-                <span style={{ width: `${progress}%` }} />
-              </span>
-            )}
-            <small>{note}</small>
-          </section>
-        ))}
+    <div className="account-section-stack account-statistics">
+      <div className="account-statistics__period" role="group" aria-label="Период статистики">
+        {[7, 30].map((period) => <button type="button" key={period} aria-pressed={days === period} onClick={() => setDays(period as 7 | 30)}>{period} дней</button>)}
       </div>
-
-      <div className="account-detail-grid">
+      {status === "loading" && <p role="status">Загружаем статистику…</p>}
+      {status === "error" && <div role="alert" className="account-surface account-detail-card"><p>Не удалось загрузить статистику. Попробуйте ещё раз.</p><button type="button" onClick={retry}>Повторить</button></div>}
+      {report && <>
+        {report.coverage.visits === "partial" && <p className="account-statistics__note">История посещений доступна не полностью. Общая серия и число дней могут быть недоступны.</p>}
+        <div className="account-metrics">
+          <section className="account-surface account-metric account-metric--mint"><span className="account-metric__label"><Flame size={17} aria-hidden="true" />Серия посещений</span><strong>{summary?.current_streak == null ? "—" : formatDayCount(summary.current_streak)}</strong><small>дней подряд на платформе</small></section>
+          <section className="account-surface account-metric account-metric--mint"><span className="account-metric__label"><Activity size={17} aria-hidden="true" />Дней на платформе</span><strong>{summary?.active_days_total == null ? "—" : summary.active_days_total.toLocaleString("ru-RU")}</strong><small>за всё время</small></section>
+          <section className="account-surface account-metric account-metric--blue"><span className="account-metric__label"><BookCheck size={17} aria-hidden="true" />Уроков завершено</span><strong>{summary?.completed_lessons_period}</strong><small>в текущем курсе за {report.period.days} дней</small></section>
+        </div>
         <section className="account-surface account-detail-card account-weekly-activity">
-          <header>
-            <div><h3>Активность по дням</h3><p>Последние 7 дней, включая сегодня</p></div>
-              <span>{activeWeekCount === null ? "—" : `${activeWeekCount} из 7 дней`}</span>
-          </header>
-          {data.weeklyActivity ? (
-            <div className="account-week-chart" role="list" aria-label="Активность за последние 7 дней">
-              {data.weeklyActivity.map((day) => {
-                const weekday = formatWeekday(day.activity_date);
-                return (
-                  <div className={`account-week-chart__day ${day.active ? "is-active" : ""}`} role="listitem"
-                    aria-label={`${weekday.full}: ${day.active ? "была активность" : "без активности"}`} key={day.activity_date}>
-                    <span>{weekday.short}</span>
-                    <strong>{weekday.day}</strong>
-                    <i aria-hidden="true">{day.active ? <Check size={12} strokeWidth={2.5} /> : null}</i>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="account-empty-state account-empty-state--compact">
-              <span className="account-empty-state__icon"><BarChart3 size={24} aria-hidden="true" /></span>
-              <strong>Активность пока недоступна</strong>
-              <p>Когда данные загрузятся, здесь появятся учебные дни за последние 7 дней.</p>
-            </div>
-          )}
-          <div className="account-weekly-trends">
-            <WeeklyTrendChart points={lessonPoints} title="Завершено уроков" unit="уроков" />
-            <WeeklyTrendChart points={timePoints} title="Время на платформе" unit="мин" demo />
+          <header><div><h3>Посещения платформы</h3><p>За последние {report.period.days} дней, время Москвы</p></div><span>{summary?.active_days_period} из {report.period.days} дней</span></header>
+          {summary?.active_days_period === 0 && <p className="account-statistics__note">За этот период посещений пока нет.</p>}
+          <div className="account-statistics__days" role="list" aria-label="Посещения платформы по дням">
+            {report.days.map((day) => { const label = formatWeekday(day.date); return <div className={`account-week-chart__day ${day.visited ? "is-active" : ""}`} role="listitem" aria-label={`${label.full}: ${day.visited ? "было посещение" : "без посещения"}`} key={day.date}><span>{label.short}</span><strong>{label.day}</strong><i aria-hidden="true">{day.visited ? <Check size={12} /> : null}</i></div>; })}
           </div>
+          <div className="account-statistics__chart"><WeeklyTrendChart points={lessonPoints} title="Завершено уроков в текущем курсе" unit="уроков" /></div>
+          {!analyticsEnabled && <p className="account-statistics__note">Время занятий пока не собирается.</p>}
         </section>
-
+      </>}
+      <div className="account-detail-grid">
         <section className="account-surface account-detail-card account-course-progress-card">
-          <header><div><h3>Прогресс по направлениям</h3><p>Выполненные уроки в каждом курсе</p></div></header>
-          {data.courses.length ? (
+          <header><div><h3>Прогресс текущего курса</h3><p>Выполненные уроки и блоки</p></div></header>
+          {visibleCourses.length ? (
             <div className="account-course-list">
-              {data.courses.map((course) => {
+              {visibleCourses.map((course) => {
                 const percent = course.total ? Math.round(course.completed / course.total * 100) : 0;
                 return (
                   <details className="account-course-accordion" key={course.id}>

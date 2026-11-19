@@ -6,7 +6,7 @@ path or module name is imported, and no shared content.* modules are switched.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import lru_cache
 import hashlib
 import importlib
@@ -16,7 +16,7 @@ import os
 from pathlib import Path
 import sys
 from threading import RLock
-from types import ModuleType
+from types import MappingProxyType, ModuleType
 
 from pymentor_core.app.paths import COURSES_ROOT
 from pymentor_core.modules.practice.public_specs import public_task
@@ -204,6 +204,8 @@ class CourseRuntime:
 
     def __init__(self, courses_root: str | Path):
         self.registry = load_registry(courses_root)
+        self.leader_user_ids = MappingProxyType({entry.course_id: load_course(self.registry, entry.course_id).leader_user_id
+                                                 for entry in self.registry.entries.values() if entry.enabled})
         self._contexts: dict[str, CourseContext] = {}
         self._snapshots: dict[str, CourseSnapshot] = {}
 
@@ -271,6 +273,10 @@ class CourseRuntime:
             manifest = load_course(self.registry, course_id)
             if manifest.content_version != context.version:
                 raise CoursePackageError("manifest version changed during snapshot selection")
+            leader = self.leader_user_ids[course_id]
+            if manifest.leader_user_id != leader:
+                manifest = replace(manifest, leader_user_id=leader,
+                                   metadata=MappingProxyType({**manifest.metadata, 'leader_user_id': leader}))
             try:
                 catalog = importlib.import_module(context.namespace + ".catalog")
                 _validate_catalog(catalog, manifest)

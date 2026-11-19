@@ -1,6 +1,6 @@
-import React, { useId, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import { plainOptionText } from "./option-text";
-import { ArrowRight, Check, Minus, Plus, X } from "lucide-react";
+import { ArrowRight, Check, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { VisualHeading } from "@platform/shared/ui/VisualHeading";
 
 function shuffleOnce<T>(items: T[]): T[] {
@@ -39,7 +39,17 @@ function MatchPairsTask({
   const [active, setActive] = useState<{ side: "left" | "right"; id: number } | null>(null);
   const [matched, setMatched] = useState<Set<number>>(() => new Set());
   const [miss, setMiss] = useState<{ side: "left" | "right"; id: number } | null>(null);
+  const leftRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const resetRef = useRef<HTMLButtonElement>(null);
+  const focusAfterMatch = useRef(false);
   const allDone = pairs.length > 0 && matched.size === pairs.length;
+
+  useEffect(() => {
+    if (!focusAfterMatch.current) return;
+    if (allDone) resetRef.current?.focus();
+    else leftRefs.current.find((button, index) => button && !matched.has(index))?.focus();
+    focusAfterMatch.current = false;
+  }, [matched, allDone]);
 
   function pick(side: "left" | "right", itemId: number) {
     if (matched.has(itemId)) return;
@@ -47,6 +57,7 @@ function MatchPairsTask({
       setActive(active?.id === itemId && active.side === side ? null : { side, id: itemId });
       setMiss(null);
     } else if (active.id === itemId) {
+      focusAfterMatch.current = true;
       setMatched(current => new Set(current).add(itemId));
       setActive(null);
       setMiss(null);
@@ -62,6 +73,7 @@ function MatchPairsTask({
     return (
       <button
         key={itemId}
+        ref={side === "left" ? element => { leftRefs.current[itemId] = element; } : undefined}
         type="button"
         className={`match-item answer-option${isMatched ? " is-matched" : ""}${isActive ? " is-active" : ""}${isWrong ? " is-wrong" : ""}`}
         aria-pressed={isActive || isMatched}
@@ -81,7 +93,7 @@ function MatchPairsTask({
       <div className="match-header">
         <VisualHeading kind="match" />
         <span className="match-progress" role="status" aria-label={`${matched.size} из ${pairs.length} пар соединено`}>
-          <span key={matched.size} className="match-count">{matched.size}</span> / {pairs.length}
+          {matched.size} / {pairs.length}
         </span>
       </div>
       <h3 className="match-prompt" id={`${id}-prompt`}>{prompt}</h3>
@@ -95,13 +107,12 @@ function MatchPairsTask({
           {rightOrder.map(itemId => item("right", itemId, pairs[itemId].right))}
         </div>
       </div>
-      <div className={`choice-feedback${miss || allDone ? " is-visible" : ""}`} aria-hidden={!miss && !allDone}>
-        <div className="choice-feedback-inner">
-          <p className={`match-feedback${miss ? " is-wrong" : " is-correct"}`} role="status">
-            {miss ? <span>Не совпало. Попробуйте другую пару.</span> : allDone ? (explanation ?? "Все пары соединены верно!") : null}
-          </p>
-        </div>
+      <div className="choice-feedback" role="status">
+        {(miss || allDone) && <p className={`match-feedback${miss ? " is-wrong" : " is-correct"}`}>
+          {miss ? "Не совпало. Попробуйте другую пару." : (explanation ?? "Все пары соединены верно!")}
+        </p>}
       </div>
+      {allDone && <button ref={resetRef} type="button" className="interactive-secondary match-reset" onClick={() => { focusAfterMatch.current = true; setMatched(new Set()); setActive(null); setMiss(null); }}><RotateCcw size={15} aria-hidden="true" /> Попробовать ещё раз</button>}
     </section>
   );
 }
@@ -136,27 +147,27 @@ export function SliceExplorer({ text, initialStart = 0, initialEnd }: { text: st
       <div className="slice-controls">
         <div className="slice-stepper">
           <span>start</span>
-          <button type="button" onClick={() => setStart(clampStart(start - 1))} aria-label="start минус">
+          <button type="button" onClick={() => setStart(value => clampStart(value - 1))} disabled={start <= 0} aria-label="start минус">
             <Minus size={14} />
           </button>
           <strong>{start}</strong>
-          <button type="button" onClick={() => setStart(clampStart(start + 1))} aria-label="start плюс">
+          <button type="button" onClick={() => setStart(value => clampStart(value + 1))} disabled={start >= chars.length} aria-label="start плюс">
             <Plus size={14} />
           </button>
         </div>
         <div className="slice-stepper">
           <span>end</span>
-          <button type="button" onClick={() => setEnd(clampEnd(end - 1))} aria-label="end минус">
+          <button type="button" onClick={() => setEnd(value => clampEnd(value - 1))} disabled={end <= 0} aria-label="end минус">
             <Minus size={14} />
           </button>
           <strong>{end}</strong>
-          <button type="button" onClick={() => setEnd(clampEnd(end + 1))} aria-label="end плюс">
+          <button type="button" onClick={() => setEnd(value => clampEnd(value + 1))} disabled={end >= chars.length} aria-label="end плюс">
             <Plus size={14} />
           </button>
         </div>
       </div>
 
-      <div className="slice-result">
+      <div className="slice-result" aria-live="polite" aria-atomic="true">
         <code>
           text[{start}:{end}]
         </code>

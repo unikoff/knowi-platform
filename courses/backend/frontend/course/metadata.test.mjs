@@ -5,14 +5,15 @@ import { getLessonMetadata, getLessonTags } from "./metadata.ts";
 
 test("a lesson path supplies its block and fractional number without authored labels", () => {
   assert.deepEqual(getLessonMetadata("chapter_05/block_17/Lesson81_1"), {
-    block: "Блок 17 Миграции базы", blockNumber: 17, lessonNumber: "81.1", tags: ["SQLite", "миграции"],
+    block: "Блок 17 Сохраняем данные и готовим учётные записи", blockNumber: 17, lessonNumber: "81.1",
+    tags: ["SQLite", "миграции", "пользователи"],
   });
 });
 
 test("catalog block titles take precedence over preview defaults and normalize separators", () => {
   assert.equal(getLessonMetadata("chapter_01/block_01/Lesson01", "Блок 1. Первые шаги в Python").block,
     "Блок 1 Первые шаги в Python");
-  assert.equal(getLessonMetadata("chapter_05/block_17/Lesson81_1", "SQLite и Planner").block,
+  assert.equal(getLessonMetadata("chapter_05/block_17/Lesson81_1", "Блок 17 — Миграции базы (6 занятий)").block,
     "Блок 17 Миграции базы");
 });
 

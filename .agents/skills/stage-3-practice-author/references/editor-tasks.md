@@ -1,6 +1,6 @@
 # Редактор: script и solve
 
-Форма сверена с [runner](../../../../services/core-api/pymentor_core/adapters/legacy_runner/python.py) и существующими [script-карточками](../../../../services/core-api/content/materials/chapter_01/block_01/code_tasks.py). Это авторские образцы, не новые записи каталога. Не меняй режим, ключ или приватные проверки существующей задачи без основания. Перед изменением runner перечитай контракт.
+Форма сверена с [runner](../../../../services/core-api/pymentor_core/adapters/legacy_runner/python.py) и существующими [script-карточками](../../../../courses/backend/backend/practice/chapter_01/block_01/code_tasks.py). Это авторские образцы, не новые записи каталога. Не меняй режим, ключ или приватные проверки существующей задачи без основания. Перед изменением runner перечитай контракт.
 
 В TaskBrief обязательные действия и критерии должны быть в видимом contract.todo/todo_items; contract.check и requirements.items отдельно не отображаются. Не добавляй выдуманные поля answer/result для редактора. reference_code и tests остаются авторскими/приватными. Понятный пошаговый разбор ручной практики оформляется по manual-card.md; его поля не переносятся автоматически сюда.
 

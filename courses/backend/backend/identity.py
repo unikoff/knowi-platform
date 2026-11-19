@@ -347,6 +347,9 @@ LEGACY_COURSE_LAYOUTS = {
             "block_19": "Блок 19 - Серверные сессии",
             "block_20": "Блок 20 - Владение задачами",
         },
+        "module_labels": {
+            "block_17": "Блок 17 - Миграции базы",
+        },
     },
     "chapter_06": {
         "track_id": "SQL, PostgreSQL и выбор хранилища - PostgreSQL StudyHub",
@@ -457,6 +460,17 @@ LESSON_SOURCE_ALIASES = {
     f"chapter_03/{PLANNER_API_BLOCK_FOLDERS[module]}/{filename}": f"{PLANNER_API_TRACK_NAME}/{PLANNER_API_IDENTITY_FILENAMES.get(filename, filename)}"
     for filename, module in PLANNER_API_MODULE_LABELS.items()
 }
+
+
+# Stage 1 v3: current block 17 filenames retain their original canonical IDs.
+LESSON_SOURCE_ALIASES.update({
+    "chapter_05/block_17/81 - Создаём согласованный резерв Planner.md": "Аутентификация, сессии, токены и завершение FastAPI - Personal StudyHub API/Блок 17 - Миграции базы/82 - Получаем согласованный снимок.md",
+    "chapter_05/block_17/81.1 - Восстанавливаем рабочую копию из резерва.md": "Аутентификация, сессии, токены и завершение FastAPI - Personal StudyHub API/Блок 17 - Миграции базы/82.1 - Проверяем восстановление.md",
+    "chapter_05/block_17/82 - Создаём исходную историю на новой базе.md": "Аутентификация, сессии, токены и завершение FastAPI - Personal StudyHub API/Блок 17 - Миграции базы/83.1 - Создаём baseline для новой базы.md",
+    "chapter_05/block_17/83 - Подключаем заполненную копию к истории.md": "Аутентификация, сессии, токены и завершение FastAPI - Personal StudyHub API/Блок 17 - Миграции базы/84 - Проверяем baseline заполненной базы.md",
+    "chapter_05/block_17/84 - Добавляем пользователя в схему Planner.md": "Аутентификация, сессии, токены и завершение FastAPI - Personal StudyHub API/Блок 18 - Учётные записи/87 - Модель пользователя и миграция.md",
+    "chapter_05/block_17/85 - Записываем уникальные учётные записи.md": "Аутентификация, сессии, токены и завершение FastAPI - Personal StudyHub API/Блок 18 - Учётные записи/87.1 - Уникальность и конфликт.md",
+})
 
 
 def _lesson_identity_source(relative: str) -> str:

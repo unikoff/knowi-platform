@@ -1,13 +1,11 @@
+import { BrandLogo } from "../shared/brand/BrandLogo";
 import { platformUrl } from "../shared/paths";
 
 export function NotFoundPage() {
   return (
     <main className="status-page status-page--not-found">
       <section className="not-found-card" aria-labelledby="not-found-title">
-        <div className="status-brand">
-          <span className="status-brand__mark" aria-hidden="true"><i /><i /><i /><i /></span>
-          <span>knowi<span className="status-brand__dot">.</span></span>
-        </div>
+        <div className="status-brand"><BrandLogo /></div>
 
         <div className="not-found-illustration" aria-hidden="true">
           <span className="not-found-illustration__four">4</span>

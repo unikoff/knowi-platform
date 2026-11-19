@@ -4,9 +4,10 @@ const path = require('node:path');
 let ts;
 try { ts = require('../../apps/web/node_modules/typescript'); } catch (_) { /* reported to caller */ }
 const result = (status, detail) => ({ status, detail });
+const practiceTitle = 'Что мы будем делать в практике';
 const interactive = new Set(['QuizCard','TrueFalse','BugHunt','FillBlank','BranchExplorer','SliceExplorer','CodeSequence','MatchPairs','PredictOutput','StepThrough','RecallCard','CompareSolutions','TerminalDemo','FlipCards','MutationScene']);
 const visual = new Set(['Diagram','BranchExplorer','SliceExplorer','MutationScene']);
-const transparent = new Set(['RichLesson','RichHero','Section','Diagram','Lead','LinkedNotes','Callout','TypeCards','TypeCard','MethodGrid','PracticeCta','KeyTakeaways','TheoryBridge','CodeBlock','DiagramFlow','DiagramNode','DiagramArrow','DiagramGroup','DiagramLane','DiagramBranches','DiagramBranch','DiagramNote','DiagramLegend','DiagramExchange','DiagramTrack',...interactive]);
+const transparent = new Set(['RichLesson','RichHero','Section','Diagram','Lead','LinkedNotes','ContentList','Callout','TypeCards','TypeCard','MethodGrid','PracticeCta','KeyTakeaways','TheoryBridge','CodeBlock','DiagramFlow','DiagramNode','DiagramArrow','DiagramGroup','DiagramLane','DiagramBranches','DiagramBranch','DiagramNote','DiagramLegend','DiagramExchange','DiagramTrack',...interactive]);
 
 function checkLesson(source, componentName) {
   if (!ts) return [result('UNKNOWN', 'TypeScript compiler API is unavailable')];
@@ -37,12 +38,13 @@ function checkLesson(source, componentName) {
   const literal = node => { node = unwrap(node); return node && (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) ? node.text : undefined; };
   const attr = (opening, name) => { const attrs = opening.attributes.properties; const a = attrs.find(p => ts.isJsxAttribute(p) && p.name.text === name); if (!a) return attrs.some(ts.isJsxSpreadAttribute) ? { unknown: true } : { missing: true }; if (!a.initializer) return { unknown: true }; const n = ts.isJsxExpression(a.initializer) ? a.initializer.expression : a.initializer; return { node: n }; };
   const property = (obj, name) => { if (!obj || !ts.isObjectLiteralExpression(obj)) return undefined; const p = obj.properties.find(x => ts.isPropertyAssignment(x) && (ts.isIdentifier(x.name) || ts.isStringLiteral(x.name)) && x.name.text === name); return p?.initializer; };
-  const notesState = opening => {
+  const notesState = (opening, isIntro) => {
     const variant = attr(opening, 'variant'), items = attr(opening, 'items');
-    if (variant.missing || items.missing) return 'FAIL';
+    if (opening.attributes.properties.some(p => ts.isJsxAttribute(p) && p.name.text === 'variant')) return 'FAIL';
+    if (items.missing) return 'FAIL';
     if (variant.unknown || items.unknown) return 'UNKNOWN';
-    const v = literal(variant.node); if (v === undefined) return 'UNKNOWN'; if (v !== 'connected') return 'FAIL';
     const arr = resolve(items.node); if (!arr || !ts.isArrayLiteralExpression(arr) || arr.elements.some(ts.isSpreadElement)) return 'UNKNOWN';
+    if (!isIntro) return arr.elements.some(item => !ts.isOmittedExpression(item)) ? 'PASS' : 'FAIL';
     if (arr.elements.length !== 3) return 'FAIL';
     const titles = arr.elements.map(x => literal(property(resolve(x), 'title')));
     if (titles.some(x => x === undefined)) return 'UNKNOWN';
@@ -81,7 +83,7 @@ function checkLesson(source, componentName) {
       const name = opening.tagName.getText(file);
       let current = section;
       if (name === 'Section') { current = { opening, notes: [], visuals: [], interactions: [], unknown: false }; sections.push(current); }
-      else if (name === 'LinkedNotes' && current) current.notes.push(notesState(opening));
+      else if (name === 'LinkedNotes' && current) current.notes.push(opening);
       if (current && interactive.has(name)) current.interactions.push('PASS');
       if (current && visual.has(name)) current.visuals.push('PASS');
       if (current && (name === 'img' || name === 'svg')) {
@@ -103,13 +105,23 @@ function checkLesson(source, componentName) {
   const num = s => { const a = attr(s.opening, 'number'); return a.missing ? null : a.unknown ? undefined : literal(a.node); };
   const title = s => { const a = attr(s.opening, 'title'); return a.missing ? null : a.unknown ? undefined : literal(a.node); };
   const first = sections[0], last = sections.at(-1);
-  let intro = !first ? (unknownGlobal ? 'UNKNOWN' : 'FAIL') : num(first) === undefined ? 'UNKNOWN' : num(first) !== '00' ? (unknownGlobal ? 'UNKNOWN' : 'FAIL') : first.notes.length > 1 ? 'FAIL' : first.unknown || first.notes.includes('UNKNOWN') ? 'UNKNOWN' : first.notes[0] === 'PASS' ? 'PASS' : 'FAIL';
+  const introNotes = first?.notes.map(opening => notesState(opening, true)) ?? [];
+  let intro = !first ? (unknownGlobal ? 'UNKNOWN' : 'FAIL') : num(first) === undefined ? 'UNKNOWN' : num(first) !== '00' ? (unknownGlobal ? 'UNKNOWN' : 'FAIL') : introNotes.length > 1 ? 'FAIL' : first.unknown || introNotes.includes('UNKNOWN') ? 'UNKNOWN' : introNotes[0] === 'PASS' ? 'PASS' : 'FAIL';
   if (unknownGlobal && intro === 'PASS') intro = 'UNKNOWN';
-  let ending = !last ? (unknownGlobal ? 'UNKNOWN' : 'FAIL') : title(last) === undefined ? 'UNKNOWN' : title(last) === 'Что мы будем делать в практике' ? (unknownGlobal ? 'UNKNOWN' : 'PASS') : (unknownGlobal ? 'UNKNOWN' : 'FAIL');
+  const endingState = () => {
+    if (unknownGlobal) return 'UNKNOWN';
+    if (!last) return 'FAIL';
+    const lastTitle = title(last);
+    if (lastTitle === undefined) return 'UNKNOWN';
+    if (lastTitle !== practiceTitle) return 'FAIL';
+    const states = last.notes.map(opening => notesState(opening, false));
+    if (states.includes('PASS')) return 'PASS';
+    return last.unknown || states.includes('UNKNOWN') ? 'UNKNOWN' : 'FAIL';
+  };
   const outside = sections.filter(s => num(s) !== '00');
   const evidence = key => outside.some(s => num(s) !== undefined && s[key].includes('PASS')) ? 'PASS' : unknownGlobal || outside.some(s => num(s) === undefined || s.unknown || s[key].includes('UNKNOWN')) ? 'UNKNOWN' : 'FAIL';
   const introInteractive = sections.some(s => num(s) === '00' && s.interactions.includes('PASS')) ? 'FAIL' : unknownGlobal || sections.some(s => num(s) === undefined || (num(s) === '00' && s.unknown)) ? 'UNKNOWN' : 'PASS';
-  return [result(intro, 'First Section 00: connected LinkedNotes with three ordered titles'), result(ending, 'Last Section: Что мы будем делать в практике'), result(evidence('visuals'), 'Educational visual outside Section 00'), result(evidence('interactions'), 'Interactive outside Section 00'), result(introInteractive, 'No interactive in Section 00')];
+  return [result(intro, 'First Section 00: connected LinkedNotes with three ordered titles'), result(endingState(), `Last Section: ${practiceTitle} with non-empty LinkedNotes`), result(evidence('visuals'), 'Educational visual outside Section 00'), result(evidence('interactions'), 'Interactive outside Section 00'), result(introInteractive, 'No interactive in Section 00')];
 }
 module.exports = { checkLesson };
 if (require.main === module) {

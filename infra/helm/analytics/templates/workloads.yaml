@@ -1,0 +1,125 @@
+{{- range $role, $cfg := .Values.roles }}
+{{- if or (ne $role "privacy") $cfg.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $.Release.Name }}-analytics-{{ $role }}
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $.Release.Name }}-analytics-{{ $role }}
+spec:
+  replicas: {{ $cfg.replicas }}
+  selector:
+    matchLabels: {app.kubernetes.io/name: analytics, app.kubernetes.io/instance: {{ $.Release.Name }}, app.kubernetes.io/component: {{ $role }}}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: analytics, app.kubernetes.io/instance: {{ $.Release.Name }}, app.kubernetes.io/component: {{ $role }}}
+    spec:
+      serviceAccountName: {{ $.Release.Name }}-analytics-{{ $role }}
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: {{ $role }}
+          image: {{ if $.Values.image.digest }}{{ printf "%s@%s" $.Values.image.repository $.Values.image.digest | quote }}{{ else }}{{ printf "%s:%s" $.Values.image.repository (default $.Values.image.tag $cfg.imageTag) | quote }}{{ end }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          args: [{{ $role | quote }}, "--host", "0.0.0.0", "--port", "8000"]
+          ports: [{name: http, containerPort: 8000}]
+          envFrom:
+            - configMapRef: {name: {{ $.Release.Name }}-analytics-config}
+          env:
+{{- if and $.Values.coreTransfer.enabled (has $role (list "collector" "processor" "query")) }}
+            - {name: ANALYTICS_{{ upper $role }}_CORE_TRANSFER_ENABLED, value: "true"}
+{{- if $.Values.coreTransfer.proofEnabled }}
+            - {name: ANALYTICS_{{ upper $role }}_CORE_TRANSFER_PROOF_ENABLED, value: "true"}
+{{- end }}
+{{- if eq $role "collector" }}
+            - name: ANALYTICS_COLLECTOR_CORE_TRANSFER_STATUS_DATABASE_URL
+              valueFrom:
+                secretKeyRef: {name: {{ $.Values.coreTransfer.statusSecretName | quote }}, key: DATABASE_URL}
+{{- end }}
+{{- if eq $role "query" }}
+            - {name: ANALYTICS_QUERY_CORE_TRANSFER_NAMESPACE, value: {{ $.Values.coreTransfer.queryNamespace | quote }}}
+{{- if $.Values.coreTransfer.rosterSecretName }}
+            - name: ANALYTICS_QUERY_CORE_TRANSFER_ROSTER_JSON
+              valueFrom:
+                secretKeyRef: {name: {{ $.Values.coreTransfer.rosterSecretName | quote }}, key: {{ $.Values.coreTransfer.rosterKey | quote }}}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if and (eq $role "collector") (or $.Values.coreTransfer.enabled $.Values.catalog.enabled) }}
+            - name: ANALYTICS_COLLECTOR_CORE_TRANSFER_NAMESPACES_JSON
+              valueFrom:
+                configMapKeyRef: {name: {{ $.Values.coreTransfer.namespacesConfigMapName | quote }}, key: {{ $.Values.coreTransfer.namespacesKey | quote }}}
+{{- end }}
+{{- if and (eq $role "collector") $.Values.catalog.enabled }}
+            - {name: ANALYTICS_COLLECTOR_CATALOG_ENABLED, value: "true"}
+            - {name: ANALYTICS_COLLECTOR_CATALOG_NAMESPACE, value: {{ $.Values.catalog.namespace | quote }}}
+{{- end }}
+{{- if and $.Values.activityProjection.enabled (has $role (list "processor" "query")) }}
+            - {name: ANALYTICS_{{ upper $role }}_ACTIVITY_PROJECTION_ENABLED, value: "true"}
+            - {name: ANALYTICS_ACTIVITY_PROJECTION_RUN_ID, value: {{ $.Values.activityProjection.runId | quote }}}
+{{- end }}
+{{- if and $.Values.activityProjection.enabled (eq $role "processor") }}
+            - {name: ANALYTICS_PROCESSOR_ACTIVITY_POLL_SECONDS, value: {{ divf $.Values.activityProjection.processorPollMs 1000 | quote }}}
+{{- end }}
+{{- if and $.Values.activityDay.enabled (eq $role "processor") }}
+            - {name: ANALYTICS_PROCESSOR_ACTIVITY_DAY_WORKER_ENABLED, value: "true"}
+{{- end }}
+{{- if and $.Values.activityDay.enabled (eq $role "query") }}
+            - {name: ANALYTICS_QUERY_ACTIVITY_DAY_QUERY_ENABLED, value: "true"}
+{{- end }}
+{{- if and $.Values.activityCourse.enabled (eq $role "processor") }}
+            - {name: ANALYTICS_PROCESSOR_ACTIVITY_COURSE_WORKER_ENABLED, value: "true"}
+{{- end }}
+{{- if and $.Values.activityCourse.enabled (eq $role "query") }}
+            - {name: ANALYTICS_QUERY_ACTIVITY_COURSE_QUERY_ENABLED, value: "true"}
+{{- end }}
+{{- if and $.Values.activityBoundaryCredit.enabled (eq $role "processor") }}
+            - {name: ANALYTICS_PROCESSOR_ACTIVITY_BOUNDARY_CREDIT_ENABLED, value: "true"}
+{{- end }}
+{{- if $.Values.trustManifest.configMapName }}
+            - name: ANALYTICS_TRUST_MANIFEST_JSON
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $.Values.trustManifest.configMapName | quote }}
+                  key: {{ $.Values.trustManifest.key | quote }}
+{{- end }}
+{{- if and (eq $role "collector") $.Values.fixtureCatalog.configMapName }}
+            - name: ANALYTICS_FIXTURE_CATALOG_JSON
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $.Values.fixtureCatalog.configMapName | quote }}
+                  key: {{ $.Values.fixtureCatalog.key | quote }}
+{{- end }}
+{{- if $.Values.privacyAuthority.secretName }}
+            - name: ANALYTICS_PRIVACY_AUTHORITY_JSON
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.privacyAuthority.secretName | quote }}
+                  key: {{ $.Values.privacyAuthority.key | quote }}
+{{- end }}
+            - name: ANALYTICS_{{ upper $role }}_DATABASE_URL
+              valueFrom:
+                secretKeyRef: {name: {{ $cfg.secretName }}, key: DATABASE_URL}
+            - {name: FORWARDED_ALLOW_IPS, value: ""}
+          resources:
+{{ toYaml $cfg.resources | indent 12 }}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          livenessProbe: {httpGet: {path: /live, port: http}, periodSeconds: 10, timeoutSeconds: 3}
+          readinessProbe: {httpGet: {path: /ready, port: http}, periodSeconds: 5, timeoutSeconds: 6}
+{{- if or (eq $role "collector") (eq $role "query") }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $.Release.Name }}-analytics-{{ $role }}
+spec:
+  selector: {app.kubernetes.io/name: analytics, app.kubernetes.io/instance: {{ $.Release.Name }}, app.kubernetes.io/component: {{ $role }}}
+  ports: [{name: http, port: 8000, targetPort: http}]
+{{- end }}
+{{- end }}
+{{- end }}

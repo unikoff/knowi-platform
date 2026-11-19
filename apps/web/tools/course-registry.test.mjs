@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { stringify } from "yaml";
-import { discoverCourses } from "./course-registry.mjs";
+import { discoverCourseRegistry, discoverCourses } from "./course-registry.mjs";
 
 function fixture(fn) {
   const dir = fs.mkdtempSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "registry-test-"));
@@ -24,6 +24,7 @@ function fixture(fn) {
 }
 test("only enabled registered courses are discoverable", () => fixture((dir) => {
   assert.deepEqual(discoverCourses(dir).map(({ id, slug }) => ({ id, slug })), [{ id: "first", slug: "first-course" }]);
+  assert.deepEqual(discoverCourseRegistry(dir).allCourseIds, ["first", "second"]);
 }));
 test("duplicate IDs and path traversal fail closed", () => fixture((dir, records, save) => {
   records.push({ ...records[0] }); save(); assert.throws(() => discoverCourses(dir), /duplicate/);
@@ -42,7 +43,7 @@ test("duplicate and reserved slugs fail closed", () => fixture((dir) => {
   const one = JSON.parse(fs.readFileSync(first, "utf8")), two = JSON.parse(fs.readFileSync(second, "utf8"));
   two.slug = one.slug; fs.writeFileSync(second, JSON.stringify(two));
   assert.throws(() => discoverCourses(dir), /slug/);
-  for (const reserved of ["shared", "api", "assets", "devtools", "src", "node_modules", "public", "config", "tools", "authoring", "preview-loading", "platform", "courses"]) {
+  for (const reserved of ["shared", "api", "assets", "devtools", "src", "node_modules", "public", "config", "tools", "authoring", "preview-loading", "platform", "courses", "catalog"]) {
     two.slug = reserved; fs.writeFileSync(second, JSON.stringify(two));
     assert.throws(() => discoverCourses(dir), /slug/);
   }
@@ -54,6 +55,7 @@ test("different course ID and slug round-trip through routes", async () => {
     fs.mkdirSync(path.join(dir, "src", "shared"), { recursive: true });
     fs.mkdirSync(path.join(dir, ".cache", "course-registry"), { recursive: true });
     fs.copyFileSync(new URL("../src/shared/course-paths.ts", import.meta.url), path.join(dir, "src", "shared", "course-paths.ts"));
+    fs.copyFileSync(new URL("../src/shared/catalog-preview-courses.ts", import.meta.url), path.join(dir, "src", "shared", "catalog-preview-courses.ts"));
     fs.writeFileSync(path.join(dir, ".cache", "course-registry", "course-ids.ts"), 'export const registeredCourses = [{ id: "isolation_fixture", slug: "isolation-fixture" }]; export const courseIds = registeredCourses.map(course => course.id);');
     const routes = await import(pathToFileURL(path.join(dir, "src", "shared", "course-paths.ts")).href);
     for (const base of ["/", "/platform/"]) {

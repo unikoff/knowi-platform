@@ -34,6 +34,22 @@ RETIRED_MODULES = (
     "pymentor_core.adapters.postgres.legacy_sessions",
 )
 
+# Independent Analytics privacy journal and its dedicated test/tool consumers.
+# This exception applies only to sqlite3 and SQLite engine literals in these
+# exact files; retired Core imports and paths are still checked everywhere.
+ANALYTICS_SQLITE_FILES = frozenset({
+    "services/analytics/pymentor_analytics/adapters/privacy_authority/journal.py",
+    "services/analytics/tests/activity_projection/test_projection_report_rollups_offline.py",
+    "services/analytics/tests/core_local_privacy/test_local_client.py",
+    "services/analytics/tests/cross_service/chain_checks.py",
+    "services/analytics/tests/cross_service/cleanup_failed_run.py",
+    "services/analytics/tests/cross_service/test_chain_offline.py",
+    "services/analytics/tests/cross_service/test_live_http.py",
+    "services/analytics/tests/privacy_authority/test_authority.py",
+    "services/analytics/tools/test_cross_service.py",
+    "services/analytics/tools/legacy_preservation/runtime.py",
+})
+
 
 def scan_retired_sources(root):
     """Check tools and tests as well as runtime; content is an independent course."""
@@ -63,7 +79,7 @@ def scan_retired_sources(root):
                 elif isinstance(node, ast.ImportFrom):
                     names = [node.module or ""]
                     names += [(node.module or "") + "." + alias.name for alias in node.names]
-                if any(name == "sqlite3" or name.startswith(RETIRED_MODULES) for name in names):
+                if any((name == "sqlite3" and relative not in ANALYTICS_SQLITE_FILES) or name.startswith(RETIRED_MODULES) for name in names):
                     violations.append(f"{relative}:{node.lineno}:retired-source-import")
                 if not isinstance(node, ast.Call):
                     continue
@@ -71,9 +87,9 @@ def scan_retired_sources(root):
                 name = function.id if isinstance(function, ast.Name) else getattr(function, "attr", "")
                 if name == "import_module" and node.args and isinstance(node.args[0], ast.Constant):
                     module = node.args[0].value
-                    if isinstance(module, str) and (module == "sqlite3" or module.startswith(RETIRED_MODULES)):
+                    if isinstance(module, str) and ((module == "sqlite3" and relative not in ANALYTICS_SQLITE_FILES) or module.startswith(RETIRED_MODULES)):
                         violations.append(f"{relative}:{node.lineno}:dynamic-retired-import")
-                if name in {"create_engine", "create_async_engine"} and node.args:
+                if relative not in ANALYTICS_SQLITE_FILES and name in {"create_engine", "create_async_engine"} and node.args:
                     dsn = ast.get_source_segment(source, node.args[0]) or ""
                     if re.search(r"sqlite(?:\+[a-z0-9_]+)?://", dsn.lower()):
                         violations.append(f"{relative}:{node.lineno}:executable-sqlite-fixture")

@@ -1,0 +1,238 @@
+{
+  "$defs": {
+    "CourseCompletionRosterV1": {
+      "additionalProperties": false,
+      "properties": {
+        "course_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Course Id",
+          "type": "string"
+        },
+        "members": {
+          "items": {
+            "$ref": "#/$defs/LegacyRosterMember"
+          },
+          "maxItems": 80,
+          "title": "Members",
+          "type": "array"
+        },
+        "month": {
+          "anyOf": [
+            {
+              "maximum": 12,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Month"
+        },
+        "version": {
+          "const": 1,
+          "title": "Version",
+          "type": "integer"
+        },
+        "year": {
+          "anyOf": [
+            {
+              "maximum": 2100,
+              "minimum": 2000,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Year"
+        }
+      },
+      "required": [
+        "version",
+        "members",
+        "course_id",
+        "year",
+        "month"
+      ],
+      "title": "CourseCompletionRosterV1",
+      "type": "object"
+    },
+    "LegacyAdminRosterV1": {
+      "additionalProperties": false,
+      "properties": {
+        "members": {
+          "items": {
+            "$ref": "#/$defs/LegacyRosterMember"
+          },
+          "maxItems": 80,
+          "title": "Members",
+          "type": "array"
+        },
+        "version": {
+          "const": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "version",
+        "members"
+      ],
+      "title": "LegacyAdminRosterV1",
+      "type": "object"
+    },
+    "LegacyRosterMember": {
+      "additionalProperties": false,
+      "properties": {
+        "revision": {
+          "maximum": 9223372036854775807,
+          "minimum": 0,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "student": {
+          "title": "Student",
+          "type": "boolean"
+        },
+        "subject_ref": {
+          "format": "uuid",
+          "title": "Subject Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "subject_ref",
+        "revision",
+        "student"
+      ],
+      "title": "LegacyRosterMember",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "aud": {
+      "const": "analytics",
+      "title": "Aud",
+      "type": "string"
+    },
+    "course_completion_roster_v1": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CourseCompletionRosterV1"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "course_ids": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "maxItems": 100,
+      "title": "Course Ids",
+      "type": "array"
+    },
+    "exp": {
+      "description": "JWT NumericDate seconds since Unix epoch",
+      "minimum": 0,
+      "title": "Exp",
+      "type": "integer"
+    },
+    "global_read": {
+      "title": "Global Read",
+      "type": "boolean"
+    },
+    "grant_version": {
+      "const": 1,
+      "title": "Grant Version",
+      "type": "integer"
+    },
+    "iat": {
+      "description": "JWT NumericDate seconds since Unix epoch",
+      "minimum": 0,
+      "title": "Iat",
+      "type": "integer"
+    },
+    "iss": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Iss",
+      "type": "string"
+    },
+    "legacy_admin_roster_v1": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LegacyAdminRosterV1"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "nbf": {
+      "description": "JWT NumericDate seconds since Unix epoch",
+      "minimum": 0,
+      "title": "Nbf",
+      "type": "integer"
+    },
+    "role": {
+      "enum": [
+        "user",
+        "leader",
+        "admin"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "scope": {
+      "enum": [
+        "collect",
+        "report:read",
+        "report:student"
+      ],
+      "title": "Scope",
+      "type": "string"
+    },
+    "sub": {
+      "format": "uuid",
+      "title": "Sub",
+      "type": "string"
+    },
+    "subject_refs": {
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "maxItems": 1000,
+      "title": "Subject Refs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "grant_version",
+    "iss",
+    "aud",
+    "sub",
+    "iat",
+    "nbf",
+    "exp",
+    "role",
+    "scope",
+    "course_ids",
+    "subject_refs",
+    "global_read"
+  ],
+  "title": "GrantClaims",
+  "type": "object"
+}

@@ -1,0 +1,10 @@
+FROM node:24.18.0-bookworm-slim
+
+WORKDIR /app/apps/web
+RUN mkdir -p .cache && chown -R node:node /app
+
+COPY --chown=node:node package.json package-lock.json ./
+USER node
+RUN npm ci --no-audit --no-fund
+
+CMD ["./node_modules/.bin/vite", "--config", "config/vite.config.ts", "--configLoader", "bundle", "--host", "0.0.0.0", "--port", "5173", "--strictPort"]

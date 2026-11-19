@@ -1,0 +1,6 @@
+apiVersion: v2
+name: analytics
+description: Synthetic-only standalone Analytics scaffold
+type: application
+version: 0.1.0
+appVersion: an1-local

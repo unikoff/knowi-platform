@@ -99,7 +99,7 @@ function checkProject() {
   for (const name of [...filesIn(path.join(root, 'apps/web/src'), '.css'), ...courseCss, ...sharedFiles]) problems.push(...checkCssOwnership(fs.readFileSync(name, 'utf8'), relative(name)));
   // Local geometry/state variables may live in CSS or inline style objects.
   // Semantic color values always come from the existing platform palettes.
-  const palette = fs.readFileSync(path.join(root, 'apps/web/src/shared/theme/palettes.ts'), 'utf8');
+  const palette = ['palettes.ts', 'accents.ts'].map(name => fs.readFileSync(path.join(root, 'apps/web/src/shared/theme', name), 'utf8')).join('\n');
   const knownTokens = new Set([...palette.matchAll(/"([\w-]+)"\s*:/g)].map(match => `--${match[1]}`));
   const variableSources = [path.join(root, 'apps/web/src/app/styles/tokens.css'), ...sharedFiles, ...filesIn(path.join(root, 'courses/shared/ui'), '.tsx'), ...filesIn(path.join(root, 'courses/shared/demo'), '.tsx')];
   for (const name of variableSources) {

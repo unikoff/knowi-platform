@@ -1,23 +1,26 @@
 import "./calendar.css";
 import "./account-tabs.css";
-import { useId, useState, type KeyboardEvent } from "react";
-import { Award, BarChart3, CalendarDays, CreditCard, History, Settings } from "lucide-react";
+import { useEffect, useId, useState, type KeyboardEvent } from "react";
+import { Award, BarChart3, CalendarDays, CreditCard, Settings } from "lucide-react";
 import { CalendarPanel } from "./CalendarPanel";
-import { AccountStatistics, type AccountStatisticsData } from "./AccountStatistics";
+import type { AccountActivityStatus } from "./useAccountSchedule";
+import type { AccountStatisticsData } from "./AccountStatistics";
+import { CourseStatisticsPanel } from "./CourseStatisticsPanel";
+import { canShowCourseAnalytics, canShowPersonalMeasurements } from "./course-statistics-analytics";
 import { AccountAchievements } from "./AccountAchievements";
-import { AccountActivityHistory } from "./AccountActivityHistory";
+import type { LearnerAnalyticsCatalog } from "./LearnerAnalytics";
 import { AccountPayments, type AccountPaymentsData } from "./AccountPayments";
 import { AccountSettings, type AccountSettingsData } from "./AccountSettings";
 import type { UserProfile } from "../../shared/api/contracts";
 import type { CalendarMonth, StudentSlot, QuotaStatus } from "../../shared/api/contracts/account";
+import type { ToolId } from "../analytics-tracker/tracker";
 
 const accountTabs = [
-  { id: "booking", label: "Запись", icon: CalendarDays },
   { id: "statistics", label: "Статистика", icon: BarChart3 },
+  { id: "booking", label: "Запись", icon: CalendarDays },
   { id: "payments", label: "Оплата", icon: CreditCard },
   { id: "settings", label: "Настройки", icon: Settings },
   { id: "achievements", label: "Достижения", icon: Award },
-  { id: "history", label: "История", icon: History },
 ] as const;
 type AccountTab = typeof accountTabs[number]["id"];
 
@@ -25,37 +28,44 @@ export function AccountPanel({
   user,
   calendarMonth,
   activityDays,
-  activityTimes,
+  measurementStatus,
   bookingSlots,
   bookingQuota,
+  bookingLoading, bookingError, courseId, ownerName,
   onMonthChange,
   onBookSlot,
   onCancelSlot,
   onLogout,
   onUserChange,
   statisticsData,
+  analyticsCatalog,
   paymentsData,
   settingsData,
   onCheckout,
+  onToolChange,
 }: {
   user: UserProfile;
   calendarMonth: CalendarMonth;
   activityDays: Set<string>;
-  activityTimes: Record<string, string | null>;
+  measurementStatus: AccountActivityStatus;
   bookingSlots: StudentSlot[];
   bookingQuota: QuotaStatus | null;
+  bookingLoading: boolean; bookingError: string; courseId: string; ownerName: string | null;
   onMonthChange: (calendarMonth: CalendarMonth) => void;
   onBookSlot: (slotId: number) => Promise<void>;
   onCancelSlot: (slotId: number) => Promise<void>;
   onLogout: () => void;
   onUserChange: (user: UserProfile) => void;
   statisticsData: AccountStatisticsData;
+  analyticsCatalog: LearnerAnalyticsCatalog;
   paymentsData?: AccountPaymentsData | null;
   settingsData?: AccountSettingsData | null;
   onCheckout?: () => void;
+  onToolChange?: (tool: ToolId) => void;
 }) {
-  const [activeTab, setActiveTab] = useState<AccountTab>("booking");
+  const [activeTab, setActiveTab] = useState<AccountTab>("statistics");
   const tabsId = useId();
+  useEffect(() => { onToolChange?.(`account-${activeTab}`); }, [activeTab, onToolChange]);
 
   function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     let nextIndex = index;
@@ -70,8 +80,8 @@ export function AccountPanel({
   }
 
   return (
-    <section className="account-panel account-dashboard" aria-label="Личный кабинет">
-      <div className="account-tabs" role="tablist" aria-label="Разделы личного кабинета">
+    <section className={`account-panel account-dashboard${activeTab === "booking" ? " account-dashboard--booking" : ""}`} aria-label="Личный кабинет">
+      <div className="account-tabs section-navigation" role="tablist" aria-label="Разделы личного кабинета">
         {accountTabs.map(({ id, label, icon: Icon }, index) => (
           <button key={id} type="button" role="tab" id={`${tabsId}-tab-${id}`}
             aria-selected={activeTab === id} aria-controls={`${tabsId}-panel-${id}`}
@@ -85,9 +95,10 @@ export function AccountPanel({
       <div className="account-tab-panel account-tab-panel--booking" role="tabpanel" id={`${tabsId}-panel-booking`}
         aria-labelledby={`${tabsId}-tab-booking`} hidden={activeTab !== "booking"} tabIndex={0}>
         <CalendarPanel
+          courseId={courseId} ownerName={ownerName} bookingLoading={bookingLoading} bookingError={bookingError}
           calendarMonth={calendarMonth}
           activityDays={activityDays}
-          activityTimes={activityTimes}
+          measurementStatus={measurementStatus}
           bookingSlots={bookingSlots}
           bookingQuota={bookingQuota}
           onMonthChange={onMonthChange}
@@ -97,7 +108,7 @@ export function AccountPanel({
       </div>
       <div className="account-tab-panel" role="tabpanel" id={`${tabsId}-panel-statistics`}
         aria-labelledby={`${tabsId}-tab-statistics`} hidden={activeTab !== "statistics"} tabIndex={0}>
-        <AccountStatistics data={statisticsData} bookingQuota={bookingQuota} />
+        {activeTab === "statistics" && <CourseStatisticsPanel key={`${user.id}:${user.account_ref}:${user.role}:${user.auth_revision}:${courseId}:${Boolean(user.has_active_subscription)}`} data={statisticsData} courseId={courseId} catalog={analyticsCatalog} hasActiveSubscription={user.has_active_subscription ?? false} analyticsEnabled={canShowCourseAnalytics(import.meta.env.VITE_ANALYTICS_REPORTS_ENABLED, user.role)} personalMeasurementsEnabled={canShowPersonalMeasurements(import.meta.env.VITE_ANALYTICS_REPORTS_ENABLED, import.meta.env.VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED, user.role)} actorRef={user.account_ref} role={user.role} onViewSubscription={() => setActiveTab("payments")} />}
       </div>
       <div className="account-tab-panel" role="tabpanel" id={`${tabsId}-panel-payments`}
         aria-labelledby={`${tabsId}-tab-payments`} hidden={activeTab !== "payments"} tabIndex={0}>
@@ -110,10 +121,6 @@ export function AccountPanel({
       <div className="account-tab-panel" role="tabpanel" id={`${tabsId}-panel-achievements`}
         aria-labelledby={`${tabsId}-tab-achievements`} hidden={activeTab !== "achievements"} tabIndex={0}>
         <AccountAchievements data={statisticsData} />
-      </div>
-      <div className="account-tab-panel" role="tabpanel" id={`${tabsId}-panel-history`}
-        aria-labelledby={`${tabsId}-tab-history`} hidden={activeTab !== "history"} tabIndex={0}>
-        <AccountActivityHistory weeklyActivity={statisticsData.weeklyActivity} currentStreak={statisticsData.currentStreak} />
       </div>
     </section>
   );

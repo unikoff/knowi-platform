@@ -43,11 +43,37 @@ def test_full_products_preserve_every_baseline_resource_and_private_spec(runtime
         baseline = json.loads(current.read_text(encoding="utf-8"))
     catalog = runtime.snapshot(course_id).catalog
     assert len(catalog.TRACKS) == 9
-    assert len(catalog.LESSONS) == 310
+    assert len(catalog.LESSONS) == (304 if course_id == "backend" else 310)
     assert sum(len(lesson["tasks"]) for lesson in catalog.LESSONS) == 204
     expected = [(track["track_id"], lesson["lesson_id"], lesson["legacy_id"], lesson["source_file"],
                  [(task["task_id"], task["revision"]) for task in lesson["tasks"]])
                 for track in baseline["tracks"] for lesson in track["lessons"]]
+    if course_id == "backend":
+        # Only the rewritten block differs from the historical full-course inventory.
+        # Preserve the original track, public/legacy IDs and task revisions for each move.
+        block17_sources = (
+            ("lesson-2c72a2e8f15b3d99765d3a4d", "chapter_05/block_17/81 - Создаём согласованный резерв Planner.md"),
+            ("lesson-79ad20d8bad8ea5e8682a7ce", "chapter_05/block_17/81.1 - Восстанавливаем рабочую копию из резерва.md"),
+            ("lesson-a63726516955a18a16be6c0d", "chapter_05/block_17/82 - Создаём исходную историю на новой базе.md"),
+            ("lesson-0df09001e79b8b3a9b510600", "chapter_05/block_17/83 - Подключаем заполненную копию к истории.md"),
+            ("lesson-c5597af4286aa5f6de00eccd", "chapter_05/block_17/84 - Добавляем пользователя в схему Planner.md"),
+            ("lesson-0576d7e8df944d238cbb79e4", "chapter_05/block_17/85 - Записываем уникальные учётные записи.md"),
+        )
+        historical_by_id = {item[1]: item for item in expected}
+        replacement_ids = {lesson_id for lesson_id, _ in block17_sources}
+        rewritten = []
+        inserted_block17 = False
+        for historic in expected:
+            if historic[3].startswith("chapter_05/block_17/"):
+                if not inserted_block17:
+                    for lesson_id, source in block17_sources:
+                        original = historical_by_id[lesson_id]
+                        rewritten.append((*original[:3], source, original[4]))
+                    inserted_block17 = True
+            elif historic[1] not in replacement_ids:
+                rewritten.append(historic)
+        assert inserted_block17
+        expected = rewritten
     actual = [(track["id"], lesson["id"], lesson["legacy_id"], lesson["source_file"],
                [(task["id"], task["revision"]) for task in lesson["tasks"]])
               for track in catalog.TRACKS for lesson in track["lessons"]]

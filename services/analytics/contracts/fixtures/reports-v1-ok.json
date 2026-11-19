@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "quality": "complete",
+  "as_of": "2026-01-10T00:00:00Z",
+  "lag_seconds": null,
+  "timezone": "Europe/Moscow",
+  "metric_version": "activity-v1",
+  "course_id": "backend",
+  "from_time": "2026-01-01T00:00:00Z",
+  "to_time": "2026-01-02T00:00:00Z",
+  "totals": {"unique_visitors": 1, "active_ms": 15000, "theory_ms": 15000, "practice_ms": 0},
+  "daily": [{"date": "2026-01-01", "unique_visitors": 1, "active_ms": 15000, "theory_ms": 15000, "practice_ms": 0}],
+  "trusted_progress": {"state": "known", "completed_lessons": 0}
+}

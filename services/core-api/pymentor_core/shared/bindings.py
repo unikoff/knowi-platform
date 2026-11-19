@@ -18,6 +18,7 @@ class Bindings:
     landings: Any = None
     landing_requests: Any = None
     email_auth: Any = None
+    analytics_delivery: Any = None
 
 
 _bindings: Bindings | None = None
