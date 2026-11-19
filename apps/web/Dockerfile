@@ -11,7 +11,7 @@ RUN node tools/course-registry.mjs \
     && npm exec -- tsc --noEmit -p config/tsconfig.json \
     && ./node_modules/.bin/vite build --config config/vite.config.ts --configLoader native --outDir /tmp/frontend-dist
 
-FROM nginx:1.30.6-alpine3.24-slim AS runtime
+FROM nginx:1.30.7-alpine3.24-slim AS runtime
 
 # The base tag still carries zlib 1.3.2; Alpine fixes CVE-2026-4738 in 1.4-r0.
 RUN apk add --no-cache 'zlib>=1.4-r0'
