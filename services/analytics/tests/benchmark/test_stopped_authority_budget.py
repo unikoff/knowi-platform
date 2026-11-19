@@ -147,8 +147,8 @@ def test_stopped_restart_guard_keeps_default_rejection_and_explicit_attestation(
     calls = []
     monkeypatch.setattr(r, "attest_stopped_authority", lambda docker, cid, image: calls.append((cid, image)))
     with pytest.raises(ValueError, match="authority scope unknown"):
-        r.require_stopped_node_restart_budget(sys.executable, "f"*64, IMAGE, node_id)
-    result = r.require_stopped_node_restart_budget(sys.executable, "f"*64, IMAGE, node_id,
+        r.require_stopped_node_restart_budget(str(Path(sys.executable).resolve()), "f"*64, IMAGE, node_id)
+    result = r.require_stopped_node_restart_budget(str(Path(sys.executable).resolve()), "f"*64, IMAGE, node_id,
                   expected_stopped_authority_id=CID, expected_stopped_authority_image_id=IMAGE)
     assert calls == [(CID, IMAGE)] and result["status"] == "stopped_node_restart_budget_verified"
     assert result["required_bytes"] == 2*1024**3 + (384-80+128+256+512+128)*r.MIB

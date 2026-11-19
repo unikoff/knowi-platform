@@ -5,6 +5,7 @@ import copy
 import http.server
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -395,6 +396,7 @@ def test_a011_database_setup_requires_privacy_grants_and_fresh_day_state(monkeyp
 def test_packaged_probe_matches_local_image_tree_and_detects_migration_drift():
     import inspect
     import run_local
+    (SERVICE / ".local").mkdir(exist_ok=True)
     base = (SERVICE / ".local").resolve(strict=True)
     folder = base / ("offline-image-source-" + uuid4().hex)
     folder.mkdir()
@@ -573,6 +575,7 @@ def test_host_archive_rejects_oversized_json_and_tar_metadata():
 def test_host_save_pins_docker_id_and_reconciles_on_mismatch(monkeypatch, wrong_diff, discover):
     data, config_digest = _fake_docker_archive(entrypoint=["python", "-m", "pymentor_analytics.app.cli"])
     assert HOST_IMAGE_ID != config_digest
+    (SERVICE / ".local").mkdir(exist_ok=True)
     base = (SERVICE / ".local").resolve(strict=True)
     folder = base / ("offline-host-archive-" + uuid4().hex)
     folder.mkdir()
@@ -614,6 +617,7 @@ def test_host_save_pins_docker_id_and_reconciles_on_mismatch(monkeypatch, wrong_
 
 
 def test_host_save_preserves_partial_archive_and_does_not_retry(monkeypatch):
+    (SERVICE / ".local").mkdir(exist_ok=True)
     base = (SERVICE / ".local").resolve(strict=True)
     folder = base / ("offline-host-archive-" + uuid4().hex)
     folder.mkdir()
@@ -1164,6 +1168,10 @@ def test_case_orders_fresh_setup_load_and_reconciliation(monkeypatch, a011, fail
                            retained_authority_image_id=None, web_temporarily_paused=False, a011=a011)
     monkeypatch.setenv("ANALYTICS_BENCHMARK_GO", "1")
     monkeypatch.setenv("ANALYTICS_BENCHMARK_IMAGE_PROBE_GO", "1")
+    class WindowsOS:
+        name = "nt"
+        def __getattr__(self, key): return getattr(os, key)
+    monkeypatch.setattr(bench, "os", WindowsOS())
     monkeypatch.setattr(bench, "_binary", lambda path, digest: Path(path))
     monkeypatch.setattr(bench, "_assert_target", lambda *a: {"status": "budget_verified"})
     monkeypatch.setattr(bench, "_image_attestation", lambda *a: {

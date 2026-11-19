@@ -115,6 +115,6 @@ def test_restart_guard_forwards_explicit_receipt_without_relaxing_other_inputs(m
     monkeypatch.setattr(r, "run", run)
     monkeypatch.setattr(r, "validate_stopped_server", validate)
     with pytest.raises(Stop):
-        r.require_stopped_node_restart_budget(sys.executable, "d" * 64, x.image, x.server_id,
+        r.require_stopped_node_restart_budget(str(Path(sys.executable).resolve()), "d" * 64, x.image, x.server_id,
                                               protective_stop_receipt=x.confirmed_path)
     assert calls[0][1:] == (x.image, x.server_id, {"protective_stop_receipt": x.confirmed_path})

@@ -39,6 +39,13 @@ HISTORY_SHA256 = {
     "a013": "d77cc10160169d3e3ee656af1c9d4327b30b6e8ddbbc51cbb2a72b2950c797e1",
     "a014": "7fd0bc65c7ce44cd7166f0ddd409c0966e32e604b6791b855ffc0e6de1a3aa04",
 }
+# Histories are fingerprints of raw migration bytes. These additional exact
+# fingerprints correspond to Git's LF checkout; existing local records may
+# contain CRLF or mixed line endings and must retain their original identity.
+HISTORY_LF_SHA256 = {
+    "a011": "5406da21de62ca42291501579da9ed5cf752c6ee2a558d6aa8a70ac8177c5dc4",
+    "a014": "8d81c48940e2dfa9b51d1352ac3f47a5aa62f894bc1259d3e3955e421967e896",
+}
 
 
 def manifest_digest(ref):
@@ -1169,8 +1176,10 @@ def verified_histories(runtime, target_revision):
         raise LiveFailure("unsupported database target")
     full = runtime.schema_history()
     target = runtime.schema_history(target_revision)
-    if (full[0] != PACKAGED_HISTORY_HEAD or len(full[1]) != 14 or full[2] != HISTORY_SHA256[PACKAGED_HISTORY_HEAD]
-            or target[0] != target_revision or target[2] != HISTORY_SHA256[target_revision]
+    if (full[0] != PACKAGED_HISTORY_HEAD or len(full[1]) != 14
+            or full[2] not in {HISTORY_SHA256[PACKAGED_HISTORY_HEAD], HISTORY_LF_SHA256[PACKAGED_HISTORY_HEAD]}
+            or target[0] != target_revision
+            or target[2] not in {HISTORY_SHA256[target_revision], HISTORY_LF_SHA256.get(target_revision, HISTORY_SHA256[target_revision])}
             or tuple(full[1][-len(target[1]):]) != tuple(target[1])):
         raise LiveFailure("packaged full history or target prefix mismatch")
     return full, target

@@ -33,6 +33,12 @@ jobs:
           python-version: '3.12.16'
       - name: Install independent pinned dependencies
         run: python -m pip install -r services/analytics/requirements-dev.txt
+      - name: Install Core dependencies in a separate fixture environment
+        run: |
+          core_venv="$RUNNER_TEMP/analytics-core-fixture"
+          python -m venv "$core_venv"
+          "$core_venv/bin/python" -m pip install -r services/core-api/requirements-dev.txt
+          echo "KNOWI_ANALYTICS_CI_CORE_PYTHON=$core_venv/bin/python" >> "$GITHUB_ENV"
       - name: Check dependency consistency and contracts
         run: |
           python -m pip check

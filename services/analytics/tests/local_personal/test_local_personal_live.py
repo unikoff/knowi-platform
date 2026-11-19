@@ -47,7 +47,7 @@ def test_default_plans_do_not_open_files_or_processes(monkeypatch, capsys):
 
 def test_windows_acl_is_new_protected_two_principal_dacl(monkeypatch):
     calls = []
-    monkeypatch.setenv("SystemRoot", r"C:\Windows")
+    monkeypatch.setenv("SystemRoot", str(Path.cwd()))
     monkeypatch.setattr(subprocess, "run", lambda args, **kwargs: calls.append((args, kwargs)))
     path = Path(r"C:\private-parent\new-owned-empty")
     live._set_new_windows_acl(path)

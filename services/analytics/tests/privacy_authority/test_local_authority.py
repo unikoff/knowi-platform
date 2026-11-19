@@ -182,6 +182,7 @@ def test_local_server_rejects_shared_signing_domains(owned, monkeypatch, collisi
 
 @pytest.mark.parametrize("other", ["S-1-1-0", "S-1-5-32-545"])
 def test_windows_acl_rejects_broad_principals(monkeypatch, other):
+    monkeypatch.setenv("SystemRoot", str(Path.cwd()))
     sid = "S-1-5-21-100-200-300-1000"
     body = {"user": sid, "owner": sid, "rules": [
         {"sid": sid, "allow": True, "rights": 0x1F01FF},
@@ -191,6 +192,7 @@ def test_windows_acl_rejects_broad_principals(monkeypatch, other):
 
 
 def test_windows_acl_accepts_only_owner_and_system(monkeypatch):
+    monkeypatch.setenv("SystemRoot", str(Path.cwd()))
     sid = "S-1-5-21-100-200-300-1000"
     body = {"user": sid, "owner": sid, "rules": [
         {"sid": sid, "allow": True, "rights": 0x1F01FF},

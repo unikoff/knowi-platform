@@ -404,7 +404,7 @@ class FixturePreparationTests(unittest.TestCase):
              patch.object(run_k3s, "run", side_effect=fake_run), \
              patch.object(run_k3s, "_cgroup_numbers", return_value=pg):
             with self.assertRaises(run_k3s.InsufficientPostCreateBudget) as error:
-                run_k3s.require_stopped_node_restart_budget(sys.executable, "d" * 64, image_id, node_id)
+                run_k3s.require_stopped_node_restart_budget(str(Path(__file__).resolve()), "d" * 64, image_id, node_id)
         self.assertEqual(error.exception.available_bytes, required - 1)
         self.assertEqual(error.exception.required_bytes, required)
         self.assertTrue(all(not {"start", "create", "rm", "stop"}.intersection(args) for args in calls))
