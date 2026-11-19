@@ -142,8 +142,8 @@
 }
 
 .test-list li.is-failed > span {
-  color: var(--white);
-  background: var(--negative);
+  color: var(--text);
+  background: var(--surface-3);
 }
 
 .test-list small {

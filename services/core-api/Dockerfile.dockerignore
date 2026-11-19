@@ -21,6 +21,12 @@
 !services/core-api/migrations/**
 !services/core-api/pymentor_core/
 !services/core-api/pymentor_core/**
+!services/core-api/tools/
+!services/core-api/tools/analytics_transfer/
+!services/core-api/tools/analytics_transfer/001_additive.sql
+!services/core-api/tools/analytics_transfer/002_snapshot_proof.sql
+!services/core-api/tools/analytics_transfer/migrate.py
+!services/core-api/tools/analytics_transfer/run.py
 services/core-api/pymentor_core/adapters/legacy_sqlite
 services/core-api/pymentor_core/app/passenger.py
 services/core-api/pymentor_core/app/wsgi.py

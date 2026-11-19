@@ -65,6 +65,19 @@ def updater_tests():
         else:
             raise AssertionError('invalid migration digest accepted')
         assert read('release.json') == before
+        for invalid_analytics in ('', 'sha256:bad', 'sha256:' + 'A' * 64):
+            snapshot = {name: (directory / name).read_bytes() for name in ('kustomization.yaml', 'applications.json', 'runner.json', 'release.json')}
+            try:
+                updater.update(directory, sha, *digests, analytics_digest=invalid_analytics)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError('invalid analytics digest accepted')
+            assert all((directory / name).read_bytes() == data for name, data in snapshot.items())
+        analytics_digest = 'sha256:' + '5' * 64
+        updater.update(directory, sha, *digests, analytics_digest=analytics_digest)
+        assert read('release.json')['source_sha'] == sha
+        assert read('release.json')['analytics_digest'] == analytics_digest
         updater.update(directory, sha, *digests, migration_digest='sha256:' + '4' * 64)
         assert read('release.json')['migration_digest'] == 'sha256:' + '4' * 64
         mappings = read('kustomization.yaml')['images']
@@ -130,6 +143,7 @@ def main():
             unit.pop(key, None)
         pytest_checked(suites['unit'], unit, reports / 'unit.xml')
         pytest_checked(['tooling/ci/test_c504_backup.py'], unit, reports / 'backup-guards.xml', prefix='')
+        pytest_checked(suites['analytics_delivery'], unit, reports / 'analytics-delivery.xml')
         pytest_checked(suites['runtime'], env, reports / 'runtime.xml')
         from sqlalchemy.engine import make_url
         http_env = dict(env, DATABASE_URL=make_url(env['DATABASE_URL']).set(database='pg08_http_test').render_as_string(hide_password=False))

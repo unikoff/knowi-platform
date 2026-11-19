@@ -1,0 +1,14 @@
+{
+  "report": {
+    "schema_version": 1, "status": "ok", "quality": "unknown", "as_of": "2026-01-01T12:00:00Z",
+    "lag_seconds": null, "timezone": "Europe/Moscow", "metric_version": "activity-v1", "course_id": "backend",
+    "from_time": "2026-01-01T00:00:00Z", "to_time": "2026-01-02T00:00:00Z",
+    "totals": {"unique_visitors": 1, "active_ms": 15000, "theory_ms": 15000, "practice_ms": 0},
+    "daily": [{"date": "2026-01-01", "unique_visitors": 1, "active_ms": 15000, "theory_ms": 15000, "practice_ms": 0}],
+    "trusted_progress": {"state": "unavailable", "completed_lessons": null}
+  },
+  "lesson_id": null,
+  "rows": [{"level": "course", "course_id": "backend", "lesson_id": null,
+            "unique_visitors": 1, "active_ms": 15000, "theory_ms": 15000, "practice_ms": 0}],
+  "next_offset": 1
+}

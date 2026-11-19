@@ -1,4 +1,5 @@
 import "./auth.css";
+import { BrandLogo } from "../../shared/brand/BrandLogo";
 import { useState, type FormEvent } from "react";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole, LogIn, MailCheck, UserRoundPlus } from "lucide-react";
 import { loginUser, registerUser, requestPasswordReset } from "./api";
@@ -63,7 +64,7 @@ export function AuthScreen({
       <section className="auth-panel" aria-labelledby="auth-title">
         <div className="auth-header">
           <div className="auth-brand">
-            <span className="auth-brand__wordmark">knowi</span>
+            <BrandLogo />
           </div>
           <div className="auth-actions">
             {onBack && (

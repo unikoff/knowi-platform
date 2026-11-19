@@ -17,6 +17,18 @@ async def request_principal(request, *, optional=False):
         raise
 
 
+async def statistics_selection_revision(request, actor_ref: str, course: str, target_ref: str) -> int | None:
+    """Retrieve the existing course-search permission for a selected account."""
+    identity = _local_async_identity(request)
+    if identity is None or identity.redis is None:
+        return None
+    try:
+        return await identity.redis.get_role_selection(actor_ref, course, target_ref)
+    except Exception:
+        # Missing proof denies search-only access; roster access does not need Redis.
+        return None
+
+
 async def run_request_sql(request, operation, *, identity=None):
     """Run an existing SQL use case with an exclusive session and guaranteed cleanup."""
     identity = identity if identity is not None else _local_async_identity(request)

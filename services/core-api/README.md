@@ -143,6 +143,9 @@ Read-only проверка 15.11.2026 подтвердила на рабочей
 python -m pip install -r services/core-api/requirements-migration.txt
 # Через защищённое окружение задать совпадающие KNOWI_MIGRATION_URL (asyncpg),
 # KNOWI_MIGRATION_HOST, KNOWI_MIGRATION_DATABASE, KNOWI_MIGRATION_USER.
+# Для c527/c528 на удалённой БД также задать KNOWI_MIGRATION_OWNER и
+# KNOWI_MIGRATION_APP_ROLE. Логин миграции должен иметь право SET ROLE
+# на постоянного владельца таблиц. См. ../../infra/gitops/operations/c528-cutover.md.
 python -m alembic -c services/core-api/alembic-runtime.ini upgrade head
 ```
 
@@ -196,6 +199,99 @@ Canonical pipeline — `.github/workflows/release.yml`, candidate через PR 
 Checks обязательны; images/publish выполняются только разрешённым push в Release.
 Успешный PR CI не означает merge или deployment. Для выпуска фиксируются source SHA,
 runtime/migration digests и config revision; фактический rollout проверяется отдельно.
+
+При обновлении VPS существующие даты завершения занятий сохраняются. Если в
+фактическом источнике обновления найдутся завершённые занятия без `completed_at`,
+заполните только их одним временем выпуска с часовым поясом, согласованным для
+дня релиза по Москве. При импорте задайте это значение до вставки, пока видны
+исходные пропуски: PostgreSQL сам подставляет время вставки, если поле опущено.
+Перед включением чтений проверьте число заполненных пропусков и сохранность уже
+имевшихся дат. Если пропусков нет, шаг заканчивается проверкой.
+
+## Переключение browser activity
+
+`PYMENTOR_ANALYTICS_BROWSER_PRESENCE_REQUIRED=1` требует
+`PYMENTOR_ANALYTICS_LEGACY_READ_MODE=analytics`: Core откажется запускаться с
+режимами `off` или `shadow`. Для calendar, summary, global admin и профиля
+отсутствие проверенной Query-пары `browser_quality` / `browser_as_of` приводит
+к 503; обновление quota также не начинается, если профиль недоступен. По
+умолчанию значение `0` сохраняет Core-only поведение. `coverage=complete`
+относится к Core transfer, а `browser_quality=unknown` и `browser_as_of`
+не подтверждают полноту доставки событий браузера.
+
+Успешный `GET /api/learning/analytics-catalog` возвращает заголовок
+`X-Analytics-Browser-Presence-Required: true` только при включённом серверном
+требовании и режиме чтения `analytics`. Его отсутствие запрещает frontend
+отключать legacy visits. Заголовок сообщает о серверной политике, а не о
+полноте данных или текущей готовности Query; ответ каталога остаётся `no-store`.
+
+До включения обоих frontend-флагов `VITE_ANALYTICS_TRACKER_ENABLED` и
+`VITE_ANALYTICS_LEGACY_VISIT_CUTOVER` включите это требование на всех Core
+репликах и убедитесь, что Query и Processor используют включённую a010
+projection с одинаковым RUN, завершённым backfill и готовой privacy-проверкой.
+Проверьте опубликованный каталог и доступность Collector: при выбранном
+cutover без версии каталога ни Tracker, ни legacy visit не записывают посещение.
+Независимые флаги не обеспечивают атомарное переключение: deployment должен
+отклонять несовместимую комбинацию, а на rollout проверять все реплики.
+Для отката сначала отключите frontend cutover; сохраняйте серверное требование
+и browser projection, пока старые страницы и кешированные сборки могут писать
+только через Tracker. После cutover уже записанные browser days требуют
+projection и не восстанавливаются простым возвратом legacy writer. При
+недоступной projection оставляйте серверное требование включённым: отчёт
+вернёт 503, пока смешанное чтение не восстановлено. a011 day flag не заменяет
+a010.
+
+### Локальный параллельный сбор
+
+`PYMENTOR_ANALYTICS_LOCAL_COLLECTION_ENABLED=1` включает отдельный local-only
+режим: grants и metadata каталога должны быть включены, legacy read — `off`,
+write — `mirror`, delivery — `0`. Core DB URL должен указывать на числовой
+loopback-адрес, а `PYMENTOR_ANALYTICS_LOCAL_EXPECTED_DATABASE` — на точное имя
+базы. `PYMENTOR_ANALYTICS_LOCAL_INSTANCE_ID` задаёт стабильный UUID Core;
+`PYMENTOR_ANALYTICS_LOCAL_SOURCE_KEY_FILE` указывает строго на
+`services/analytics/.local/local-live/<dataset-id>/source.key` с 32 случайными
+байтами в canonical base64url без padding. Core проверяет права на `local-live`,
+dataset directory и файл, запрещает ссылки и hardlinks; на POSIX требуются
+0700 для каталогов и 0600 для файла. Ключ отличается от grant key.
+При старте и каждом запросе проверяются primary, имя DB и неизменённые функции
+и trigger Core426; результат отсутствия проверки — отказ. Core426 события
+не должны редактироваться или удаляться привилегированным оператором.
+
+В этом режиме `GET /api/learning/analytics-catalog` добавляет
+`X-Analytics-Collection-Mode: parallel`. Это подтверждает локальную политику,
+не доступность Analytics и не полноту данных. Заголовок legacy cutover остаётся
+независимым. Клиент обязан отдельно подтвердить данные и catalog version.
+
+Внутренний `GET /api/internal/analytics/deletions` доступен только с loopback.
+Параметры `instance_id` и одноразовый `nonce` — canonical UUID; заголовок
+`X-Analytics-Request-MAC` — lowercase hex HMAC-SHA256 ключом источника.
+Подписываются байты домена `pymentor:analytics:core-deletions:request:v1` с
+завершающим NUL и canonical JSON `{version:1,instance_id,nonce}` (UTF-8,
+отсортированные ключи, разделители `,` и `:`). Ответ содержит `version`,
+`instance_id`, `nonce`, `as_of`, `events` и `mac`. Каждый event содержит
+только `subject_ref` и `deleted_at`; время UTC с шестью знаками и `Z`. MAC
+вычисляется по тем же правилам над ответом без `mac`, с доменом
+`pymentor:analytics:core-deletions:response:v1` и NUL. Снимок читается из
+primary в новой read-only READ COMMITTED транзакции; больше 1024 событий,
+replica и ошибка проверки закрываются 503. На каждом ответе `no-store`.
+Это источник для Analytics privacy guard, а не подтверждение purge или замена
+независимого журнала; чтения и записи Analytics должны проверять guard до и
+после операции.
+
+Local P1 publisher запускается из `services/core-api` командой
+`python -B -m pymentor_core.modules.analytics_delivery.local_catalog --course-id <course>`.
+Нужны одинаковые для Core и publisher `PYMENTOR_ANALYTICS_LOCAL_DATASET_ID`
+(UUID), `PYMENTOR_ANALYTICS_LOCAL_CATALOG_NAMESPACE`,
+`PYMENTOR_ANALYTICS_LOCAL_CATALOG_URL` (числовой loopback HTTP),
+`PYMENTOR_ANALYTICS_LOCAL_CATALOG_PRODUCER_KEY_SHA256` (SHA256 raw public key),
+`PYMENTOR_ANALYTICS_PRODUCER_ID`, `PYMENTOR_ANALYTICS_PRODUCER_ISSUER` и
+`PYMENTOR_ANALYTICS_PRODUCER_KID`. Только publisher также получает private
+`PYMENTOR_ANALYTICS_PRODUCER_KEY_FILE`. Receipt и marker хранятся в отдельном
+private каталоге dataset/namespace; marker связывает также Core instance,
+endpoint и identity ключа. Marker отражает указанную оператором конфигурацию,
+а не доказывает саму идентичность базы Collector. Pending сохраняется до HTTP;
+после неизвестного ответа publisher сначала сверяет тот же fingerprint и не
+повторяет POST без подтверждённого `absent`. Synthetic CLI не изменён.
 
 ## Почта и состояние
 

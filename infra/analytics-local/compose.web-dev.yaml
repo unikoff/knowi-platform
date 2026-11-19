@@ -1,0 +1,43 @@
+name: knowi-analytics-web-dev
+
+services:
+  web:
+    build:
+      context: ../../apps/web
+      dockerfile: Dockerfile.dev
+    ports:
+      - "127.0.0.1:5173:5173"
+    environment:
+      NODE_OPTIONS: --max-old-space-size=512
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "1000"
+      PYMENTOR_DEV_API_TARGET: ${PYMENTOR_DEV_API_TARGET:-http://host.docker.internal:18041}
+      PYMENTOR_DEV_ANALYTICS_COLLECTOR_TARGET: ${PYMENTOR_DEV_ANALYTICS_COLLECTOR_TARGET:-http://host.docker.internal:18042}
+      PYMENTOR_DEV_ANALYTICS_QUERY_TARGET: ${PYMENTOR_DEV_ANALYTICS_QUERY_TARGET:-http://host.docker.internal:18043}
+      VITE_BASE: /
+      VITE_ANALYTICS_TRACKER_ENABLED: "true"
+      VITE_ANALYTICS_TOOLS_ENABLED: ${VITE_ANALYTICS_TOOLS_ENABLED:-false}
+      VITE_ANALYTICS_LEGACY_VISIT_CUTOVER: ${VITE_ANALYTICS_LEGACY_VISIT_CUTOVER:-true}
+      VITE_ANALYTICS_REPORTS_ENABLED: "true"
+      VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED: "true"
+      VITE_ANALYTICS_CALENDAR_CACHE_ENABLED: ${VITE_ANALYTICS_CALENDAR_CACHE_ENABLED:-false}
+    volumes:
+      - ../../apps/web/index.html:/app/apps/web/index.html:ro
+      - ../../apps/web/authoring.html:/app/apps/web/authoring.html:ro
+      - ../../apps/web/config/vite.config.ts:/app/apps/web/config/vite.config.ts:ro
+      - ../../apps/web/config/tsconfig.json:/app/apps/web/config/tsconfig.json:ro
+      - ../../apps/web/config/tsconfig.node.json:/app/apps/web/config/tsconfig.node.json:ro
+      - ../../apps/web/src:/app/apps/web/src:ro
+      - ../../apps/web/tools:/app/apps/web/tools:ro
+      - ../../courses/registry.json:/app/courses/registry.json:ro
+      - ../../courses/backend/course.yaml:/app/courses/backend/course.yaml:ro
+      - ../../courses/backend/frontend:/app/courses/backend/frontend:ro
+      - ../../courses/backend_copy/course.yaml:/app/courses/backend_copy/course.yaml:ro
+      - ../../courses/backend_copy/frontend:/app/courses/backend_copy/frontend:ro
+      - ../../courses/shared/ui:/app/courses/shared/ui:ro
+      - ../../courses/shared/demo:/app/courses/shared/demo:ro
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:5173/').then(result => process.exit(result.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 8

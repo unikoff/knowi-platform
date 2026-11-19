@@ -1,0 +1,38 @@
+{{- if .Values.migration.enabled }}
+{{- include "analytics.guard" . }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Release.Name }}-analytics-migrate
+automountServiceAccountToken: false
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-analytics-migrate
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: analytics, app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: migrate}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ .Release.Name }}-analytics-migrate
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: migrate
+          image: {{ if .Values.image.digest }}{{ printf "%s@%s" .Values.image.repository .Values.image.digest | quote }}{{ else }}{{ printf "%s:%s" .Values.image.repository .Values.image.tag | quote }}{{ end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["migrate", "--revision", {{ .Values.migration.revision | quote }}]
+          envFrom:
+            - configMapRef: {name: {{ .Release.Name }}-analytics-config}
+          env:
+            - name: ANALYTICS_MIGRATE_DATABASE_URL
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.migration.secretName }}, key: DATABASE_URL}
+          resources:
+{{ toYaml .Values.migration.resources | indent 12 }}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+{{- end }}

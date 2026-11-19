@@ -176,6 +176,9 @@ def _claim_next(
             start_time=event.start_time,
             attempts=event.attempts,
             lock_token=token,
+            course_id=event.course_id,
+            calendar_owner_id=event.calendar_owner_id,
+            booking_id=event.booking_id,
         )
         session.commit()
         return claimed

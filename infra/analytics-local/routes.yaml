@@ -1,0 +1,17 @@
+http:
+  routers:
+    collector:
+      rule: "Path(`/api/analytics/events/batch`)"
+      priority: 110
+      service: collector
+    query:
+      rule: "Path(`/api/analytics/reports`) || PathPrefix(`/api/analytics/reports/`)"
+      priority: 110
+      service: query
+  services:
+    collector:
+      loadBalancer:
+        servers: [{url: "http://collector:8000"}]
+    query:
+      loadBalancer:
+        servers: [{url: "http://query:8000"}]

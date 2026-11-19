@@ -14,4 +14,6 @@
 .visual-heading > svg { flex: 0 0 18px; width: 18px; height: 18px; color: inherit; }
 .visual-heading > span { min-width: 0; color: inherit; font: inherit; overflow-wrap: anywhere; }
 
+:root[data-color-scheme="light"] .visual-heading { color: var(--accent-text); }
+
 .code-block-context { display: none; }

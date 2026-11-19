@@ -1,0 +1,19 @@
+{
+  "description": "Synthetic observation runs, not wire events. Tests expand each run into valid 15-second or shorter v2 segments; gaps contain no observation.",
+  "idle_resume": {
+    "runs": [[0, 300, "backend", "theory", 0], [480, 495, "backend", "theory", 480]],
+    "expected": {"before_resume_ms": 300000, "after_resume_ms": 315000, "visitors": 1}
+  },
+  "visibility_focus_sleep": {
+    "runs": [[0, 15, "backend", "theory", 0], [90, 105, "backend", "theory", 90], [180, 195, "backend", "theory", 180], [300, 315, "backend", "theory", 300]],
+    "expected": {"total_ms": 60000, "visitors": 1}
+  },
+  "courses": {
+    "runs": [[0, 480, "backend", "theory", 0], [480, 1200, "backend", "practice", 480], [1200, 1800, "backend_copy", "theory", 1200]],
+    "expected": {"backend_theory_ms": 480000, "backend_practice_ms": 720000, "backend_total_ms": 1200000, "platform_total_ms": 1800000, "visitors": 1}
+  },
+  "overlap": {
+    "runs": [[0, 3600, "backend", "theory", 0], [0, 3600, "backend_copy", "practice", 0]],
+    "expected": {"platform_total_ms": 3600000, "backend_total_ms": 0, "backend_copy_total_ms": 3600000, "visitors": 1}
+  }
+}

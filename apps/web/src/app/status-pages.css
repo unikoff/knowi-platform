@@ -8,6 +8,8 @@
   color: var(--text);
 }
 
+:root[data-color-scheme="light"] .status-page { background: var(--bg); }
+
 .startup-card, .not-found-card {
   position: relative;
   display: flex;
@@ -23,13 +25,8 @@
   box-shadow: 0 32px 100px color-mix(in srgb, var(--black) 20%, transparent);
   text-align: center;
 }
-.status-brand { position: absolute; top: 34px; left: 38px; display: inline-flex; align-items: center; gap: 10px; color: var(--text); font-size: .91rem; font-weight: 800; letter-spacing: normal; }
-.status-brand__mark { display: grid; width: 22px; height: 22px; grid-template-columns: 1fr 1fr; gap: 3px; transform: rotate(-9deg); }
-.status-brand__mark i { border-radius: 4px 4px 2px 4px; background: var(--accent); opacity: .95; }
-.status-brand__mark i:nth-child(2) { opacity: .68; }
-.status-brand__mark i:nth-child(3) { opacity: .48; }
-.status-brand__mark i:nth-child(4) { background: var(--accent-secondary); }
-.status-brand__dot { color: var(--accent); }
+.status-brand { position: absolute; top: 34px; left: 38px; display: flex; align-items: center; }
+.status-brand .brand-logo { width: 104px; }
 
 .startup-art { position: relative; display: grid; width: 176px; height: 176px; place-items: center; margin-bottom: 30px; }
 .startup-art__orbit { position: absolute; inset: 8px; border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); border-top-color: var(--accent); border-radius: 50%; animation: status-orbit 6s linear infinite; }

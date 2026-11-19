@@ -10,6 +10,7 @@
     "course_id": {"type": "string", "maxLength": 64, "pattern": "^[a-z0-9]+(?:_[a-z0-9]+)*$"},
     "slug": {"type": "string", "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$"},
     "title": {"type": "string", "minLength": 1},
+    "leader_user_id": {"anyOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
     "content_version": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "layout": {
       "type": "object", "additionalProperties": false,

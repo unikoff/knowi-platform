@@ -45,6 +45,11 @@ Alembic history, frontend and course content are unchanged. Remaining SQLite tex
 is used by rejection/retirement checks, course material and schema-history notes.
 Current runtime configuration accepts PostgreSQL/Redis only.
 
+The Core retirement gate also scans tools and tests. Its explicit, exact-file
+exceptions for the independent Analytics privacy journal and its test tooling
+permit their SQLite usage only; retired Core modules remain prohibited in those
+files, and Core runtime, tools and executable test fixtures remain in scope.
+
 One existing standalone architecture-check finding remains:
 `modules.learning.api.service:19 -> adapters.legacy_runner.python`.
 Both the caller and checker are identical to the baseline. Retiring that current

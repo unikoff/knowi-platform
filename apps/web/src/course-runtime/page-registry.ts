@@ -12,11 +12,11 @@ export function createLessonPageRegistry(modules: LessonModuleLoaders) {
     return Object.fromEntries(Object.entries(entries).map(([source, page]) => {
       const path = `./${chapter}/${page}.tsx`;
       const load = modules[path];
-      if (!load) throw new Error(`Lesson page is missing: ${path}`);
       let component = loadedPages.get(path);
       if (!component) {
         const name = page.slice(page.lastIndexOf("/") + 1);
         component = lazy(async () => {
+          if (!load) throw new Error(`Lesson page is missing: ${path}`);
           const module = await load();
           if (!module[name]) throw new Error(`Lesson export is missing: ${name}`);
           return { default: module[name] };

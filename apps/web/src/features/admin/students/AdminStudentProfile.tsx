@@ -2,9 +2,12 @@ import "../../account/calendar-base.css";
 import "../../account/calendar.css";
 import "./profile.css";
 import "./profile-actions.css";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Activity, BookOpenCheck, CalendarCheck, CalendarDays, ChevronLeft, ChevronRight, Clock, Trash2 } from "lucide-react";
-import { getStudentProfile, changeStudentSubscription, addStudentQuota, deleteStudent } from "../api";
+import { getStudentProfile, changeStudentSubscription, addStudentQuota } from "../api";
+import { useAuthSession } from "../../auth/useAuthSession";
+import { deleteStudentWithStatus, type DeletionTarget } from "./deleteStudentRequest";
+import { DeletionStatus, type DeletionView } from "./DeletionStatus";
 import { formatSlotDate, formatSlotTimeRange, getInitialCalendarMonth, getMonthTitle, shiftCalendarMonth, formatSubscriptionDate } from "../../../shared/lib/dates";
 import { CalendarMonthGrid } from "../../../shared/ui/calendar/CalendarMonthGrid";
 import { AdminLearningProgress } from "../progress/AdminLearningProgress";
@@ -15,14 +18,17 @@ import type { CalendarMonth } from "../../../shared/api/contracts/account";
 const DELETE_KEYWORD = "УДАЛИТЬ";
 type StudentProfile = StudentProfileData;
 
-export function AdminStudentProfile({
-  studentId,
-  onDeleted,
-}: {
-  studentId: number;
-  onBack: () => void;
-  onDeleted: () => void;
-}) {
+type Props = { studentId: number; onBack: () => void; onDeleted: () => void };
+
+export function AdminStudentProfile(props: Props) {
+  const { user, checking, initialized } = useAuthSession();
+  if (!initialized || checking) return <div className="admin-profile"><p className="admin-note" role="status">Проверяем учётную запись…</p></div>;
+  if (!user || !user.is_admin) return <div className="admin-profile"><p className="form-error" role="alert">Не удалось подтвердить права администратора.</p></div>;
+  const actorKey = JSON.stringify([user.id, user.account_ref ?? null, user.auth_revision ?? null, user.is_admin]);
+  return <AdminStudentProfileContent key={`${actorKey}:${props.studentId}`} {...props} />;
+}
+
+function AdminStudentProfileContent({ studentId, onBack, onDeleted }: Props) {
   const [month, setMonth] = useState<CalendarMonth>(getInitialCalendarMonth);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
@@ -32,20 +38,25 @@ export function AdminStudentProfile({
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; email: string; accountRef?: string } | null>(null);
+  const [deletion, setDeletion] = useState<DeletionView | null>(null);
+  const deletionRequest = useRef<AbortController | null>(null);
+  const profileGeneration = useRef(0);
+  const mounted = useRef(true);
+  useLayoutEffect(() => { mounted.current = true; return () => { mounted.current = false; profileGeneration.current += 1; deletionRequest.current?.abort(); }; }, []);
 
   useEffect(() => setSelectedDay(null), [month.year, month.month]);
 
   const loadProfile = useCallback(() => {
+    const generation = ++profileGeneration.current;
     setIsLoading(true);
+    setError("");
     getStudentProfile(studentId, month)
-      .then((data) => setProfile(data.profile))
-      .catch((err) => setError(err instanceof Error ? err.message : "Не удалось загрузить профиль"))
-      .finally(() => setIsLoading(false));
+      .then((data) => { if (mounted.current && profileGeneration.current === generation) setProfile(data.profile); })
+      .catch((err) => { if (mounted.current && profileGeneration.current === generation) setError(err instanceof Error ? err.message : "Не удалось загрузить профиль"); })
+      .finally(() => { if (mounted.current && profileGeneration.current === generation) setIsLoading(false); });
   }, [studentId, month.year, month.month]);
 
-  useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
+  useEffect(() => { loadProfile(); return () => { profileGeneration.current += 1; }; }, [loadProfile]);
 
   async function mutate(request: Promise<unknown>) {
     setIsBusy(true);
@@ -68,15 +79,23 @@ export function AdminStudentProfile({
     mutate(addStudentQuota(studentId, month, amount));
   }
 
-  async function deleteUser(target: { id: number; accountRef?: string }) {
-    setIsBusy(true);
-    setError("");
+  async function deleteUser(target: DeletionTarget, knownPending = false) {
+    if (deletionRequest.current) return;
+    const controller = new AbortController();
+    deletionRequest.current = controller;
+    profileGeneration.current += 1;
+    setProfile(null);
+    setDeletion({ target, status: "checking" });
     try {
-      await deleteStudent(target.id, target.accountRef);
-      onDeleted();
+      const result = await deleteStudentWithStatus(target, controller.signal);
+      if (!mounted.current || controller.signal.aborted) return;
+      if (result === "complete") onDeleted();
+      else setDeletion({ target, status: "pending" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось удалить аккаунт");
-      setIsBusy(false);
+      if (!mounted.current || controller.signal.aborted) return;
+      setDeletion({ target, status: knownPending ? "pending" : "unknown", error: err instanceof Error && !(err instanceof TypeError) && err.name !== "AbortError" ? err.message : "Сервер не подтвердил результат." });
+    } finally {
+      if (deletionRequest.current === controller) deletionRequest.current = null;
     }
   }
 
@@ -91,6 +110,10 @@ export function AdminStudentProfile({
     return byDay;
   }, [profile?.bookings]);
   const bookingDays = useMemo(() => new Set(bookingsByDay.keys()), [bookingsByDay]);
+
+  if (deletion) {
+    return <DeletionStatus state={deletion} onCheck={() => void deleteUser(deletion.target, deletion.status === "pending")} onBack={onBack} />;
+  }
 
   if (isLoading && !profile) {
     return (

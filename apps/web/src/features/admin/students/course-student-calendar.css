@@ -1,0 +1,36 @@
+.course-student-calendar.account-calendar--personal.account-calendar--booking {
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.course-student-calendar .account-calendar__markers { flex-wrap: wrap; }
+.course-student-calendar .account-calendar__markers .is-confirmed,
+.course-student-calendar .account-calendar__legend .is-confirmed {
+  border: 1px solid var(--text);
+  border-radius: 2px;
+  background: transparent;
+}
+.course-student-calendar .account-calendar__markers .is-cancelled,
+.course-student-calendar .account-calendar__legend .is-cancelled {
+  border: 1px dashed var(--callout-red);
+  border-radius: 2px;
+  background: transparent;
+}
+
+.course-student-calendar__bookings { margin: 0; padding-left: 0; list-style: none; }
+.course-student-calendar.account-calendar--booking .course-student-calendar__bookings .account-calendar__slot {
+  justify-content: flex-start;
+  border-color: var(--line-soft);
+  background: var(--surface);
+  cursor: default;
+}
+.course-student-calendar.account-calendar--booking .course-student-calendar__bookings .account-calendar__slot.is-completed {
+  border-color: color-mix(in srgb, var(--border-tint-accent-secondary) 40%, var(--line));
+  background: linear-gradient(120deg, color-mix(in srgb, var(--accent-secondary) 13%, var(--surface)), var(--surface) 76%);
+}
+.course-student-calendar__bookings .account-calendar__slot > svg { flex: none; color: var(--muted); }

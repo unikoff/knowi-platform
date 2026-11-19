@@ -91,10 +91,7 @@ class PracticeCatalogMigrationTests(unittest.TestCase):
                 for first, last, block_name in ranges:
                     block = getattr(package, block_name)
                     if slug == "chapter_05":
-                        if block_name == "block_17":
-                            validate_block(first, last, block.MANUAL_PRACTICE, block.CODE_TASKS)
-                        else:
-                            self.assertEqual({}, block.MANUAL_PRACTICE)
+                        self.assertEqual({}, block.MANUAL_PRACTICE)
                         self.assertEqual({}, block.CODE_TASKS)
                     elif slug != "chapter_03":
                         validate_block(first, last, block.MANUAL_PRACTICE, block.CODE_TASKS)
@@ -135,6 +132,7 @@ class PracticeCatalogMigrationTests(unittest.TestCase):
                 )
                 if source.startswith("chapter_03/"):
                     expected_source = f"{layout['track_id']}/{identity_filename}"
+                expected_source = content.LESSON_SOURCE_ALIASES.get(source, expected_source)
                 expected_module = layout.get("module_labels", {}).get(Path(source).parts[1]) or legacy_module or content.RICH_TRACK_MODULE_LABELS[track["id"]][Path(source).name]
                 expected_id = "lesson-" + hashlib.sha256(identity_source.encode("utf-8")).hexdigest()[:24]
                 with self.subTest(track=track["id"], source=source):

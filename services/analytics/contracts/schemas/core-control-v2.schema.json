@@ -1,0 +1,244 @@
+{
+  "$defs": {
+    "CatalogLesson": {
+      "additionalProperties": false,
+      "properties": {
+        "lesson_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Lesson Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "lesson_id"
+      ],
+      "title": "CatalogLesson",
+      "type": "object"
+    },
+    "CatalogSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "catalog_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Catalog Version",
+          "type": "string"
+        },
+        "control_id": {
+          "format": "uuid",
+          "title": "Control Id",
+          "type": "string"
+        },
+        "course_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Course Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "catalog_snapshot",
+          "title": "Kind",
+          "type": "string"
+        },
+        "lessons": {
+          "items": {
+            "$ref": "#/$defs/CatalogLesson"
+          },
+          "maxItems": 10000,
+          "title": "Lessons",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": 2,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "track_id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Track Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "control_id",
+        "course_id",
+        "catalog_version",
+        "track_id",
+        "lessons"
+      ],
+      "title": "CatalogSnapshot",
+      "type": "object"
+    },
+    "DeletionFence": {
+      "additionalProperties": false,
+      "properties": {
+        "control_id": {
+          "format": "uuid",
+          "title": "Control Id",
+          "type": "string"
+        },
+        "epoch": {
+          "minimum": 1,
+          "title": "Epoch",
+          "type": "integer"
+        },
+        "kind": {
+          "const": "deletion_fence",
+          "title": "Kind",
+          "type": "string"
+        },
+        "occurred_at": {
+          "description": "Timezone-aware RFC 3339 timestamp",
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 2,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "subject_ref": {
+          "format": "uuid",
+          "title": "Subject Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "control_id",
+        "subject_ref",
+        "epoch",
+        "occurred_at"
+      ],
+      "title": "DeletionFence",
+      "type": "object"
+    },
+    "ProgressFact": {
+      "additionalProperties": false,
+      "properties": {
+        "catalog_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Catalog Version",
+          "type": "string"
+        },
+        "completed": {
+          "title": "Completed",
+          "type": "boolean"
+        },
+        "control_id": {
+          "format": "uuid",
+          "title": "Control Id",
+          "type": "string"
+        },
+        "course_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Course Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "progress_fact",
+          "title": "Kind",
+          "type": "string"
+        },
+        "lesson_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Lesson Id",
+          "type": "string"
+        },
+        "occurred_at": {
+          "description": "Timezone-aware RFC 3339 timestamp",
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 2,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "subject_ref": {
+          "format": "uuid",
+          "title": "Subject Ref",
+          "type": "string"
+        },
+        "task_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Task Id"
+        },
+        "task_revision": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Task Revision"
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "control_id",
+        "subject_ref",
+        "course_id",
+        "catalog_version",
+        "lesson_id",
+        "task_id",
+        "task_revision",
+        "completed",
+        "occurred_at"
+      ],
+      "title": "ProgressFact",
+      "type": "object"
+    }
+  },
+  "discriminator": {
+    "mapping": {
+      "catalog_snapshot": "#/$defs/CatalogSnapshot",
+      "deletion_fence": "#/$defs/DeletionFence",
+      "progress_fact": "#/$defs/ProgressFact"
+    },
+    "propertyName": "kind"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/CatalogSnapshot"
+    },
+    {
+      "$ref": "#/$defs/ProgressFact"
+    },
+    {
+      "$ref": "#/$defs/DeletionFence"
+    }
+  ]
+}

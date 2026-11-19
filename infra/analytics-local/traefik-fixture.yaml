@@ -1,0 +1,63 @@
+# Local 116 synthetic routing fixture; not a replacement for the cluster ingress.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: analytics-traefik-fixture
+  namespace: kube-system
+  labels: {knowi.analytics.fixture: traefik}
+data:
+  routes.yml: |
+    http:
+      routers:
+        analytics-batch:
+          entryPoints: [web]
+          rule: "Host(`analytics.fixture.local`) && Path(`/api/analytics/events/batch`)"
+          priority: 110
+          service: analytics-collector
+        analytics-reports:
+          entryPoints: [web]
+          rule: "Host(`analytics.fixture.local`) && (Path(`/api/analytics/reports`) || PathPrefix(`/api/analytics/reports/`))"
+          priority: 110
+          service: analytics-query
+      services:
+        analytics-collector:
+          loadBalancer:
+            servers:
+              - url: "http://analytics-analytics-collector.knowi-analytics.svc:8000"
+        analytics-query:
+          loadBalancer:
+            servers:
+              - url: "http://analytics-analytics-query.knowi-analytics.svc:8000"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: analytics-traefik-fixture
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: traefik
+    knowi.analytics.fixture: traefik
+spec:
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    seccompProfile: {type: RuntimeDefault}
+  containers:
+    - name: traefik
+      image: traefik:v3.7.15
+      imagePullPolicy: Never
+      args:
+        - --providers.file.filename=/etc/fixture/routes.yml
+        - --entrypoints.web.address=:8000
+        - --api.dashboard=false
+        - --accesslog=false
+        - --log.level=ERROR
+      ports: [{name: web, containerPort: 8000}]
+      readinessProbe: {tcpSocket: {port: web}, periodSeconds: 2, timeoutSeconds: 2}
+      resources:
+        limits: {memory: 128Mi}
+      securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+      volumeMounts: [{name: routes, mountPath: /etc/fixture, readOnly: true}]
+  volumes: [{name: routes, configMap: {name: analytics-traefik-fixture}}]

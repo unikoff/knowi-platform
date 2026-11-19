@@ -95,6 +95,8 @@ export type Lesson = {
   self_check?: boolean;
   manual_practice?: LessonManualPractice[];
   completed?: boolean;
+  counts_toward_statistics?: boolean;
+  completed_on?: string | null;
 };
 
 export type TaskTestResult = {

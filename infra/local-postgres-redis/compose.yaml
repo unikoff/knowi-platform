@@ -12,14 +12,15 @@ services:
   postgres:
     image: postgres:17
     environment:
-      POSTGRES_USER: core_local
+      POSTGRES_USER: core_local_owner
       POSTGRES_PASSWORD: local-disposable
       POSTGRES_DB: core_local
+    volumes: ["./init-core-roles.sql:/docker-entrypoint-initdb.d/10-core-roles.sql:ro"]
     tmpfs: [/var/lib/postgresql/data]
     mem_limit: 384m
     cpus: 1
     healthcheck:
-      test: [CMD-SHELL, pg_isready -U core_local -d core_local]
+      test: [CMD-SHELL, pg_isready -h 127.0.0.1 -U core_local_owner -d core_local]
       interval: 2s
       timeout: 2s
       retries: 30
@@ -40,10 +41,12 @@ services:
       dockerfile: services/core-api/Dockerfile
       target: migrations
     environment:
-      KNOWI_MIGRATION_URL: postgresql+asyncpg://core_local:local-disposable@postgres:5432/core_local
+      KNOWI_MIGRATION_URL: postgresql+asyncpg://core_local_owner:local-disposable@postgres:5432/core_local
       KNOWI_MIGRATION_HOST: postgres
       KNOWI_MIGRATION_DATABASE: core_local
-      KNOWI_MIGRATION_USER: core_local
+      KNOWI_MIGRATION_USER: core_local_owner
+      KNOWI_MIGRATION_OWNER: core_local_owner
+      KNOWI_MIGRATION_APP_ROLE: core_local
     depends_on:
       postgres: {condition: service_healthy}
     restart: "no"

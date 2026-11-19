@@ -1,0 +1,1 @@
+"""Shared stable types only."""

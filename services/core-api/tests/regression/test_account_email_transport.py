@@ -142,6 +142,13 @@ def test_real_local_smtp_receives_account_email():
     assert b"student@example.test" in received[0]
     message = BytesParser(policy=policy.default).parsebytes(received[0])
     assert "synthetic-token" in message.get_body(preferencelist=("plain",)).get_content()
+    html = message.get_body(preferencelist=("html",)).get_content()
+    assert 'src="cid:knowi-account-logo"' in html
+    assert 'alt="knowi"' in html
+    logo = next(part for part in message.walk() if part.get("Content-ID") == "<knowi-account-logo>")
+    assert logo.get_content_type() == "image/png"
+    assert logo.get_content_disposition() == "inline"
+    assert logo.get_payload(decode=True).startswith(b"\x89PNG\r\n\x1a\n")
 
 
 @pytest.mark.parametrize("purpose,action,expiry", [

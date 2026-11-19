@@ -1,335 +1,170 @@
-import { Callout, CodeBlock, CodeSequence, Diagram, DiagramArrow, DiagramFlow, DiagramNode, Lead, LinkedNotes, RichHero, RichLesson, Section, TypeCard, TypeCards } from "../../shared";
+import { RichLesson, RichHero, Section, Lead, LinkedNotes, Callout, CodeBlock, Diagram, DiagramFlow, DiagramNode, DiagramArrow, QuizCard, MatchPairs, PracticeCta } from "../../shared";
 
-const compareExample = `import sqlite3
-from pathlib import Path
+const handleCode = "def normalize_handle(value: object) -> str:\n    if not isinstance(value, str) or not value.isascii():\n        raise ValueError(\"Нужна ASCII-строка\")\n    handle = value.strip().upper()\n    if not 4 <= len(handle) <= 12:\n        raise ValueError(\"Нужны 4-12 знаков\")\n    for char in handle:\n        if char not in \"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-\":\n            raise ValueError(\"Недопустимый знак\")\n    return handle\n\n\nif __name__ == \"__main__\":\n    for value in (\"  book-7  \", \"BOOK-7\", \"A-1\", \"BOOK 7\", None, \"ВOOK-7\"):\n        try:\n            print(repr(value), \"=>\", normalize_handle(value))\n        except ValueError as error:\n            print(repr(value), \"=> отказ:\", error)\n    member = {\"id\": 7, \"handle\": \"BOOK-7\", \"private_marker\": \"DEMO_ONLY\", \"category\": \"staff\"}\n    public = {\"id\": member[\"id\"], \"handle\": member[\"handle\"]}\n    print(public)\n";
 
-folder = Path("demo")
-folder.mkdir(exist_ok=True)
-for name, constraint in [("reference.sqlite", "CHECK(score > 0)"),
-                         ("different.sqlite", "")]:
-    path = folder / name
-    if path.exists():
-        raise RuntimeError(f"Файл уже существует: {path}")
-    with sqlite3.connect(path) as db:
-        db.execute(f"CREATE TABLE notes (id INTEGER PRIMARY KEY, score INTEGER {constraint})")
-        db.execute("INSERT INTO notes VALUES (1, 3)")
+const iniCode = "[alembic]\nscript_location = %(here)s/migrations\nsqlalchemy.url = sqlite:///unused.sqlite3\n";
 
-for name in ("reference.sqlite", "different.sqlite"):
-    path = (folder / name).resolve()
-    db = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)
-    try:
-        print(name)
-        print(db.execute("SELECT sql FROM sqlite_schema WHERE name='notes'").fetchone())
-        print(db.execute("PRAGMA table_xinfo('notes')").fetchall())
-        print(db.execute("SELECT id, score FROM notes ORDER BY id").fetchall())
-    finally:
-        db.close()`;
+const envCode = "from alembic import context\nfrom sqlalchemy import engine_from_config, pool\n\nconfig = context.config\ntarget_metadata = None\n\nif context.is_offline_mode():\n    context.configure(url=config.get_main_option(\"sqlalchemy.url\"), literal_binds=True)\n    with context.begin_transaction():\n        context.run_migrations()\nelse:\n    engine = engine_from_config(config.get_section(config.config_ini_section), prefix=\"sqlalchemy.\", poolclass=pool.NullPool)\n    try:\n        with engine.connect() as connection:\n            context.configure(connection=connection, target_metadata=target_metadata)\n            with context.begin_transaction():\n                context.run_migrations()\n    finally:\n        engine.dispose()\n";
 
-const guardExample = `from pathlib import Path
-from alembic.config import Config
-from sqlalchemy.engine import make_url
+const baselineCode = "from alembic import op\nimport sqlalchemy as sa\n\nrevision = \"b_demo\"\ndown_revision = None\nbranch_labels = None\ndepends_on = None\n\n\ndef upgrade():\n    op.create_table(\"book_stock\",\n        sa.Column(\"id\", sa.Integer(), primary_key=True, nullable=False),\n        sa.Column(\"copies\", sa.Integer(), nullable=False, server_default=\"1\"),\n        sa.CheckConstraint(\"copies >= 0\", name=\"ck_book_stock_copies\"))\n\n\ndef downgrade():\n    raise RuntimeError(\"Удаление исходной схемы не поддерживается\")\n";
 
-cfg = Config("demo/alembic.ini")
-raw = cfg.get_main_option("sqlalchemy.url")
-expected = cfg.get_main_option("expected_database_path")
-if not raw or not expected:
-    raise ValueError("Адрес не задан")
-url = make_url(raw)
-if (url.drivername not in ("sqlite", "sqlite+pysqlite") or not url.database
-        or url.database == ":memory:" or url.query or url.host is not None
-        or url.username is not None or url.password is not None or url.port is not None):
-    raise ValueError("Нужен файловый SQLite URL")
-target = Path(url.database).resolve()
-allowed = Path(expected)
-if not allowed.is_absolute():
-    raise ValueError("Контрольный путь должен быть абсолютным")
-allowed = allowed.resolve()
-print("URL:", target)
-print("Ожидаем:", allowed)
-root = Path("demo").resolve()
-if not target.is_relative_to(root):
-    raise ValueError("Путь вне учебного каталога")
-if target != allowed or not target.is_file():
-    raise ValueError("Адрес не совпадает или файл отсутствует")
-print("Адрес совпадает")`;
+const membersCode = "from alembic import op\nimport sqlalchemy as sa\n\nrevision = \"b_members\"\ndown_revision = \"b_demo\"\nbranch_labels = None\ndepends_on = None\n\n\ndef upgrade():\n    op.create_table(\"members\",\n        sa.Column(\"id\", sa.Integer(), primary_key=True, nullable=False),\n        sa.Column(\"handle\", sa.String(12), nullable=False),\n        sa.Column(\"category\", sa.String(), nullable=False, server_default=\"guest\"),\n        sa.UniqueConstraint(\"handle\", name=\"uq_members_handle\"),\n        sa.CheckConstraint(\"category IN ('guest', 'staff')\", name=\"ck_members_category\"))\n\n\ndef downgrade():\n    raise RuntimeError(\"Используем проверенное восстановление\")\n";
 
-const inspectExample = `import sqlite3
-from pathlib import Path
+const schemaCode = "from contextlib import closing\nfrom pathlib import Path\nimport sqlite3\n\nfrom alembic import command\nfrom alembic.config import Config\nfrom sqlalchemy import CheckConstraint, Integer, String, UniqueConstraint\nfrom sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column\nfrom member_contract_demo import normalize_handle\n\n\nROOT = Path(__file__).resolve().parent\nHISTORY = ROOT / \"history\"\n\n\nclass Base(DeclarativeBase):\n    pass\n\n\nclass MemberRow(Base):\n    __tablename__ = \"members\"\n    __table_args__ = (\n        UniqueConstraint(\"handle\", name=\"uq_members_handle\"),\n        CheckConstraint(\"category IN ('guest', 'staff')\", name=\"ck_members_category\"),\n    )\n    id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)\n    handle: Mapped[str] = mapped_column(String(12), nullable=False)\n    category: Mapped[str] = mapped_column(String, nullable=False, server_default=\"guest\")\n\n\ndef config_for(path: Path, history: Path = HISTORY) -> Config:\n    if not path.is_file():\n        raise FileNotFoundError(path)\n    config = Config(str(history / \"alembic.ini\"))\n    config.set_main_option(\"sqlalchemy.url\", \"sqlite:///\" + path.as_posix())\n    return config\n\n\ndef read_state(path: Path):\n    if not path.is_file():\n        raise FileNotFoundError(path)\n    with closing(sqlite3.connect(path.as_uri() + \"?mode=ro\", uri=True)) as db:\n        rows = db.execute(\"SELECT id, copies FROM book_stock ORDER BY id\").fetchall()\n        version = db.execute(\"SELECT version_num FROM alembic_version\").fetchall()\n        objects = db.execute(\"SELECT name, sql FROM sqlite_schema WHERE type='table' ORDER BY name\").fetchall()\n    return rows, version, objects\n\n\ndef probe(path: Path, label: str, statements):\n    with closing(sqlite3.connect(path)) as db:\n        db.execute(\"BEGIN\")\n        try:\n            for sql, values in statements:\n                db.execute(sql, values)\n            print(label, \"принято\", db.execute(\"SELECT handle, category FROM members\").fetchall())\n        except sqlite3.IntegrityError as error:\n            print(label, error.sqlite_errorname, str(error))\n        finally:\n            db.rollback()\n\n\nif __name__ == \"__main__\":\n    empty = ROOT / \"member-empty.sqlite3\"\n    filled = ROOT / \"member-filled.sqlite3\"\n    for path in (empty, filled):\n        path.touch(exist_ok=False)\n        command.upgrade(config_for(path), \"b_demo\")\n    with closing(sqlite3.connect(filled)) as db:\n        db.executemany(\"INSERT INTO book_stock(id, copies) VALUES (?, ?)\", [(7, 2), (9, 0)])\n        db.commit()\n    for path in (empty, filled):\n        before = read_state(path)[0]\n        command.upgrade(config_for(path), \"b_members\")\n        command.upgrade(config_for(path), \"b_members\")\n        after, version, objects = read_state(path)\n        print(path.name, version, \"книги сохранены:\", before == after, after)\n        with closing(sqlite3.connect(path.as_uri() + \"?mode=ro\", uri=True)) as db:\n            print(\"category:\", db.execute(\"PRAGMA table_info(members)\").fetchall()[2])\n            print(\"индексы:\", db.execute(\"PRAGMA index_list(members)\").fetchall())\n        print(\"DDL:\", next(sql for name, sql in objects if name == \"members\"))\n    canonical = normalize_handle(\"  book-7  \")\n    insert = \"INSERT INTO members(handle) VALUES (?)\"\n    probe(empty, \"default\", [(insert, (canonical,))])\n    probe(empty, \"повтор\", [(insert, (canonical,)), (insert, (normalize_handle(\"BOOK-7\"),))])\n    probe(empty, \"категория\", [(\"INSERT INTO members(handle, category) VALUES (?, ?)\", (\"CLUB-9\", \"owner\"))])\n    probe(empty, \"NULL handle\", [(insert, (None,))])\n    probe(empty, \"NULL category\", [(\"INSERT INTO members(handle, category) VALUES (?, ?)\", (\"CLUB-9\", None))])\n    with closing(sqlite3.connect(empty.as_uri() + \"?mode=ro\", uri=True)) as db:\n        print(\"после rollback:\", db.execute(\"SELECT COUNT(*) FROM members\").fetchone()[0])\n    try:\n        config_for(ROOT / \"absent.sqlite3\")\n    except FileNotFoundError:\n        print(\"нет файла: отказ до Alembic\")\n";
 
-path = Path("demo/reference.sqlite").resolve()
-db = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)
-try:
-    for sql in (
-        "SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY type, name",
-        "PRAGMA table_xinfo('notes')",
-        "PRAGMA index_list('notes')",
-        "PRAGMA foreign_key_list('notes')",
-        "SELECT COUNT(*) FROM notes",
-        "SELECT id, score FROM notes ORDER BY id",
-    ):
-        print(sql, db.execute(sql).fetchall())
-finally:
-    db.close()`;
+const faultCode = "from alembic import op\nimport sqlalchemy as sa\n\nrevision = \"b_fault\"\ndown_revision = \"b_members\"\nbranch_labels = None\ndepends_on = None\n\n\ndef upgrade():\n    op.create_table(\"_failure_probe\", sa.Column(\"id\", sa.Integer(), primary_key=True))\n    raise RuntimeError(\"Учебный отказ после CREATE\")\n\n\ndef downgrade():\n    raise RuntimeError(\"Одноразовый опыт\")\n";
 
-const indexExample = `import sqlite3
+const recoveryCode = "from contextlib import closing\nfrom pathlib import Path\nimport shutil\nimport sqlite3\n\nfrom alembic import command\nfrom member_schema_demo import ROOT, HISTORY, config_for, read_state\n\n\ndef copy_new(source: Path, destination: Path):\n    source = source.resolve()\n    destination = destination.resolve()\n    if not source.is_file() or source == destination:\n        raise ValueError(\"Нужен существующий отдельный источник\")\n    with closing(sqlite3.connect(source.as_uri() + \"?mode=ro\", uri=True)) as src:\n        destination.touch(exist_ok=False)\n        with closing(sqlite3.connect(destination)) as dst:\n            src.backup(dst)\n            if dst.execute(\"PRAGMA integrity_check\").fetchone() != (\"ok\",):\n                raise RuntimeError(\"Копия непригодна\")\n\n\nif __name__ == \"__main__\":\n    checkpoint = ROOT / \"member-checkpoint.sqlite3\"\n    failed = ROOT / \"member-failed.sqlite3\"\n    recovered = ROOT / \"member-recovered.sqlite3\"\n    bad_history = ROOT / \"failure-history\"\n    copy_new(ROOT / \"member-filled.sqlite3\", checkpoint)\n    copy_new(checkpoint, failed)\n    shutil.copytree(HISTORY, bad_history)\n    shutil.copyfile(ROOT / \"b_fault.py\", bad_history / \"migrations\" / \"versions\" / \"b_fault.py\")\n    try:\n        command.upgrade(config_for(failed, bad_history), \"head\")\n    except RuntimeError as error:\n        print(type(error).__name__, str(error))\n    print(\"после отказа: книги/revision\", read_state(failed)[:2])\n    with closing(sqlite3.connect(failed.as_uri() + \"?mode=ro\", uri=True)) as db:\n        print(\"probe осталась:\", db.execute(\"SELECT COUNT(*) FROM sqlite_schema WHERE name='_failure_probe'\").fetchone()[0] == 1)\n    copy_new(checkpoint, recovered)\n    expected = read_state(checkpoint)\n    actual = read_state(recovered)\n    print(\"восстановлено в новый путь:\", expected == actual)\n    print(\"исправная revision:\", actual[1])\n    command.upgrade(config_for(recovered, HISTORY), \"b_members\")\n";
 
-db = sqlite3.connect(":memory:")
-try:
-    db.execute("CREATE TABLE notes (id INTEGER PRIMARY KEY, score INTEGER)")
-    db.execute("CREATE UNIQUE INDEX notes_score ON notes(score)")
-    print(db.execute("PRAGMA index_list('notes')").fetchall())
-    print(db.execute(
-        "SELECT name, key FROM pragma_index_xinfo(?)", ("notes_score",)
-    ).fetchall())
-finally:
-    db.close()`;
+const bootstrapCode = "def create_schema():\n    raise SystemExit(\"Используем python -m alembic upgrade head с выбранным ini\")\n\n\nif __name__ == \"__main__\":\n    create_schema()\n";
 
-const baselineEnvExample = `from pathlib import Path
-from alembic import context
-from sqlalchemy import create_engine
-from sqlalchemy.engine import make_url
+const historyTestsCode = "from contextlib import closing\nimport os\nfrom pathlib import Path\nimport sqlite3\nimport subprocess\nimport sys\n\nfrom sqlalchemy import CheckConstraint, Integer\nfrom sqlalchemy.orm import Mapped, mapped_column\n\nfrom member_schema_demo import Base, read_state\n\n\nROOT = Path(__file__).resolve().parent\n\n\ndef run_upgrade(path, revision):\n    program = \"\"\"import sys\nfrom pathlib import Path\nfrom alembic import command\nfrom member_schema_demo import config_for\ncommand.upgrade(config_for(Path(sys.argv[1])), sys.argv[2])\n\"\"\"\n    subprocess.run(\n        [sys.executable, \"-B\", \"-c\", program, str(path), revision],\n        cwd=ROOT, check=True, capture_output=True, text=True,\n    )\n\n\nclass BookRow(Base):\n    __tablename__ = \"book_stock\"\n    __table_args__ = (CheckConstraint(\"copies >= 0\", name=\"ck_book_stock_copies\"),)\n    id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)\n    copies: Mapped[int] = mapped_column(Integer, nullable=False, server_default=\"1\")\n\n\ndef test_metadata_preserves_book_contract():\n    # Прежнее {\"book_stock\"} запрещало бы новую members.\n    assert set(Base.metadata.tables) == {\"book_stock\", \"members\"}\n    table = Base.metadata.tables[\"book_stock\"]\n    assert list(table.columns.keys()) == [\"id\", \"copies\"]\n    assert table.c.id.primary_key\n    assert all(not column.nullable for column in table.columns)\n    checks = {str(item.sqltext) for item in table.constraints\n              if isinstance(item, CheckConstraint)}\n    assert \"copies >= 0\" in checks\n\n\ndef test_retired_bootstrap_and_import_do_not_change_files(tmp_path):\n    path = tmp_path / \"control.sqlite3\"\n    environment = os.environ.copy()\n    environment[\"DEMO_DATABASE_URL\"] = \"sqlite:///\" + path.as_posix()\n    imported = subprocess.run(\n        [sys.executable, \"-B\", \"-c\", \"import member_bootstrap\"],\n        cwd=ROOT, env=environment, capture_output=True, text=True,\n    )\n    assert imported.returncode == 0 and not path.exists()\n    for existed in (False, True):\n        if existed:\n            path.write_bytes(b\"KEEP THIS CONTROL FILE\")\n        before = path.read_bytes() if existed else None\n        result = subprocess.run(\n            [sys.executable, \"-B\", \"-m\", \"member_bootstrap\"],\n            cwd=ROOT, env=environment, capture_output=True, text=True,\n        )\n        assert result.returncode != 0\n        assert \"alembic upgrade head\" in result.stderr\n        if existed:\n            assert path.read_bytes() == before\n        else:\n            assert not path.exists()\n\n\ndef test_history_preserves_books_on_repeat(tmp_path):\n    path = tmp_path / \"books.sqlite3\"\n    path.touch(exist_ok=False)\n    run_upgrade(path, \"b_demo\")\n    with closing(sqlite3.connect(path)) as db:\n        db.execute(\"INSERT INTO book_stock(id, copies) VALUES (7, 2)\")\n        db.commit()\n    before = read_state(path)[0]\n    run_upgrade(path, \"b_members\")\n    run_upgrade(path, \"b_members\")\n    rows, version, objects = read_state(path)\n    assert rows == before == [(7, 2)]\n    assert version == [(\"b_members\",)]\n    assert \"members\" in {name for name, sql in objects}\n";
 
-config = context.config
-raw = config.get_main_option("sqlalchemy.url")
-expected = config.get_main_option("expected_database_path")
-if not raw or not expected:
-    raise ValueError("Адрес не задан")
-url = make_url(raw)
-if (url.drivername not in ("sqlite", "sqlite+pysqlite") or not url.database
-        or url.database == ":memory:" or url.query or url.host is not None
-        or url.username is not None or url.password is not None or url.port is not None):
-    raise ValueError("Нужен файловый SQLite URL")
-target = Path(url.database).resolve()
-allowed = Path(expected)
-if not allowed.is_absolute():
-    raise ValueError("Контрольный путь должен быть абсолютным")
-allowed = allowed.resolve()
-print("Адрес:", target, "Ожидаем:", allowed)
-if target != allowed or not target.is_relative_to(Path.cwd().resolve()) or not target.is_file():
-    raise ValueError("Недопустимый адрес")
-
-if context.is_offline_mode():
-    context.configure(url=raw)
-    with context.begin_transaction():
-        context.run_migrations()
-else:
-    engine = create_engine(raw)
-    with engine.connect() as connection:
-        context.configure(connection=connection)
-        with context.begin_transaction():
-            context.run_migrations()
-    engine.dispose()`;
-
-const baselineRevisionExample = `from alembic import op
-import sqlalchemy as sa
-
-revision = "a1b2"
-down_revision = None
-branch_labels = None
-depends_on = None
-
-def upgrade():
-    op.create_table("notes",
-        sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("score", sa.Integer),
-        sa.CheckConstraint("score > 0"))
-
-def downgrade():
-    op.drop_table("notes")`;
-
-const baselineCopiesExample = `import sqlite3
-from pathlib import Path
-
-reference = Path("reference.sqlite").resolve()
-names = ("notes.sqlite", "different.sqlite")
-if any(Path(name).exists() for name in names):
-    raise ValueError("Файл копии уже существует")
-db = sqlite3.connect(reference.as_uri() + "?mode=ro", uri=True)
-try:
-    ddl = db.execute("SELECT sql FROM sqlite_schema WHERE type='table' AND name='notes'").fetchone()[0]
-finally:
-    db.close()
-if "score > 0" not in ddl:
-    raise ValueError("Неизвестное ограничение в образце")
-for name, sql in ((names[0], ddl), (names[1], ddl.replace("score > 0", "score >= 0"))):
-    with Path(name).open("xb"):
-        pass
-    db = sqlite3.connect(name)
-    try:
-        db.execute(sql)
-        db.execute("INSERT INTO notes VALUES (1, 3)")
-        db.commit()
-    finally:
-        db.close()
-print("Созданы две заполненные учебные базы")`;
-
-const baselineCompareExample = `import sqlite3
-from pathlib import Path
-
-def inspect(name):
-    path = Path(name).resolve()
-    db = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)
-    try:
-        objects = db.execute(
-            "SELECT type, name, tbl_name, sql FROM sqlite_schema "
-            "WHERE tbl_name != 'alembic_version' AND name NOT LIKE 'sqlite_%' "
-            "ORDER BY type, name"
-        ).fetchall()
-        columns = db.execute("PRAGMA table_xinfo('notes')").fetchall()
-        indexes = db.execute("PRAGMA index_list('notes')").fetchall()
-        details = [(row[1], db.execute(
-            "SELECT * FROM pragma_index_xinfo(?)", (row[1],)
-        ).fetchall()) for row in indexes]
-        foreign_keys = db.execute("PRAGMA foreign_key_list('notes')").fetchall()
-        rows = db.execute("SELECT id, score FROM notes ORDER BY id").fetchall()
-        has_version = db.execute(
-            "SELECT name FROM sqlite_schema WHERE name='alembic_version'"
-        ).fetchall()
-        version = db.execute("SELECT version_num FROM alembic_version").fetchall() if has_version else []
-        return (objects, columns, indexes, details, foreign_keys), rows, version
-    finally:
-        db.close()
-
-reference, _, _ = inspect("reference.sqlite")
-for name in ("different.sqlite", "notes.sqlite"):
-    schema, rows, version = inspect(name)
-    print(name, "схема совпадает:", schema == reference)
-    print("Строки:", rows, "Версия:", version)`;
-
-export function Lesson84() {
+export function Lesson84({ module }: { module?: string }) {
   return <RichLesson>
-    <RichHero chip="Изменение заполненной схемы" title="Baseline для данных" intro="Сверим восстановленную копию с исходной схемой и только затем запишем её версию." />
-    <Section number="00" title="От образца к заполненной базе">
-      <Lead>У нас есть образец схемы, построенный по истории, и отдельная восстановленная копия с задачами. Нам важно не потерять эти задачи при включении копии в историю.</Lead>
+    <RichHero chip={module ?? "Миграции базы"} title="Таблица пользователей"
+      intro="Договоримся об имени пользователя, добавим его хранилище через историю и проверим, что задачи пережили изменение. Настоящих паролей здесь ещё нет." />
+    <Section number="00" title="От истории задач к данным пользователя">
+      <Lead>Исходная история уже должна создавать таблицу задач, а восстановленная заполненная копия должна соответствовать той же исходной revision. Перед работой подтвердим эти состояния. Теперь спроектируем первую новую таблицу.</Lead>
       <LinkedNotes items={[
-        {title:"Точка старта",description:"Проверяем резерв, восстановленную копию, образец и исходную ревизию."},
-        {title:"Новый вопрос",description:"Доказывает ли метка версии, что существующая схема действительно подходит?"},
-        {title:"Результат",description:"Сравним схему и данные и отметим только подходящую копию."}
+        { title: "Точка старта", description: "Есть новая baseline и проверенная заполненная копия на той же исходной revision. Сохранены данные и способ восстановления." },
+        { title: "Новый вопрос", description: "Где хранить будущего пользователя и как не превратить разные написания одного имени в две записи?" },
+        { title: "Результат", description: "Получим единое правило login, User-схему на двух копиях и проверенный путь восстановления после отказа." },
       ]} />
-      <p>Ревизия описывает ожидаемую схему, но не проверяет файл за нас. Поэтому сначала рассматриваем реальное состояние, а отметку записываем в конце.</p>
+      <p>Сначала определим смысл данных и допустимое имя. Затем выразим договор в модели и ревизии. Только после проверки перехода изменим учебные базы. Наличие файла миграции ещё не означает, что он применён.</p>
     </Section>
-    <Section number="01" title="Разделяем роли файлов">
-      <p>Исходная база и резерв нужны для восстановления. На них мы не экспериментируем. Восстановленная копия содержит две разные синтетические задачи; отдельная пустая база после baseline служит образцом схемы. Ещё один отдельный файл понадобится для намеренной ошибки.</p>
-      <TypeCards>
-        <TypeCard badge="Роль файла" title="Резерв">Сохраняем без изменений и проверяем, что восстановление уже удалось.</TypeCard>
-        <TypeCard badge="Роль файла" title="Образец">База, созданная применением исходной ревизии к пустому файлу.</TypeCard>
-        <TypeCard badge="Роль файла" title="Восстановленная копия">Её будем сравнивать и при совпадении маркировать.</TypeCard>
-        <TypeCard badge="Роль файла" title="Одноразовая копия">На ней обнаружим расхождение и остановимся.</TypeCard>
-      </TypeCards>
-      <Diagram caption="Как копия попадает в историю" orientation="vertical">
-        <DiagramFlow label="Сравнение перед маркировкой" orientation="vertical">
-          <DiagramNode title="Образец и заполненная копия" shape="database"><p>У каждого файла своя роль и проверенный адрес.</p></DiagramNode>
-          <DiagramArrow label="сравниваем структуру и сохраняем опись" />
-          <DiagramNode title="Схема совпадает?" shape="decision"><p>При отличии или неясном объекте останавливаемся.</p></DiagramNode>
-          <DiagramArrow label="совпадает: отмечаем исходную revision" />
-          <DiagramNode title="Проверяем результат"><p>Версия записана, строки и схема сохранились.</p></DiagramNode>
+
+    <Section number="01" title="Имя, внутренняя запись и публичная карточка">
+      <Lead>Строка с именем сообщает, кем человек представляется. Сама строка не подтверждает личность.</Lead>
+      <p>Позднее проверка секрета позволит принять или отвергнуть это заявление. Ещё одно решение определит доступ: например, разрешена ли операция конкретному пользователю. Это разные задачи. Даже присланное значение <code>role="admin"</code> не подтверждает администратора.</p>
+      <p>Сейчас готовим хранилище будущей учётной записи. В нём будут id, login, password_hash и role. Хеш остаётся внутренним полем. В этом опыте вместо настоящего хеша используем явно фиктивную строку: по ней нельзя войти, и мы не проверяем пароль.</p>
+      <Diagram caption="Три границы User-данных: запись не равна ответу" orientation="vertical">
+        <DiagramFlow label="Какие данные переходят наружу" orientation="vertical">
+          <DiagramNode title="Входное имя">login ещё нужно проверить и нормализовать. Клиентская роль не является решением сервера.</DiagramNode>
+          <DiagramArrow label="Проверяем договор имени" />
+          <DiagramNode title="Внутренняя строка" shape="database">id, login, password_hash, role. В текущем опыте hash только фиктивный.</DiagramNode>
+          <DiagramArrow label="Явно выбираем публичные поля" />
+          <DiagramNode title="Безопасная проекция">Только id и login. Role и hash остаются внутри.</DiagramNode>
         </DiagramFlow>
       </Diagram>
-      <p>Стрелка к отметке возможна только после сравнения. Если схема отличается, путь заканчивается на проверке, а резерв остаётся доступен для восстановления.</p>
-      <Callout tone="warn">Работаем из project/ в изолированном учебном каталоге. Если путь неизвестен, файлы совпадают или восстановление не подтверждено, останавливаемся до записи.</Callout>
+      <p>Таблица tasks при этом не меняется. Связь задачи с владельцем появится вместе с отдельным договором доступа. Сейчас появление users не делает существующий Planner личным.</p>
+      <h3>Независимый каталог участников</h3>
+      <p>Разберём тот же выбор полей на участниках книжного кружка. Внутри записи есть учебная private_marker и category. Публичная карточка выбирает только номер и handle. Мы создаём новый словарь, а не публикуем все атрибуты объекта.</p>
+      <CodeBlock caption="Фрагмент словаря; все входные значения заданы здесь" code={'member = {"id": 7, "handle": "BOOK-7",\n          "private_marker": "DEMO_ONLY", "category": "staff"}\npublic = {"id": member["id"], "handle": member["handle"]}\nprint(public)\n# {\'id\': 7, \'handle\': \'BOOK-7\'}'} />
+      <p>В результате нет private_marker и category, потому что мы не включили их в новый словарь. Исходная запись при этом сохраняется. Это проекция данных, а не проверка секрета. Для другого участника с категорией staff публичный набор остаётся тем же.</p>
+      <MatchPairs prompt="Свяжем поле участника с его назначением" leftTitle="Поле" rightTitle="Зачем оно нужно"
+        pairs={[
+          { left: "id", right: "Публичный номер записи" },
+          { left: "handle", right: "Имя в публичной карточке" },
+          { left: "private_marker", right: "Внутренняя учебная метка" },
+          { left: "category", right: "Внутренняя категория участника" },
+        ]}
+        explanation="Номер и имя нужны карточке. Метка и категория остаются внутри каталога; присутствие поля в строке не делает его публичным. В Planner наружу так же выбираем только id/login." />
     </Section>
-    <Section number="02" title="Что действительно хранит схема">
-      <Lead>Схема описывает таблицы и их правила. Одинаковые имена столбцов ещё не означают одинаковые ограничения.</Lead>
-      <p>В отдельном пустом каталоге сохраним пример как compare_notes.py и запустим <code>python compare_notes.py</code>. Он создаёт только новые файлы в demo и отказывается перезаписывать существующие. Затем открывает их для чтения. URI с <code>mode=ro</code> запрещает создание отсутствующей базы; <code>uri=True</code> включает разбор URI. После чтения соединение закрывается.</p>
-      <CodeBlock code={compareExample} />
-      <p>Обе базы вернут строку <code>[(1, 3)]</code> и одинаковые поля. Но в SQL таблицы reference есть <code>CHECK(score &gt; 0)</code>, а в different его нет. CHECK ограничивает допустимые значения. Содержимое совпало, правило нет. Если файлы уже существуют, сначала выбираем новый учебный каталог, а не удаляем их вслепую.</p>
-      <p>Рассмотрим одну строку table_xinfo: <code>(1, 'score', 'INTEGER', 0, None, 0, 0)</code>. Это колонка номер 1 с именем score и типом INTEGER; первый ноль после типа означает отсутствие NOT NULL, None означает отсутствие SQL default, последние нули показывают, что это не первичный ключ и не скрытая колонка. Здесь таблица в обоих файлах даёт одинаковую строку, поэтому условие CHECK приходится найти в SQL создания отдельно.</p>
-      <p>В SQLite <code>sqlite_schema</code> перечисляет объекты и исходный SQL. <code>PRAGMA table_xinfo('notes')</code> показывает имя, тип, обязательность, SQL default, первичный ключ и признак скрытого столбца. Для индексов используем <code>PRAGMA index_list('notes')</code>, затем <code>PRAGMA index_xinfo('имя_индекса')</code>; для связей <code>PRAGMA foreign_key_list('notes')</code>. Пустой список означает, что соответствующие объекты не найдены. CHECK, триггеры и представления отдельно читаем в sqlite_schema.</p>
-      <p>Чтобы увидеть эти результаты средствами Python, сохраним inspect_notes.py рядом с compare_notes.py и запустим <code>python inspect_notes.py</code> из той же папки после создания образца. Метод execute отправляет SQL, fetchall возвращает все строки; цикл печатает каждый запрос вместе с ответом. Для notes в примере списки индексов и связей пусты, число строк равно 1. Если индекс есть, отдельным запросом с его именем читаем index_xinfo.</p>
-      <CodeBlock code={inspectExample} />
-      <p>Посмотрим на непустой результат отдельно. Сохраним index_notes.py в той же учебной папке и запустим <code>python index_notes.py</code>. База существует только в памяти, файлы предыдущего примера не изменяются.</p>
-      <CodeBlock code={indexExample} />
-      <p>Первый вывод <code>[(0, 'notes_score', 1, 'c', 0)]</code>: индекс называется notes_score, единица означает уникальность, c обозначает явно созданный индекс, последний ноль означает отсутствие частичного условия. Второй вывод <code>[('score', 1), (None, 0)]</code> показывает ключевую колонку score и служебную запись rowid. Знак вопроса передаёт имя отдельно от SQL, а кортеж с запятой содержит один аргумент. При сравнении реальной базы имя индекса берём из index_list; его SQL также читаем в sqlite_schema.</p>
-      <p>Сравниваем таблицы, колонки, типы, PK, nullable, defaults, CHECK, индексы, внешние ключи, представления и триггеры. Python default в модели не обязательно является SQL default в базе. Непонятный объект или неоднозначное SQL-сравнение означает остановку: мы не доказываем эквивалентность любых возможных схем.</p>
-    </Section>
-    <Section number="03" title="Сравниваем сами записи">
-      <p>Количество строк не покажет изменённый текст. Для примера выше <code>SELECT COUNT(*) FROM notes</code> вернёт 1 в обеих базах, а <code>SELECT id, score FROM notes ORDER BY id</code> даст отсортированные пары. Если score в одной копии изменить, количество останется прежним, но пары будут отличаться.</p>
-      <p>В Planner сохраняем количество и полный список <code>id, title, priority, is_done, tags, title_normalized</code> по порядку id. После операции повторяем то же чтение в новом соединении и сравниваем значения каждой строки. Внутренние tags проверяем в базе: API и CLI не обязаны их показывать. Integrity check проверяет структуру файла, но не правильность содержимого.</p>
-    </Section>
-    <Section number="04" title="Метка и фактическое состояние">
-      <p>Файл исходной ревизии содержит её <code>revision</code> и операцию создания схемы. <code>current</code> показывает записанную версию, а <code>history</code> доступную историю. Команда <code>stamp</code> записывает отметку, не выполняя операции миграции. Поэтому она не добавит пропущенный CHECK и не исправит данные. Автоматическое сравнение metadata тоже может пропускать ограничения.</p>
-      <CodeSequence title="Когда можно поставить отметку" prompt="У отдельного учебного каталога книг есть заполненная копия и эталон. Расположим действия по порядку для случая, когда все проверки совпали." pieces={[
-        {id:"compare",code:"Сравнить фактические объекты и правила с эталоном"},
-        {id:"stamp",code:"Записать известную исходную ревизию"},
-        {id:"check",code:"Повторно прочитать версию и данные"}
-      ]} correctOrder={["compare","stamp","check"]} explanation="Сначала устанавливаем соответствие, затем записываем метку и независимо читаем результат. При отличии останавливаемся до метки." incorrectExplanation="Посмотрим, что даёт основание для метки и когда можно проверить её результат. При отличии схемы маркировки вообще не будет." />
-      <p>Когда совпадение установлено, используем конкретное значение revision из файла в migrations/versions. Слово <code>head</code> обозначает вершину истории, которая может измениться позже. Не стираем неожиданную версию и не повторяем команду при неизвестном результате.</p>
-      <p>Проведём отдельный опыт с notes. Как и при подготовке истории, сначала получим окружение Alembic и исходную ревизию. Разница в том, что затем сравним с образцом уже заполненную базу и запишем ей метку без создания таблицы заново. Работаем в новой пустой учебной папке notes_baseline с установленными Alembic и SQLAlchemy; все команды ниже выполняем из неё.</p>
-      <p>Создадим окружение командой:</p>
-      <CodeBlock code="python -m alembic init migrations" />
-      <p>В папке появятся alembic.ini, migrations/env.py и migrations/versions. Команду init поверх существующего окружения не повторяем.</p>
-      <p>В migrations/versions создадим файл <code>a1b2_initial.py</code>. Это самостоятельная история примера, поэтому здесь можно задать известный ID a1b2. В реальном проекте значение читаем из его исходного файла.</p>
-      <CodeBlock caption="migrations/versions/a1b2_initial.py" code={baselineRevisionExample} />
-      <p>Теперь заменим содержимое migrations/env.py. Как и в подготовленном окружении, он читает URL и контрольный путь из Config. Проверка выполняется перед обоими режимами: offline готовит SQL, online открывает соединение. Дополнительно в этом опыте мы требуем существующий файл внутри учебной папки.</p>
-      <CodeBlock caption="migrations/env.py" code={baselineEnvExample} />
-      <p>Создадим только новый пустой файл образца. Команда с режимом xb откажет, если имя уже занято:</p>
-      <CodeBlock code={`python -c "from pathlib import Path; Path('reference.sqlite').open('xb').close()"`} />
-      <p>Чтобы узнать его абсолютный путь для проверки, выполним следующую команду. Выбираем учебный путь без знака процента.</p>
-      <CodeBlock code={`python -c "from pathlib import Path; print(Path('reference.sqlite').resolve())"`} />
-      <p>В созданном alembic.ini в разделе [alembic] заменим значение sqlalchemy.url на URL ниже и добавим expected_database_path с только что выведенным абсолютным путём к reference.sqlite. В примере подставляем собственный путь; остальные настройки init сохраняем.</p>
-      <CodeBlock caption="Пример настроек alembic.ini" code={`sqlalchemy.url = sqlite:///reference.sqlite
-expected_database_path = C:/учебная_папка/notes_baseline/reference.sqlite`} />
-      <p>Проверим совпадение путей в выводе и выполним следующую команду: ревизия создаст таблицу в пустом образце и запишет его версию.</p>
-      <CodeBlock code="python -m alembic upgrade a1b2" />
-      <p>Теперь создадим две заполненные базы. Сохраним следующий файл как <code>create_copies.py</code> рядом с alembic.ini и выполним <code>python create_copies.py</code>. Он читает SQL таблицы образца, создаёт notes.sqlite с тем же правилом, а в different.sqlite меняет только условие CHECK. В обе базы записывается одна и та же строка. Имена файлов должны быть свободны.</p>
-      <CodeBlock caption="create_copies.py" code={baselineCopiesExample} />
-      <p>Увидим «Созданы две заполненные учебные базы». Это две отдельные базы с одинаковыми значениями, а не копии файла версии Alembic. Теперь сохраним <code>compare_baseline.py</code> рядом с ними и выполним <code>python compare_baseline.py</code>. Код открывает каждую базу только для чтения и сравнивает пользовательские объекты и их SQL, свойства колонок, индексы и их состав, внешние ключи. Таблица alembic_version учитывается отдельно.</p>
-      <CodeBlock caption="compare_baseline.py" code={baselineCompareExample} />
-      <p>Для different.sqlite вывод содержит <code>схема совпадает: False</code>, для notes.sqlite <code>схема совпадает: True</code>. В обоих случаях строки равны <code>[(1, 3)]</code>, а версия пока <code>[]</code>. Различие CHECK видно в SQL из sqlite_schema, хотя значения одинаковы. Сравнение SQL намеренно строгое: при другом написании мы останавливаемся и не обещаем автоматическую проверку смысловой равнозначности.</p>
-      <p>Different.sqlite мы не маркируем: схема отличается. Для notes.sqlite совпадение установлено, и в ней нет неожиданной версии. В alembic.ini изменим оба параметра на эту базу: URL <code>sqlite:///notes.sqlite</code>, а expected_database_path на её абсолютный путь, который получим той же командой Path.resolve, заменив имя файла. Сверим пути в выводе и последовательно выполним команды ниже. Идентификатор берём из нашей ревизии, а не подменяем словом head.</p>
-      <CodeBlock caption="Проверяем, отмечаем и снова читаем версию" code={`python -m alembic current
-python -m alembic stamp a1b2
-python -m alembic current`} />
-      <p>Первый current не показывает ID ревизии, stamp записывает a1b2, второй current показывает <code>a1b2 (head)</code>. Выполним <code>python compare_baseline.py</code> ещё раз: у notes.sqlite по-прежнему совпадает схема и остаётся <code>[(1, 3)]</code>, а версия стала <code>[('a1b2',)]</code>. У different.sqlite сохраняются False и пустая версия. Так мы видим отдельно решение не отмечать несовпадающую базу и результат маркировки подходящей.</p>
-      <p>Представим ещё одну копию: её строки совпадают, но в схеме появился незнакомый триггер. Можно ли её отметить? Нет: даже сохранённые значения не объясняют действие триггера. Сначала выясняем назначение объекта, иначе останавливаемся. В практике мы самостоятельно примем такое решение для Planner.</p>
-      <p>В этом опыте команда Alembic читает Config из alembic.ini. В тесте оба параметра можно заменить через set_main_option для своей временной базы; env.py получает именно эти переданные значения. Строка с процентом экранируется для Config как два знака процента. Конкретный проектный env.py и учебный каталог проверяем перед применением.</p>
-    </Section>
-    <Section number="05" title="Проверяем адрес до команды">
-      <p>В alembic.ini единственный адрес подключения хранится в <code>sqlalchemy.url</code>. Значение <code>expected_database_path</code> в том же файле является отдельной проверкой ожидаемого абсолютного пути. В migrations/env.py нужно прочитать оба значения из Config и сравнить разрешённые пути до создания engine, подключения и offline configure. Неизвестный адрес или несовпадение останавливает операцию.</p>
-      <p>На независимом примере Config читает значения секции alembic, make_url разбирает SQLite URL, а Path.resolve приводит путь к абсолютному виду. Сохраним следующий файл как check_address.py рядом с compare_notes.py. Создадим demo/alembic.ini с секцией [alembic], значением sqlalchemy.url в форме sqlite:/// с абсолютным путём к созданному demo/reference.sqlite и значением expected_database_path с тем же абсолютным путём без префикса sqlite. На Windows форма URL может быть такой:</p>
-      <CodeBlock code="sqlite:///C:/учебная_папка/demo/reference.sqlite" />
-      <p>Вместо примерного пути записываем свой. Запуск <code>python check_address.py</code> покажет два одинаковых пути и сообщение об успехе.</p>
-      <CodeBlock code={guardExample} />
-      <p>Если изменить только URL на другой файл, программа остановится до подключения. Разрешены драйверы sqlite и sqlite+pysqlite; адрес с host, портом, именем пользователя, паролем, query или базой в памяти отклоняется. Метод is_relative_to проверяет, что путь находится внутри demo. Пример показывает проверку, но её нужно встроить в env.py до обеих ветвей Alembic. Относительный SQLite URL разрешается относительно текущей папки; контрольный путь задаём абсолютным.</p>
-      <p>Для каждой новой цели в ini синхронно меняем оба значения, выводим и сравниваем два абсолютных пути. В тестовом Config оба значения также задаются через <code>set_main_option</code>, а env.py читает именно переданные значения. Не направляем конфигурацию на исходную базу или резерв.</p>
-      <p>Это ограничение сохраняется и при следующем изменении: Alembic принимает только существующий файл. Если заранее разрешена новая пустая учебная база, сначала проверяем, что её каталог существует и находится в разрешённой области, путь свободен, а URL и абсолютный контрольный путь указывают на выбранную цель. Затем отдельно создаём пустой файл через <code>Path(...).open('xb').close()</code>, как в опыте с образцом. Режим xb отказывает при занятом имени и не перезаписывает файл. Только после этого передаём согласованные значения в тот же Config и запускаем upgrade, который создаст схему. Заполненную копию и резерв заново таким способом не создаём; неизвестный путь означает остановку.</p>
-      <p>Ранее сохранённые проверки истории тоже должны учитывать эту защиту. В <code>tests/test_db_schema.py</code> проверки исходной схемы и текущей истории получают отдельные файлы внутри временного каталога проекта и заранее резервируют их через xb. Проверка неверного адреса резервирует только ожидаемый файл, затем меняет URL: файл по ошибочному адресу должен остаться отсутствующим. Оба значения по-прежнему передаются в один Config. Если сохранённый тест ещё не подготовлен таким образом, сначала возвращаемся к его настройке; отказ guard сам по себе не доказывает ошибку миграции.</p>
-      <p>Для адресной проверки из PowerShell в <code>project/</code> выберем новое свободное имя временного каталога. Параметр basetemp задаёт pytest место для tmp_path внутри проекта, разрешённого guard. Pytest может очистить указанный каталог, поэтому существующее имя использовать нельзя. Например, убедившись, что <code>.pytest-baseline-84</code> отсутствует, выполним:</p>
-      <CodeBlock code="python -m pytest tests/test_db_schema.py --basetemp .pytest-baseline-84" />
-      <p>Ожидаем успех проверок файла: отдельные базы получают исходную и текущую ревизии, неверный URL отклоняется до создания ошибочного файла. При неуспехе читаем причину и проверяем путь и подготовку файлов, не ослабляя guard. Это проверка текущей истории; дальнейшую адаптацию других тестов здесь ещё не считаем выполненной.</p>
-      <p>Для одноразовой копии применяется подготовленная обёртка:</p>
-      <CodeBlock code="python -m app.DBase.backup_snapshot SOURCE DEST" />
-      <p>SOURCE это существующая восстановленная учебная база, DEST новый отдельный путь. При занятом DEST операция должна отказать без перезаписи. Само завершение без исключения не доказывает сохранность содержимого: открываем копию и сравниваем её записи.</p>
-      <p>Например, после создания учебного файла notes используем существующий источник и новое назначение:</p>
-      <CodeBlock code="python -m app.DBase.backup_snapshot demo/reference.sqlite demo/copy.sqlite" />
-      <p>Затем открываем copy.sqlite только для чтения и сверяем SELECT с источником. Повтор той же команды должен отказать, потому что назначение занято, а содержимое copy.sqlite должно остаться прежним. Эта команда относится к подготовленному учебному проекту: прежде проверяем доступность его обёртки и тестируем её на собственных синтетических файлах.</p>
-      <p>Чтобы создать контролируемое расхождение, используем отдельную копию. Для демонстрации сохраним следующий код в make_extra.py и вызовем его командой:</p>
-      <CodeBlock code="python make_extra.py demo/copy.sqlite" />
-      <p>В sys.argv[1] Python помещает первый аргумент после имени программы; Path разрешает его в полный путь. Файл должен существовать в demo; программа добавит таблицу extra_note и после commit закроет соединение. Перечень sqlite_schema покажет новый объект. Повтор откажет, если таблица уже есть.</p>
-      <CodeBlock code={`import sqlite3
-import sys
-from pathlib import Path
 
-path = Path(sys.argv[1]).resolve()
-root = Path("demo").resolve()
-if not path.is_relative_to(root) or not path.is_file():
-    raise ValueError("Нужна существующая учебная копия")
-db = sqlite3.connect(path)
-try:
-    db.execute("CREATE TABLE extra_note (id INTEGER)")
-    db.commit()
-finally:
-    db.close()`} />
+    <Section number="02" title="Нормализация приводит к одному имени">
+      <Lead>Уникальность сравнивает хранимые значения. Поэтому сначала нужно решить, какие написания считаем одним именем.</Lead>
+      <p>Нормализация преобразует допустимый ввод в каноническое значение. Валидация проверяет, можно ли значение принять. Удаление пробелов по краям и изменение регистра не должны случайно превратить недопустимый ввод в допустимый.</p>
+      <p>ASCII содержит латинские буквы, цифры и привычные знаки. Метод <code>isascii()</code> проверяет, что все символы строки входят в этот набор. Сначала проверим тип и ASCII, затем преобразуем строку. Например, Unicode-символ K при lower() способен стать обычной k. Если наш договор разрешает только ASCII-ввод, отказ должен произойти до такого преобразования.</p>
+      <p>В каталоге участников правило отличается от Planner: после trim и uppercase нужны 4–12 знаков из A–Z, цифр и дефиса. Strip удаляет пробельные символы по краям, upper меняет регистр; ни один из них не должен удалять внутренний пробел. Цикл проверяет каждый оставшийся символ. Return отдаёт готовую строку, raise ValueError сообщает об отказе и не возвращает исправленное имя.</p>
+      <p>Выберем один свободный каталог <code>project/scratch/member-schema-demo/</code>. Если он занят, выберем свободный суффикс и сохраним его во всех дальнейших командах. Сохраним в нём полный файл <code>member_contract_demo.py</code>. Из этого каталога выполним <code>python member_contract_demo.py</code> в том же окружении проекта. До первого результата нужен один файл; SQLite ещё не участвует.</p>
+      <CodeBlock caption="member_contract_demo.py, полный независимый пример" code={handleCode} />
+      <p>Первые два входа дают BOOK-7. A-1 отвергается по длине, BOOK 7 по внутреннему пробелу, None по типу, а ВOOK-7 содержит кириллическую букву и отвергается до смены регистра. Последняя строка показывает публичную карточку. Значение ошибки не попадает в каталог как новая запись.</p>
+      <QuizCard question="Как закончится проверка трёх новых значений: ' club-9 ', 'CLUB-9', 'CLUB 9'?"
+        options={["Три разных допустимых имени", "Два раза CLUB-9, затем отказ", "Все три превращаются в CLUB-9"]} correctIndex={1}
+        explanation="Trim и uppercase дают один ключ для первых двух строк. Внутренний пробел третьей строки не удаляется: проверка алфавита её отклоняет. Нормализация не означает произвольное исправление имени." />
+      <p>После этого поменяем в примере только нижнюю границу длины и проверим новый граничный код. Сначала назовём ожидаемый результат, затем выполним файл. Это малая проба переноса: сама функция уже показана, но результат изменённого правила выбираем сами.</p>
+      <h3>Договор login в Planner</h3>
+      <ul>
+        <li>Принимаем только str. Число и None не приводим к строке.</li>
+        <li>Не-ASCII отклоняем до trim и lower, включая Unicode-пробел по краю.</li>
+        <li>У ASCII-строки убираем пробельные символы только по краям и приводим латинские буквы к нижнему регистру.</li>
+        <li>После преобразования нужны 3–32 знака из a–z, цифр и подчёркивания. Внутренний пробел, дефис и точка недопустимы.</li>
+        <li>Получаем одну каноническую строку либо ValueError. Повторная нормализация результата ничего не меняет.</li>
+      </ul>
+      <p>Правило будет одним помощником normalize_login в существующем app/validators.py. Будущие создание и поиск вызывают его одинаково. Пароль в этот помощник не передаётся: парольный модуль появится отдельно.</p>
     </Section>
+
+    <Section number="03" title="Ограничение должно существовать в базе">
+      <Lead>Проверка имени и ограничение БД работают на разных границах. После нормализации две попытки записи одного значения должна остановить UNIQUE.</Lead>
+      <p>Продолжим независимый каталог: добавим members к книжной исходной схеме book_stock. У members три поля: id, handle и category. Primary key определяет строку. Nullable=False требует значение. UniqueConstraint не допускает второй одинаковый handle. CheckConstraint принимает category только из guest/staff.</p>
+      <p>ORM описывает ожидаемую таблицу в Python. Mapped указывает тип атрибута, mapped_column связывает его с колонкой, а __table_args__ содержит ограничения всей таблицы. Ни импорт класса, ни изменение metadata не меняют уже существующий SQLite-файл.</p>
+      <CodeBlock caption="Фрагмент ORM каталога; полный файл запуска находится ниже" code={'class MemberRow(Base):\n    __tablename__ = "members"\n    __table_args__ = (\n        UniqueConstraint("handle", name="uq_members_handle"),\n        CheckConstraint("category IN (\'guest\', \'staff\')", name="ck_members_category"),\n    )\n    id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)\n    handle: Mapped[str] = mapped_column(String(12), nullable=False)\n    category: Mapped[str] = mapped_column(String, nullable=False, server_default="guest")'} />
+      <p>Server_default попадает в SQL CREATE TABLE. Если SQL INSERT пропустит category, БД поставит guest. Явный NULL не является пропуском: NOT NULL его отклонит. Обычный Python default у TaskRow не равен SQL-default. Default также не обещает значение у только что созданного, ещё не записанного ORM-объекта.</p>
+      <p>String(12) описывает SQL-тип, но SQLite не проверяет указанную в VARCHAR длину. Алфавит и длину проверяет помощник имени. UNIQUE сам не вызывает upper или lower: ему нужно передать уже каноническое значение. Прямой произвольный SQL не становится штатным writer приложения.</p>
+      <p>Исполняемая ревизия содержит замороженное описание той же таблицы. Op.create_table получает имя, колонки и ограничения внутри одного создания. Здесь не нужен отдельный ALTER для добавления CHECK или UNIQUE.</p>
+      <CodeBlock caption="history/migrations/versions/b_members_add_members.py, полный файл" code={membersCode} />
+      <p>Down_revision связывает новую revision с исходной b_demo. Upgrade будет выполнен только после выбора цели. Downgrade здесь явно отказывает: pass не должен выдавать отсутствие действия за безопасное удаление. Для восстановления используем проверенный снимок.</p>
+      <h3>Как прочитать проверку ограничения</h3>
+      <p>В опыте ниже выполняем BEGIN перед пробными INSERT. Два одинаковых handle в одной транзакции дают SQLITE_CONSTRAINT_UNIQUE с колонкой members.handle. Значение category=owner даёт SQLITE_CONSTRAINT_CHECK с именем ck_members_category. NULL handle даёт SQLITE_CONSTRAINT_NOTNULL. Любая ошибка сама по себе ещё не доказывает нужное правило.</p>
+      <p>Наконец всегда выполняем rollback и закрываем соединение. Успешная пробная строка видна внутри этой транзакции, но не сохраняется. Новое соединение после rollback видит ноль пробных участников. Проверяем схему, а не создаём аккаунт. В полном примере probe показывает эти действия без savepoint и новых pytest-фикстур.</p>
+      <p>Чтобы превратить наблюдение в тест, сопоставим конкретный факт с ожиданием. Например, у строки category в table_info четвёртое значение notnull должно быть 1, пятое SQL-default должно содержать guest. Проверочное утверждение для notnull будет <code>assert category_row[3] == 1</code>. Индекс 3 здесь относится именно к разобранному выводу PRAGMA, а не к порядку полей Python-класса.</p>
+      <p>В Planner самостоятельно опишем users с id INTEGER PK/NOT NULL, login String(32) NOT NULL и uq_users_login, password_hash String NOT NULL без искусственного короткого лимита, role String NOT NULL с SQL-default user и CHECK ck_users_role_allowed для user/admin. TaskRow остаётся прежним. В публичную проекцию выберем только id/login. Это договор задачи, а не готовый UserRow.</p>
+    </Section>
+
+    <Section number="04" title="Проверяем переход на двух исходных состояниях">
+      <Lead>Теперь выполним полный переход: одна таблица добавляется и к пустому, и к заполненному книжному реестру. До запуска сохраним ожидания, после него проверим реальный файл.</Lead>
+      <p>В выбранном каталоге опыта создадим только новый history/migrations/versions. Если сохранился независимый книжный контур исходной истории, перенесём его ini, env.py и b_demo. Ниже приведены полные согласованные листинги: можно сверить их без скачиваемого starter. В history не должно быть проектной p0001 или чужих revisions. Member_contract_demo.py сохраняем, не перезаписываем.</p>
+      <p>До запуска нужны шесть файлов: уже созданный файл правила, ini, env.py, b_demo, b_members и member_schema_demo.py. Имена родителей и подкаталогов показаны в подписях. Не создаём второй venv, API или новый Planner. Env содержит только стандартный online/offline путь; он не импортирует приложение и не вызывает create_all.</p>
+      <CodeBlock caption="history/alembic.ini" code={iniCode} />
+      <p>В готовом драйвере Config читает этот ini, а set_main_option перед каждым upgrade задаёт точный URL выбранного существующего файла. Поэтому unused.sqlite3 не открывается. В проектной практике URL выбираем в настоящем sqlalchemy.url ini. DATABASE_URL приложения является отдельной настройкой и сам по себе Alembic не переключает.</p>
+      <details><summary>Полные уже знакомые файлы исходной истории книжного опыта</summary>
+        <CodeBlock caption="history/migrations/env.py" code={envCode} />
+        <CodeBlock caption="history/migrations/versions/b_demo_book_stock_baseline.py" code={baselineCode} />
+      </details>
+      <p>В драйвере готовая подготовка резервирует два отсутствующих имени через touch(exist_ok=False), применяет b_demo и заполняет только второй файл книгами. Config_for отказывает, если файл не существует: проверка делается до подключения Alembic. Read_state открывает существующую SQLite с mode=ro и закрывает соединение через closing. Это техническая опора для опыта, её не нужно писать самостоятельно.</p>
+      <p>Сначала читаем исходные строки каждой цели. Затем применяем b_members и повторяем тот же upgrade. Сравниваем сохранённое before с новым after, а не пересчитываем старое состояние после записи. После этого probe по очереди проверяет default, UNIQUE, CHECK и NOT NULL с безусловным rollback.</p>
+      <CodeBlock caption="member_schema_demo.py, полный независимый опыт" code={schemaCode} />
+      <p>Из корня нашего опыта выполним <code>python member_schema_demo.py</code>. Если имена member-empty.sqlite3 или member-filled.sqlite3 уже заняты, программа откажет при резервировании; не удаляем их ради повтора. Для нового запуска используем новый свободный каталог с теми же шестью исходными файлами.</p>
+      <p>В обеих целях current станет b_members. У пустой цели книги останутся [], у заполненной [(7, 2), (9, 0)]. Строка category имеет NOT NULL и SQL-default guest. Обычный индекс не подтверждает UNIQUE: в index_list смотрим unique=1, затем index_info показывает handle. Имя автоматически созданного SQLite-индекса не фиксируем. SQL CREATE TABLE содержит ck_members_category. После всех проб count равен 0.</p>
+      <p>В PRAGMA table_info значения идут так: cid, name, type, notnull, dflt_value, pk. Поэтому у category строка с notnull=1 и default='guest' подтверждает два разных свойства. В index_list значения seq/name/unique/origin/partial помогают найти уникальный индекс; его колонки проверяем через index_info. Метка версии отдельно подтверждает пройденный шаг, но не заменяет эти наблюдения.</p>
+      <h3>Обзор до собственного upgrade</h3>
+      <p>В проекте оставим ручной путь с target_metadata=None. Команда <code>python -m alembic revision -m "add users"</code> создаёт только заготовку. Parent новой revision должен совпасть с переданной p0001, а upgrade должен создавать только users. Историческая baseline остаётся побайтно прежней; текущая ORM не импортируется как DDL старой revision.</p>
+      <p>Autogenerate умеет предложить кандидата при подключённой metadata. Он не принимает решение за автора. Если в кандидате видим drop_table для прежней таблицы, изменение tasks или отсутствие нужного CHECK, останавливаемся до запуска. В текущем ручном контуре не перенастраиваем env.py ради этой функции.</p>
+      <QuizCard question="Кандидат для members дополнительно удаляет book_stock. Можно ли запустить его, если новая таблица описана верно?" options={["Да, правильная members достаточна", "Нет, удаление прежней таблицы нарушает договор"]} correctIndex={1} explanation="Желаемое изменение добавляет members и сохраняет книги. Лишний drop_table противоречит этому договору независимо от способа генерации. Исправляем ещё не применённый кандидат и снова читаем его." />
+      <h3>Две траектории Planner и явный init_db</h3>
+      <p>Для новой траектории нужен именно пустой E2 исходной истории. E1 содержит контрольную задачу и пустым образцом не является. Для заполненной берём прошедшую сравнение и маркировку F, а не отвергнутую Q. Закрываем писателей, создаём рабочие new/filled в разных свободных путях проверенной backup/restore-операцией и сверяем их с источниками.</p>
+      <p>Перед каждым проектным upgrade читаем существование цели, её current=p0001 и sqlalchemy.url выбранного ini. Для API/CLI отдельно задаём тот же адрес через DATABASE_URL и запускаем новый процесс. Не запускаем новую модель приложения против ещё не обновлённой baseline. После перехода сравниваем все Task ID, title, priority, is_done, tags и title_normalized со значениями до изменения; description и owner_id не добавляем.</p>
+      <p>Старый явный init_db вызывает create_all и после добавления User мог бы создать таблицу без истории. Изменим его договор: команда <code>python -m app.DBase.init_db</code> завершает работу с ненулевым статусом и инструкцией явного Alembic-upgrade ещё до открытия SQLite. Для такого отказа используем знакомый SystemExit с текстом. Ненулевой статус означает, что схема этой командой не создана. Проверим отсутствующий контрольный путь и существующую baseline: первый не возникает, вторая не меняется. Автоматический upgrade в API/CLI не добавляем.</p>
+      <p>В PowerShell значение <code>$LASTEXITCODE</code> сразу после команды содержит код завершения Python-процесса. Оно должно быть ненулевым. Команда <code>Test-Path -LiteralPath "полный путь контрольного файла"</code> отдельно проверяет появление файла и должна дать False. Это два разных наблюдения: перехват SystemExit внутри Python не заменяет проверку статуса отдельного процесса.</p>
+      <h3>Сохраняем проверки, обновляем изменившееся ожидание</h3>
+      <p>Старый тест мог верно утверждать, что в metadata есть только книги. После добавления members ожидание <code>{'{"book_stock"}'}</code> устарело. Изменим список ожидаемых таблиц, но сохраним проверки колонок, PK, NOT NULL и ограничения copies прежней таблицы. Иначе зелёный тест мог бы скрыть поломку книг. Metadata описывает модель; создание настоящих таблиц всё равно проверим отдельным тестом через историю.</p>
+      <p>То же относится к отключённому bootstrap. Прежде успешный запуск создавал схему, теперь правильный результат состоит из трёх фактов: ненулевой код, понятная инструкция Alembic и отсутствие изменений файла. Тест создания схемы перенесём на явный upgrade и его повтор. Не будем запускать историю против неизвестной старой таблицы: для такого файла проверим именно безопасный отказ прежней команды. Отдельную проверку «импорт не создаёт файл» сохраним.</p>
+      <p>В книжном опыте сохраним рядом с остальными файлами полный <code>member_bootstrap.py</code>. Это отключённая прежняя точка входа, у которой импорт безопасен. Вызов create_schema всегда отказывает до обращения к файлу. Переменная DEMO_DATABASE_URL в проверке обозначает выбранную контрольную цель; отключённая команда её не открывает.</p>
+      <CodeBlock caption="member_bootstrap.py, отключённая прежняя команда" code={bootstrapCode} />
+      <p>Теперь добавим полный <code>test_member_history.py</code> в тот же каталог. Знакомая pytest-фикстура <code>tmp_path</code> передаёт каждой проверке отдельный временный каталог. Новые файлы внутри него принадлежат только этому тесту, рабочие книжные базы не затрагиваются. BookRow здесь описывает прежние два поля; он присоединяется к тому же Base, где уже описана MemberRow. Это позволяет отдельно сравнить состав metadata и прежний договор книги.</p>
+      <p><code>subprocess.run</code> запускает отдельный Python через <code>sys.executable</code>, то есть текущий интерпретатор. Аргументы передаются списком, cwd выбирает каталог модулей, копия env получает контрольный URL, а capture_output/text возвращают текст stdout/stderr. Для ожидаемого отказа оставляем check=False, значение по умолчанию: тогда Python не выбросит исключение раньше наших assert. Читаем returncode и stderr; при успешном импорте ожидаем код 0. Существующий контрольный файл сравниваем побайтно через read_bytes до и после команды, отсутствующий проверяем через exists.</p>
+      <p>Историю в тесте тоже запустим отдельным Python-процессом: env.py настраивает журналирование, а следующие проверки API должны сохранить собственные настройки. Аргумент <code>-c</code> выполняет переданную строку program как Python-код. Следующие элементы списка доступны этому коду как <code>sys.argv[1]</code>, <code>sys.argv[2]</code> и далее. В книжном помощнике это путь и revision. В проектном помощнике передадим путь ini, каталог migrations и URL временной базы; внутри нового процесса создадим Config и выполним upgrade. Для ожидаемого успеха используем check=True: ненулевой статус остановит тест с ошибкой, а не будет принят за исполненную историю. Настройки журналирования и конфигурация остаются внутри дочернего процесса.</p>
+      <CodeBlock caption="test_member_history.py, полный независимый пример обновлённых проверок" code={historyTestsCode} />
+      <p>Из каталога опыта выполним <code>python -m pytest test_member_history.py -q</code>. Все три теста должны пройти. Первый сохраняет договор книг при расширении metadata. Второй различает безопасный импорт, отказ на отсутствующем файле и сохранность существующего. Третий применяет историю, сохраняет строку книги и повторяет переход без потери данных. Удаление members из ожидаемой metadata не исправило бы модель; возврат create_all в bootstrap нарушил бы проверку отказа.</p>
+      <p>В Planner аналогично обновим существующий <code>tests/test_db_schema.py</code>. Ожидаемый состав metadata теперь tasks и users, а все прежние проверки полей и ограничений Task остаются. В тесте создания заменим вызов init_db на изученный <code>command.upgrade(config, "head")</code> и повторим его после записи контрольной задачи. Config читаем из проектного ini, затем set_main_option задаёт script_location проектной истории и URL временной базы: это меняет объект конфигурации, не ini на диске и не рабочие E2/F. Прежний тест неизвестной таблицы теперь проверяет отказ init_db и неизменность её файла; добавим отказ на отсутствующем пути. Проверку безопасного импорта сохраним без изменения. Сначала запустим адресно <code>python -m pytest tests/test_db_schema.py tests/test_user_schema.py -q</code>, затем всю прежнюю регрессию командой <code>python -m pytest -q</code>. Падение разбираем по ожиданию и наблюдаемому результату, тесты не удаляем ради зелёного отчёта.</p>
+    </Section>
+
+    <Section number="05" title="После ошибки читаем состояние, затем восстанавливаем">
+      <Lead>Сообщение об исключении описывает исполнение команды. Оно ещё не говорит, какие изменения остались в файле.</Lead>
+      <p>В SQLite поведение DDL зависит от режима драйвера. При привычном legacy-режиме создание таблицы может остаться после ошибки, хотя revision-метка не продвинулась. Другой режим способен откатить DDL. Поэтому проверим три свидетельства: реальную схему, метку и прежние данные новым соединением. Не будем требовать заранее угаданного следа.</p>
+      <p>Продолжим тот же книжный опыт. Обычную history не меняем. Сохраним рядом полный b_fault.py: это непубликуемый дочерний переход после b_members. Он создаёт только демонстрационную _failure_probe и намеренно поднимает RuntimeError. Таблица не входит в нормальную модель каталога.</p>
+      <CodeBlock caption="b_fault.py, только для одноразовой копии истории" code={faultCode} />
+      <p>Следующий полный драйвер создаёт защищённый успешный checkpoint, новый failed и копию history в новый failure-history. Copytree откажет на занятом каталоге, copy_new откажет на занятой цели. Только в скопированные versions попадёт b_fault. Готовая copy_new повторяет знакомый приём: существующий отдельный источник, read-only соединение, исключительное создание назначения, backup и integrity_check. Частичный результат при ошибке не объявляется годным.</p>
+      <CodeBlock caption="member_failure_demo.py, продолжение уже выполненного опыта" code={recoveryCode} />
+      <p>Сохраним этот файл в корне опыта и выполним <code>python member_failure_demo.py</code> один раз после успешного schema-опыта. Появятся ещё два файла исходного кода и отдельная копия четырёх файлов истории; это явная цена проверки отказа, а не новый сервис. До мутаций нет посторонних писателей.</p>
+      <p>Увидим RuntimeError с учебной причиной. Книги и revision читаем отдельно. Значение probe осталась фиксируем таким, каким его дал наш режим: True или False. Затем recovered создаётся в другом свободном пути из успешного checkpoint. Сравнение schema/current/данных должно дать True, а исправная revision должна быть b_members. Драйвер использует исходную history, в которой b_fault отсутствует.</p>
+      <p>В проверенном учебном окружении Python 3.12.10, SQLite 3.49.1, SQLAlchemy 2.0.55 и Alembic 1.20.1 наблюдалось <code>probe осталась: True</code>, книги сохранились, а revision осталась b_members. Этот результат объясняет необходимость отдельного чтения схемы. Он не превращается в обещание того же следа при другом режиме транзакций.</p>
+      <p>Ошибочную БД не лечим stamp head, ручным удалением таблицы или повтором upgrade. Закрываем и исключаем её из рабочих ресурсов. Восстановленная БД должна соответствовать одновременно данным, модели и исправному набору revisions. Успех integrity_check сам по себе не доказывает сохранность книг или правильность метки.</p>
+      <QuizCard question="После отказа current остался прежним, а probe появилась. Как продолжить безопасно?" options={["Повторить upgrade в той же копии", "Поставить head через stamp", "Зафиксировать schema/current/data и восстановить новый экземпляр из успешного checkpoint с исправной историей"]} correctIndex={2} explanation="DDL и метка разошлись. Повтор может встретить уже существующий объект, stamp скроет расхождение. Новый restore из известного успешного состояния позволяет отдельно проверить и данные, и схему, и код истории." />
+      <p>В собственном Planner повторим именно диагностику и восстановление на отдельной disposable копии после успешного User-upgrade. Основная история и проверенный checkpoint остаются источниками. Фиктивные hash-строки из проверок не превращаются в настоящие credentials.</p>
+    </Section>
+
     <Section number="06" title="Что мы будем делать в практике">
-      <Lead>Соединим проверку адреса, структуры и содержимого в один осторожный маршрут.</Lead>
+      <Lead>Изменим существующий Planner. Независимый каталог показал механизмы; теперь сами построим правило, модель и переход для User.</Lead>
       <LinkedNotes items={[
-        {title:"Проверим вход",description:"Разделим резерв, образец и восстановленную копию и найдём исходную revision."},
-        {title:"Сравним",description:"Снимем опись объектов и шести полей заполненной копии и сопоставим схему с образцом."},
-        {title:"Проверим отличие",description:"На отдельной копии обнаружим изменение схемы и убедимся, что отметка не записана."},
-        {title:"Отметим и проверим",description:"Для подходящей копии запишем конкретную исходную revision и повторим чтение."}
+        { title: "Подтвердить вход", description: "Получим две рабочие baseline, реальные URL и опись всех Task-полей до изменения." },
+        { title: "Написать договор и модель", description: "Самостоятельно создадим normalize_login, опишем UserRow и выберем id/login для безопасной проекции." },
+        { title: "Применить проверенный переход", description: "Напишем одну новую revision, согласуем отказ init_db и прежние тесты схемы, затем проверим новую и заполненную копии." },
+        { title: "Проверить восстановимость", description: "На отдельном экземпляре наблюдаем объяснённый отказ, затем восстанавливаем новый согласованный экземпляр." },
       ]} />
-      <p>При расхождении или неизвестном объекте остановимся до маркировки. Следующему шагу передадим только копию с доказанным baseline, опись и отдельно сохранённый резерв.</p>
+      <p>Правило имени восстанавливаем по независимому примеру нормализации; ограничения по каталогу members; историю по двум книжным целям; отказ по трём свидетельствам. Каждый результат становится входом следующей карточки. Repository и конфликт двух независимых попыток будут следующим собственным шагом, а реальные пароли начнутся отдельно.</p>
+      <PracticeCta text="В практике создадим User-схему Planner, сохраним Task и подготовим проверенную передачу для repository." />
     </Section>
   </RichLesson>;
 }

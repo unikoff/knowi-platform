@@ -83,6 +83,7 @@ class CourseManifest:
     frontend: Mapping[str, str]
     tracks: tuple[Mapping[str, Any], ...]
     metadata: Mapping[str, Any]
+    leader_user_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -246,10 +247,13 @@ def _validate_manifest(
     package_root: Path | None = None,
 ) -> CourseManifest:
     _check_keys(
-        data,
-        {"schema_version", "course_id", "slug", "title", "content_version", "layout", "frontend", "tracks"},
+        {**data, 'leader_user_id': data.get('leader_user_id')},
+        {"schema_version", "course_id", "slug", "title", "content_version", "layout", "frontend", "tracks", "leader_user_id"},
         "manifest",
     )
+    leader_user_id = data.get('leader_user_id')
+    if leader_user_id is not None and (type(leader_user_id) is not int or leader_user_id < 1):
+        _fail('manifest.leader_user_id must be a positive integer or null')
     if type(data["schema_version"]) is not int or data["schema_version"] != 2:
         _fail("unsupported manifest schema_version; expected 2")
     course_id = _validate_course_id(data["course_id"], "manifest.course_id")
@@ -325,6 +329,7 @@ def _validate_manifest(
         frontend=_freeze(frontend),
         tracks=tuple(frozen_tracks),
         metadata=_freeze(data),
+        leader_user_id=leader_user_id,
     )
 
 

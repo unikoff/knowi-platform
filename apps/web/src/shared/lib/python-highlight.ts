@@ -13,10 +13,12 @@ const TOKEN_RE = new RegExp(
     "(&quot;&quot;&quot;[\\s\\S]*?&quot;&quot;&quot;|'''[\\s\\S]*?''')", // 2: тройные строки
     "(&quot;(?:\\\\.|(?!&quot;)[^\\\\\\n])*&quot;|'(?:\\\\.|[^'\\\\\\n])*')", // 3: строки
     "\\b(\\d+(?:\\.\\d+)?)\\b", // 4: числа
-    `\\b(${PY_KEYWORDS})\\b`, // 5: ключевые слова
-    `\\b(${PY_BUILTINS})\\b`, // 6: встроенные функции/методы
+    "\\b(def|class)([ \\t]+)([\\p{ID_Start}_][\\p{ID_Continue}]*)", // 5–7: объявление
+    `\\b(${PY_KEYWORDS})\\b`, // 8: ключевые слова
+    `\\b(${PY_BUILTINS})\\b`, // 9: встроенные функции/методы
+    "(?<![\\p{ID_Continue}])([\\p{ID_Start}_][\\p{ID_Continue}]*)(?=[ \\t]*\\()", // 10: вызов
   ].join("|"),
-  "g",
+  "gu",
 );
 
 function escapeHtml(source: string): string {
@@ -26,12 +28,13 @@ function escapeHtml(source: string): string {
 export function highlightPython(source: string): string {
   const escaped = escapeHtml(source);
 
-  return escaped.replace(TOKEN_RE, (match, comment, triple, str, num, keyword, builtin) => {
+  return escaped.replace(TOKEN_RE, (match, comment, triple, str, num, declaration, space, name, keyword, builtin, call) => {
     if (comment) return `<span class="tok-com">${match}</span>`;
     if (triple || str) return `<span class="tok-str">${match}</span>`;
     if (num) return `<span class="tok-num">${match}</span>`;
+    if (declaration) return `<span class="tok-kw">${declaration}</span>${space}<span class="${declaration === "class" ? "tok-class" : "tok-fn"}">${name}</span>`;
     if (keyword) return `<span class="tok-kw">${match}</span>`;
-    if (builtin) return `<span class="tok-fn">${match}</span>`;
+    if (builtin || call) return `<span class="tok-fn">${match}</span>`;
     return match;
   });
 }

@@ -4,8 +4,11 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { generateCourses } from "../tools/course-registry.mjs";
+import { courseFrontendWatch } from "../tools/course-frontend-watch.mjs";
 
 const devApiTarget = process.env.PYMENTOR_DEV_API_TARGET ?? "http://127.0.0.1:18001";
+const devAnalyticsCollectorTarget = process.env.PYMENTOR_DEV_ANALYTICS_COLLECTOR_TARGET ?? devApiTarget;
+const devAnalyticsQueryTarget = process.env.PYMENTOR_DEV_ANALYTICS_QUERY_TARGET ?? devApiTarget;
 const frontendRoot = fileURLToPath(new URL("..", import.meta.url));
 const projectRoot = fileURLToPath(new URL("../../..", import.meta.url));
 const registeredCourses = generateCourses();
@@ -76,7 +79,7 @@ function lessonVisualDemoRoutes(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), lessonVisualDemoRoutes()],
+  plugins: [react(), lessonVisualDemoRoutes(), courseFrontendWatch(registeredCourses.map((course) => course.frontendDir))],
   // VITE_BASE is public build-time configuration (for example /platform/).
   // Never put backend credentials or other secrets in VITE_* variables.
   base: process.env.VITE_BASE ?? "/",
@@ -121,6 +124,14 @@ export default defineConfig({
       ],
     },
     proxy: {
+      "^/api/analytics/events/batch(?:\\?|$)": {
+        target: devAnalyticsCollectorTarget,
+        changeOrigin: false,
+      },
+      "/api/analytics/reports/": {
+        target: devAnalyticsQueryTarget,
+        changeOrigin: false,
+      },
       "/api": {
         target: devApiTarget,
         // Core verifies Origin against the external Host for unsafe requests.

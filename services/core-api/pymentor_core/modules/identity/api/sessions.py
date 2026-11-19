@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from anyio import from_thread
 from fastapi import HTTPException, Request, Response
+from fastapi.security import APIKeyCookie
 
 from pymentor_core.app.dependencies import get_identity_repository
 from pymentor_core.modules.identity.contracts import (
@@ -17,6 +18,10 @@ from pymentor_core.shared.ports import UnitOfWork
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
+
+
+# Documentation dependency; actual session authentication remains SQL/Redis-backed.
+session_cookie_scheme = APIKeyCookie(name='session', scheme_name='SessionCookie', auto_error=False)
 
 
 def _secure_cookie_enabled() -> bool:
@@ -59,7 +64,7 @@ def login_user(response: Response, user, db: Session, *, request: Request | None
     public_user = dict(grant.public_user)
     if public_user["subscription_until"] is not None:
         public_user["subscription_until"] = datetime.fromisoformat(public_user["subscription_until"])
-    return SimpleNamespace(**public_user)
+    return SimpleNamespace(**public_user, account_ref=grant.principal.account_ref)
 
 
 def get_current_user(request: Request, db: Session | None, *, uow: UnitOfWork | None = None):
@@ -118,7 +123,7 @@ async def async_login_user(response: Response, user, request: Request):
     public_user = dict(grant.public_user)
     if public_user["subscription_until"] is not None:
         public_user["subscription_until"] = datetime.fromisoformat(public_user["subscription_until"])
-    return SimpleNamespace(**public_user)
+    return SimpleNamespace(**public_user, account_ref=grant.principal.account_ref)
 
 
 async def async_current_principal(request: Request):

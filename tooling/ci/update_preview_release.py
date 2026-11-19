@@ -13,7 +13,7 @@ IMAGES = {
 RESOURCES = {'applications.json', 'checks.json', 'analysis.json', 'routes.json', 'runner.json', 'notifications.json'}
 
 
-def update(directory, source_sha, core_digest, frontend_digest, runner_digest, migration_digest=None):
+def update(directory, source_sha, core_digest, frontend_digest, runner_digest, migration_digest=None, analytics_digest=None):
     if not re.fullmatch(r'[0-9a-f]{40}', source_sha):
         raise ValueError('source SHA must be 40 lowercase hexadecimal characters')
     digests = (core_digest, frontend_digest, runner_digest)
@@ -21,6 +21,8 @@ def update(directory, source_sha, core_digest, frontend_digest, runner_digest, m
         raise ValueError('digests must be lowercase sha256 digests')
     if migration_digest is not None and not re.fullmatch(r'sha256:[0-9a-f]{64}', migration_digest):
         raise ValueError('migration digest must be a lowercase sha256 digest')
+    if analytics_digest is not None and not re.fullmatch(r'sha256:[0-9a-f]{64}', analytics_digest):
+        raise ValueError('analytics digest must be a lowercase sha256 digest')
     directory = Path(directory)
 
     def path(name):
@@ -86,6 +88,8 @@ def update(directory, source_sha, core_digest, frontend_digest, runner_digest, m
                                    frontend_digest=frontend_digest, runner_digest=runner_digest)
     if migration_digest is not None:
         changed['release.json']['migration_digest'] = migration_digest
+    if analytics_digest is not None:
+        changed['release.json']['analytics_digest'] = analytics_digest
     # Validate all target paths before the first write.
     for name in changed:
         path(name)
@@ -98,8 +102,9 @@ def main():
     for name in ('source-sha', 'core-digest', 'frontend-digest', 'runner-digest'):
         parser.add_argument('--' + name, required=True)
     parser.add_argument('--migration-digest')
+    parser.add_argument('--analytics-digest')
     args = parser.parse_args()
-    update(ROOT, args.source_sha, args.core_digest, args.frontend_digest, args.runner_digest, args.migration_digest)
+    update(ROOT, args.source_sha, args.core_digest, args.frontend_digest, args.runner_digest, args.migration_digest, args.analytics_digest)
 
 
 if __name__ == '__main__':

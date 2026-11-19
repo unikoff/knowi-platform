@@ -89,3 +89,7 @@
 .tok-fn {
   color: var(--syntax-function);
 }
+
+.tok-class {
+  color: var(--syntax-class);
+}

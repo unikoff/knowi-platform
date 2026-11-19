@@ -15,6 +15,7 @@ class Principal:
     username: str
     email: str
     subscription_until: datetime | None
+    account_ref: str | None = None
 
     @property
     def id(self) -> int:
@@ -26,16 +27,17 @@ class Principal:
         return "admin.access" in self.permissions
 
     @classmethod
-    def from_user(cls, user: object) -> "Principal":
+    def from_user(cls, user: object, *, account_ref: str | None = None) -> "Principal":
         # Roles are derived solely from the server-side account, never from cookies.
         is_admin = bool(getattr(user, "is_admin", False))
         return cls(
             user_id=user.id,
-            roles=frozenset({"student", "admin"} if is_admin else {"student"}),
+            roles=frozenset({"admin"} if is_admin else {"student"}),
             permissions=frozenset({"admin.access"} if is_admin else ()),
             username=getattr(user, "username", ""),
             email=getattr(user, "email", ""),
             subscription_until=getattr(user, "subscription_until", None),
+            account_ref=account_ref,
         )
 
 

@@ -1,0 +1,5 @@
+[
+  {"schema_version": 2, "kind": "catalog_snapshot", "control_id": "99999999-9999-4999-8999-999999999991", "course_id": "backend", "catalog_version": "catalog-1", "track_id": "legacy track", "lessons": [{"lesson_id": "lesson-1"}]},
+  {"schema_version": 2, "kind": "progress_fact", "control_id": "99999999-9999-4999-8999-999999999992", "subject_ref": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", "course_id": "backend", "catalog_version": "catalog-1", "lesson_id": "lesson-1", "task_id": "task-1", "task_revision": "rev-1", "completed": true, "occurred_at": "2026-11-16T10:00:00Z"},
+  {"schema_version": 2, "kind": "deletion_fence", "control_id": "99999999-9999-4999-8999-999999999993", "subject_ref": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", "epoch": 1, "occurred_at": "2026-11-16T10:00:00Z"}
+]

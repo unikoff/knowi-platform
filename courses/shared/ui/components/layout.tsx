@@ -163,12 +163,13 @@ export function ContentList({ items, children, maxWidth, ordered = false }: {
   );
 }
 
-export function Callout({ children, tone = "warn" }: {
+export function Callout({ children, tone = "warn", color }: {
   children: React.ReactNode;
-  tone?: "success" | "warn" | "danger";
+  tone?: "accent" | "success" | "warn" | "danger";
+  color?: string;
 }) {
   return (
-    <aside className={`lesson-callout lesson-callout--${tone}`}>
+    <aside className={`lesson-callout lesson-callout--${tone}`} style={color ? { "--callout-color": color } as React.CSSProperties : undefined}>
       <VisualHeading kind="callout" />
       <p>{children}</p>
     </aside>
@@ -235,6 +236,7 @@ export function Checklist({ title = "Чек-лист", points }: {
         </span>
       </div>
       {hasCustomTitle && <h3 className="takeaways-title" id={titleId}>{title}</h3>}
+      {points.length > 0 && <div className="takeaways-meter" aria-hidden="true"><span style={{ width: `${completed / points.length * 100}%` }} /></div>}
       <ul role="list">
         {points.map((point, index) => (
           <li key={index}>
@@ -246,6 +248,12 @@ export function Checklist({ title = "Чек-лист", points }: {
           </li>
         ))}
       </ul>
+      {points.length > 0 && <div className="takeaways-footer">
+        <span>{completed === points.length ? "Всё отмечено" : "Отмечайте пункты по мере выполнения"}</span>
+        <button className="interactive-secondary" type="button" aria-disabled={completed === 0} onClick={() => {
+          if (completed > 0) setChecked(new Set());
+        }}>Сбросить</button>
+      </div>}
     </aside>
   );
 }

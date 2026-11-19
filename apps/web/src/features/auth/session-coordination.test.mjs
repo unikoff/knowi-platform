@@ -21,6 +21,42 @@ function sessionHarness() {
   return { session, requests, announcements: () => announcements };
 }
 
+for (const user of [profile(2), null]) {
+  test(`focus revalidation preserves the ${user ? "signed-in" : "guest"} workspace while pending and after an unchanged response`, async () => {
+    const { session, requests, announcements } = sessionHarness();
+    const initial = session.start();
+    requests[0].resolve({ user });
+    await initial;
+    const ready = session.getSnapshot();
+    const revalidation = session.refresh(true);
+    assert.equal(session.getSnapshot().checking, false, "a background probe must not remove the workspace");
+    assert.equal(session.getSnapshot().revision, ready.revision);
+    requests[1].resolve({ user: user ? { ...user, username: "updated-name" } : null });
+    await revalidation;
+    assert.equal(session.getSnapshot().checking, false);
+    assert.equal(session.getSnapshot().revision, ready.revision, "unchanged ownership must retain the Workspace key");
+    assert.equal(session.getSnapshot().user?.username, user ? "updated-name" : undefined);
+    assert.equal(announcements(), 0);
+    session.stop();
+  });
+}
+
+test("a background probe replaces the workspace only after a different identity is confirmed", async () => {
+  const { session, requests, announcements } = sessionHarness();
+  const initial = session.start();
+  requests[0].resolve({ user: profile(2) });
+  await initial;
+  const ready = session.getSnapshot();
+  const revalidation = session.refresh(true);
+  assert.equal(session.getSnapshot(), ready);
+  requests[1].resolve({ user: profile(1) });
+  await revalidation;
+  assert.equal(session.getSnapshot().user.id, 1);
+  assert.equal(session.getSnapshot().revision, ready.revision + 1);
+  assert.equal(announcements(), 1);
+  session.stop();
+});
+
 test("an auth change gates the old workspace and a delayed U2 probe cannot replace authoritative U1", async () => {
   const { session, requests } = sessionHarness();
   const initial = session.start();

@@ -1,3 +1,4 @@
+import { BrandLogo } from "@platform/shared/brand/BrandLogo";
 import { useEffect } from 'react';
 import { ProgrammingBackground } from './components/ProgrammingBackground';
 import { LandingNav } from './LandingPages';
@@ -35,7 +36,7 @@ export function PersonalDataPage({ policy = false, courseId, landingBaseUrl, lea
           <section><h2>Ваши права</h2><p>Вы можете обратиться к оператору, чтобы получить информацию об обработке ваших данных, попросить уточнить, заблокировать или удалить их в случаях, предусмотренных законодательством Российской Федерации.</p></section>
         </div>}
       </article>
-      <footer className="landing-footer"><a className="landing-brand" href={learningUrl}>knowi</a><span>ИП КИРЮХИН Н.А. ИНН 230109261735</span></footer>
+      <footer className="landing-footer"><a className="landing-brand" href={learningUrl} aria-label="knowi — платформа"><BrandLogo /></a><span>ИП КИРЮХИН Н.А. ИНН 230109261735</span></footer>
     </div></div>
   </main>;
 }

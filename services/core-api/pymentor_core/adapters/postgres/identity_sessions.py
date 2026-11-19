@@ -436,6 +436,10 @@ class AsyncIdentitySessions:
                     or not hmac.compare_digest(user.password, credentials[1])
                 ):
                     raise InvalidCredentials("Invalid email or password")
+                current_generation = await uow.session.scalar(text(
+                    'SELECT lifecycle_id FROM account_lifecycles WHERE user_id=:uid'), {'uid': user.id})
+                if current_generation != generation:
+                    raise InvalidSession('Account lifecycle changed')
                 operation = (
                     (
                         await uow.session.execute(
@@ -508,7 +512,7 @@ class AsyncIdentitySessions:
                     "is_admin": bool(user.is_admin),
                     "verified": bool(user.verified),
                 }
-                principal = Principal.from_user(user)
+                principal = Principal.from_user(user, account_ref=generation)
                 await uow.commit()
                 final_expiry = record.created_at + timedelta(
                     seconds=SESSION_TTL_SECONDS
@@ -587,6 +591,7 @@ class AsyncIdentitySessions:
                             models.User.id == models.Session.user_id,
                         )
                         .where(models.Session.session_token.in_(identifiers))
+                        .with_for_update(read=True, of=models.User)
                     )
                 ).one_or_none()
                 if row is None:
@@ -598,7 +603,18 @@ class AsyncIdentitySessions:
                     raise InvalidSession("Invalid session")
                 if self.mode == "redis" and projected_user != user.id:
                     raise InvalidSession("Invalid session")
-                return Principal.from_user(user)
+                reference = await uow.session.scalar(text(
+                    'SELECT lifecycle_id FROM account_lifecycles WHERE user_id=:uid'), {'uid': user.id})
+                if reference is None:
+                    await uow.session.execute(text('''INSERT INTO account_lifecycles(user_id,lifecycle_id)
+                        VALUES (:uid,:ref) ON CONFLICT (user_id) DO NOTHING'''),
+                        {'uid': user.id, 'ref': str(uuid4())})
+                    reference = await uow.session.scalar(text(
+                        'SELECT lifecycle_id FROM account_lifecycles WHERE user_id=:uid'), {'uid': user.id})
+                    await uow.commit()
+                if reference is None:
+                    raise InvalidSession('Account lifecycle unavailable')
+                return Principal.from_user(user, account_ref=reference)
         except (RedisError, SQLAlchemyError, TimeoutError, OSError) as exc:
             raise IdentityUnavailable("Session storage unavailable") from exc
 

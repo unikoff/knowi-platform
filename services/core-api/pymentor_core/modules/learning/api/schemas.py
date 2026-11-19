@@ -1,7 +1,9 @@
+from datetime import date
 from typing import Any
 
 from pydantic import BaseModel
 from pydantic import ConfigDict
+from pydantic import Field
 from pydantic import constr
 
 
@@ -51,6 +53,15 @@ class LessonTheoryResponse(BaseModel):
 class LessonCompletionResponse(BaseModel):
     lesson_id: str
     completed: bool
+
+
+class CompletedLessonsCountResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    course_id: str
+    from_date: date = Field(serialization_alias="from")
+    to_date: date = Field(serialization_alias="to")
+    completed_lessons: int = Field(ge=0)
 
 
 class TrackBlockProgressResponse(BaseModel):
@@ -121,8 +132,13 @@ class TracksResponse(BaseModel):
     content_revision: str
 
 
+class CatalogLessonSummaryResponse(LessonSummaryResponse):
+    counts_toward_statistics: bool
+    completed_on: date | None = None
+
+
 class LearningCatalogResponse(TracksResponse):
-    courses: dict[str, list[LessonSummaryResponse]]
+    courses: dict[str, list[CatalogLessonSummaryResponse]]
 
 
 class LessonsListResponse(BaseModel):

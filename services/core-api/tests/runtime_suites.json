@@ -6,6 +6,12 @@
     "test_single_runtime_contract.py",
     "test_pg03_data_contract.py",
     "test_managed_migrations.py",
+    "test_managed_migration_role_options.py",
+    "test_role_admin_contract.py",
+    "test_role_admin_live_contract.py",
+    "test_role_admin_reads.py",
+    "test_role_admin_commands.py",
+    "test_course_leader_manifest.py",
     "test_runtime_policy.py",
     "test_pg04_identity_contract.py",
     "test_legacy_boundary.py",
@@ -62,6 +68,17 @@
     "regression/test_runner_execution.py::RunnerAPITests"
   ],
   "runtime": [
+    "integration/test_role_admin_migration.py",
+    "integration/test_role_admin_restore.py",
+    "integration/test_course_leader_config_pg.py",
+    "integration/test_role_admin_scope_http.py",
+    "integration/test_role_admin_read_http.py",
+    "integration/test_role_admin_write_http.py",
+    "integration/test_role_admin_commands_pg.py",
+    "integration/test_role_admin_selection_redis.py",
+    "integration/test_role_admin_booking_http.py",
+    "integration/test_role_admin_cutover_pg.py",
+    "integration/test_role_admin_privacy_races.py",
     "integration/test_course_progress_release.py",
     "integration/test_pg02_runtime.py",
     "integration/test_pg03_transactions.py",
@@ -75,5 +92,19 @@
     "regression/test_c435_projection_recovery.py",
     "regression/test_dual_postgres_booking.py"
   ],
-  "note": "Required PostgreSQL/Redis suites, including ported business fixtures and whole-source retirement guard. Service groups require actual disposable databases and explicit integration opt-in."
+  "analytics_delivery": [
+    "test_course_completed_count.py",
+    "analytics_delivery/test_admin_offload.py",
+    "analytics_delivery/test_bigint_upgrade.py",
+    "analytics_delivery/test_delete_flow.py",
+    "analytics_delivery/test_http_deadline.py",
+    "analytics_delivery/test_integration.py",
+    "analytics_delivery/test_publisher.py",
+    "analytics_delivery/test_snapshot_export.py",
+    "analytics_delivery/test_snapshot_relay.py",
+    "analytics_delivery/test_source_watermark.py",
+    "analytics_delivery/test_transfer.py",
+    "analytics_delivery/test_worker.py"
+  ],
+  "note": "Required PostgreSQL/Redis suites, including isolated Analytics delivery fixtures and the source retirement guard. Service groups require actual disposable databases and explicit integration opt-in."
 }

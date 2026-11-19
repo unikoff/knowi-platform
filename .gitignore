@@ -38,6 +38,9 @@ pymentor-dist.zip
 !/docs/make les stage/**
 !/docs/maintenance/
 !/docs/architecture/
+!/docs/analytics/
+/docs/analytics/*
+!/docs/analytics/*.md
 !/docs/course-isolation/
 # Keep current course architecture guides; generated evidence and media stay local.
 /docs/course-isolation/*

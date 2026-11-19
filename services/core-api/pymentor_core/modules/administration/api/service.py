@@ -27,6 +27,12 @@ def _call(name, *args, **kwargs):
 
 def admin_overview(request: Request, db: Session, *, actor=None):
     actor = authorize_admin(actor) if actor is not None else require_admin(request, db)
+    mode = getattr(getattr(getattr(request, "app", None), "state", None), "analytics_legacy_read_mode", "off")
+    if mode == "analytics":
+        from pymentor_core.modules.analytics_delivery.legacy_bridge import admin_completions_enabled
+        if admin_completions_enabled(request.app.state):
+            return _call("admin_overview", actor=actor, db=db, include_activity=False, include_completions=False)
+        return _call("admin_overview", actor=actor, db=db, include_activity=False)
     return _call("admin_overview", actor=actor, db=db)
 
 
@@ -117,16 +123,21 @@ def admin_delete_slot(slot_id: int, request: Request, db: Session, *, actor=None
     return _call("admin_delete_slot", slot_id=slot_id, actor=actor, db=db)
 
 
-def student_profile(user_id: int, request: Request, year: int, month: int, db: Session, *, actor=None, content=None):
+def student_profile(user_id: int, request: Request, year: int, month: int, db: Session, *, actor=None, content=None, analytics_activity=None):
     actor = authorize_admin(actor) if actor is not None else require_admin(request, db)
     return _call(
         "student_profile", user_id=user_id, actor=actor, year=year, month=month, db=db,
-        **({"content": content} if content is not None else {})
+        **({"content": content} if content is not None else {}),
+        **({"analytics_activity": analytics_activity} if analytics_activity is not None else {})
     )
 
 
-def change_quota(user_id: int, payload: QuotaChange, request: Request, db: Session, *, actor=None, content=None):
+def change_quota(user_id: int, payload: QuotaChange, request: Request, db: Session, *, actor=None, content=None,
+                 analytics_activity=None, expected_account_ref=None):
     actor = authorize_admin(actor) if actor is not None else require_admin(request, db)
-    return _call("change_quota", user_id=user_id, payload=payload, actor=actor, db=db, **({"content": content} if content is not None else {}))
+    return _call("change_quota", user_id=user_id, payload=payload, actor=actor, db=db,
+                 **({"content": content} if content is not None else {}),
+                 **({"analytics_activity": analytics_activity, "expected_account_ref": expected_account_ref}
+                    if analytics_activity is not None else {}))
 
 

@@ -1,0 +1,7 @@
+.platform-overview { display: grid; gap: 12px; min-width: 0; }
+.platform-overview__filter { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+.platform-overview__filter .admin-scoped-field { width: min(100%, 320px); }
+.platform-overview .admin-overview__metric small,
+.platform-overview .admin-overview__metric span { white-space: normal; overflow-wrap: anywhere; }
+.platform-detail { display: grid; gap: 10px; padding: 16px; border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--card); min-width: 0; overflow-wrap: anywhere; }
+.platform-detail h2, .platform-detail h3, .platform-detail p { margin: 0; }

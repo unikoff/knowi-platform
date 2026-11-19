@@ -183,6 +183,33 @@ class RedisSessionStore:
         )
         return result == 1
 
+    def _role_selection_key(self, actor_ref: str, course_id: str, target_ref: str) -> str:
+        from uuid import UUID
+        if (not isinstance(course_id, str) or not re.fullmatch(r'[a-z0-9]+(?:_[a-z0-9]+)*', course_id)
+                or len(course_id) > 80):
+            raise ValueError('Invalid course')
+        try:
+            if str(UUID(actor_ref)) != actor_ref or str(UUID(target_ref)) != target_ref:
+                raise ValueError
+        except (TypeError, ValueError, AttributeError):
+            raise ValueError('Invalid account lifecycle') from None
+        digest = sha256((actor_ref + '\0' + course_id + '\0' + target_ref).encode()).hexdigest()
+        return f'{self._prefix}role-selection:{digest}'
+
+    async def store_role_selection(self, actor_ref: str, course_id: str, target_ref: str, revision: int) -> None:
+        if isinstance(revision, bool) or not isinstance(revision, int) or revision < 0:
+            raise ValueError('Invalid authority revision')
+        await self._client.set(self._role_selection_key(actor_ref, course_id, target_ref), str(revision), ex=900)
+
+    async def get_role_selection(self, actor_ref: str, course_id: str, target_ref: str) -> int | None:
+        value = await self._client.get(self._role_selection_key(actor_ref, course_id, target_ref))
+        if value is None:
+            return None
+        text_value = value.decode('ascii') if isinstance(value, bytes) else value
+        if not isinstance(text_value, str) or not re.fullmatch(r'0|[1-9][0-9]*', text_value):
+            raise ValueError('Invalid selection revision')
+        return int(text_value)
+
     def _user_key(self, user_id: int) -> str:
         if (
             not isinstance(user_id, int)

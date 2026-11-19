@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ru">
+  <head><meta charset="utf-8"><title>Tracker synthetic fixture</title></head>
+  <body>
+    <h1>Tracker synthetic fixture</h1>
+    <p>Все grant и события обрабатываются локальной заглушкой; запросов аналитики на сервер нет.</p>
+    <button id="start">Начать</button>
+    <button id="theory">Теория</button>
+    <button id="practice">Практика</button>
+    <button id="course">Другой курс</button>
+    <button id="transport" aria-pressed="false">Ошибка отправки</button>
+    <button id="logout">Выйти</button>
+    <output id="state" aria-live="polite">Готово</output>
+    <p>Browser state: <output id="browser-state"></output></p>
+    <h2>Browser state changes</h2>
+    <pre id="lifecycle"></pre>
+    <h2>Accepted synthetic events</h2>
+    <pre id="events"></pre>
+    <h2>Delivery attempts</h2>
+    <pre id="attempts"></pre>
+    <script type="module" src="./fixture.ts"></script>
+  </body>
+</html>

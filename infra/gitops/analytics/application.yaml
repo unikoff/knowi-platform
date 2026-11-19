@@ -1,0 +1,16 @@
+# Illustrative only. Applying requires a separately bootstrapped AppProject,
+# namespace, role-limited DB Secrets and an explicitly selected revision/values.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: analytics
+  namespace: argocd-preview
+spec:
+  project: analytics
+  source:
+    repoURL: https://github.com/unikoff/knowi-platform.git
+    targetRevision: Release
+    path: infra/helm/analytics
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: knowi-analytics

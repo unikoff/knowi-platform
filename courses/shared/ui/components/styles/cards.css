@@ -180,7 +180,7 @@
 }
 
 .lesson-callout {
-  --callout-color: var(--warning);
+  --callout-color: var(--callout-yellow);
   position: relative;
   display: grid;
   gap: var(--lesson-stack-tight);
@@ -204,7 +204,8 @@
   pointer-events: none;
 }
 
-.lesson-callout > .visual-heading { color: var(--callout-color); }
+.lesson-callout > .visual-heading,
+:root[data-color-scheme="light"] .lesson-callout > .visual-heading { color: var(--callout-color); }
 
 .lesson-callout p {
   margin: 0;
@@ -256,6 +257,7 @@
   font-weight: 600;
 }
 
-.lesson-callout--success { --callout-color: var(--success); }
-.lesson-callout--warn { --callout-color: var(--warning); }
-.lesson-callout--danger { --callout-color: var(--negative); }
+.lesson-callout--accent { --callout-color: var(--accent); }
+.lesson-callout--success { --callout-color: var(--callout-green); }
+.lesson-callout--warn { --callout-color: var(--callout-yellow); }
+.lesson-callout--danger { --callout-color: var(--callout-red); }

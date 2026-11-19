@@ -2,10 +2,35 @@
 
 from datetime import datetime
 from datetime import timezone
+from sqlalchemy import literal
+from sqlalchemy import select
+from sqlalchemy import union_all
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from pymentor_core.shared.ports import UnitOfWork
 from pymentor_core.adapters.sql import models
+
+
+def get_completion_facts(
+    user_id: int, db: Session, *, course_id: str
+) -> tuple[dict[str, datetime], dict[str, tuple[str, datetime]]]:
+    """Read lesson and task receipts together so mixed lessons use one snapshot."""
+    lesson = models.UserLessonProgress
+    task = models.UserTaskProgress
+    rows = db.execute(union_all(
+        select(lesson.lesson_id, literal(None, type_=task.task_revision.type), lesson.completed_at)
+        .where(lesson.user_id == user_id, lesson.course_id == course_id),
+        select(task.task_id, task.task_revision, task.completed_at)
+        .where(task.user_id == user_id, task.course_id == course_id),
+    ))
+    lesson_facts = {}
+    task_facts = {}
+    for item_id, revision, completed_at in rows:
+        if revision is None:
+            lesson_facts[item_id] = completed_at
+        else:
+            task_facts[item_id] = (revision, completed_at)
+    return lesson_facts, task_facts
 
 
 def get_completed_lesson_ids(user_id: int, db: Session, *, course_id: str = "backend") -> set[str]:
@@ -24,7 +49,13 @@ def mark_lesson_completed(
     *,
     uow: UnitOfWork | None = None,
     course_id: str = "backend",
+    expected_account_ref: str | None = None,
 ) -> None:
+    from pymentor_core.adapters.sql.analytics_delivery_ops import integration
+    if integration.enabled():
+        return integration.complete_lesson(integration.session_for(db, uow), user_id, lesson_id, course_id, expected_account_ref)
+    if expected_account_ref is not None:
+        integration.guard_lifecycle(integration.session_for(db, uow), user_id, expected_account_ref)
     if uow is not None:
         repository = uow.repository(models.UserLessonProgress)
         repository.add(models.UserLessonProgress(user_id=user_id, lesson_id=lesson_id, course_id=course_id))
@@ -74,7 +105,15 @@ def mark_task_completed(
     *,
     uow: UnitOfWork | None = None,
     course_id: str = "backend",
+    expected_account_ref: str | None = None,
 ) -> None:
+    from pymentor_core.adapters.sql.analytics_delivery_ops import integration
+    if integration.task_enabled():
+        return integration.complete_task(integration.session_for(db, uow), user_id, task_id, task_revision,
+                                         course_id, expected_account_ref)
+    capture_enabled = integration.enabled() or expected_account_ref is not None
+    if capture_enabled:
+        integration.guard_lifecycle(integration.session_for(db, uow), user_id, expected_account_ref)
     if uow is not None:
         repository = uow.repository(models.UserTaskProgress)
         progress = repository.find_one(user_id=user_id, task_id=task_id, course_id=course_id)
@@ -97,6 +136,8 @@ def mark_task_completed(
             uow.commit()
         except IntegrityError:
             uow.rollback()
+            if capture_enabled:
+                integration.guard_lifecycle(integration.session_for(db, uow), user_id, expected_account_ref)
             progress = repository.find_one(user_id=user_id, task_id=task_id, course_id=course_id)
             if progress is None:
                 raise
@@ -136,6 +177,8 @@ def mark_task_completed(
         db.commit()
     except IntegrityError:
         db.rollback()
+        if capture_enabled:
+            integration.guard_lifecycle(db, user_id, expected_account_ref)
         progress = (
             db.query(models.UserTaskProgress)
             .filter(

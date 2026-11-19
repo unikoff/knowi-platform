@@ -1,23 +1,38 @@
 import "./calendar-base.css";
+import "./personal-calendar-layout.css";
 import { useEffect, useMemo, useState } from "react";
 import { CalendarCheck2, CalendarClock, CalendarDays, Check, ChevronLeft, ChevronRight, Clock, X } from "lucide-react";
-import { formatSlotDate, formatSlotTimeRange, getInitialCalendarMonth, getMonthTitle, shiftCalendarMonth } from "../../shared/lib/dates";
+import { formatSlotDate, formatSlotTimeRange, getMonthTitle, shiftCalendarMonth } from "../../shared/lib/dates";
+import { moscowCalendarMonth } from "../../shared/lib/moscow-month";
+import { acknowledgeReconciliation, ReconciliationRequired } from "../admin/scopedApi";
 import { CalendarMonthGrid } from "../../shared/ui/calendar/CalendarMonthGrid";
 import type { CalendarMonth, StudentSlot, QuotaStatus } from "../../shared/api/contracts/account";
+import type { AccountActivityStatus } from "./useAccountSchedule";
+
+const MEASUREMENT_STATUS_MESSAGES = {
+  disabled: "Данные учебной активности по курсу пока недоступны.",
+  loading: "Загружаем данные учебной активности по курсу…",
+  unavailable: "Данные учебной активности по курсу недоступны.",
+  unknown: null,
+  partial: "История учебной активности по курсу за месяц неполная. Отмечены дни с зафиксированной активностью.",
+  complete: null,
+};
 
 export function CalendarPanel({
+  courseId, bookingLoading, bookingError,
   calendarMonth,
   activityDays,
-  activityTimes,
+  measurementStatus,
   bookingSlots,
   bookingQuota,
   onMonthChange,
   onBookSlot,
   onCancelSlot,
 }: {
+  courseId: string; ownerName: string | null; bookingLoading: boolean; bookingError: string;
   calendarMonth: CalendarMonth;
   activityDays: Set<string>;
-  activityTimes: Record<string, string | null>;
+  measurementStatus: AccountActivityStatus;
   bookingSlots: StudentSlot[];
   bookingQuota: QuotaStatus | null;
   onMonthChange: (calendarMonth: CalendarMonth) => void;
@@ -27,7 +42,10 @@ export function CalendarPanel({
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [busySlotId, setBusySlotId] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [reconcile, setReconcile] = useState<ReconciliationRequired | null>(null);
   const [notice, setNotice] = useState("");
+  const bookingReady = !bookingLoading && !bookingError;
+  const measurementMessage = MEASUREMENT_STATUS_MESSAGES[measurementStatus];
 
   const { freeDays, myDays, completedDays, slotsByDay, freeSlotCounts } = useMemo(() => {
     const free = new Set<string>();
@@ -55,9 +73,10 @@ export function CalendarPanel({
 
   useEffect(() => {
     setSelectedDay(null);
+    setReconcile(null);
     setError("");
     setNotice("");
-  }, [calendarMonth.month, calendarMonth.year]);
+  }, [courseId, calendarMonth.month, calendarMonth.year]);
 
   const selectedSlots = selectedDay ? slotsByDay.get(selectedDay) ?? [] : [];
   const freeSlotCount = selectedSlots.filter((slot) => slot.status === "free").length;
@@ -67,9 +86,6 @@ export function CalendarPanel({
   const completedMonthCount = bookingSlots.filter((slot) => slot.is_completed).length;
   const plannedMonthCount = bookingSlots.filter((slot) => slot.status === "mine" && !slot.is_completed).length;
   const nextBooking = bookingSlots.find((slot) => slot.status === "mine" && !slot.is_completed);
-  const selectedActivityTime = selectedDay && activityTimes[selectedDay]
-    ? formatActivityTime(activityTimes[selectedDay]!)
-    : null;
   const usedQuotaPercent = bookingQuota && bookingQuota.granted > 0
     ? Math.min(100, Math.max(0, Math.round((bookingQuota.used / bookingQuota.granted) * 100)))
     : 0;
@@ -77,6 +93,7 @@ export function CalendarPanel({
   async function handleSlotAction(slot: StudentSlot) {
     if (slot.is_completed) return;
     setBusySlotId(slot.id);
+    setReconcile(null);
     setError("");
     setNotice("");
     try {
@@ -86,6 +103,7 @@ export function CalendarPanel({
         ? `Запись на ${formatSlotDate(slot.date)} отменена.`
         : `Вы записаны на ${formatSlotDate(slot.date)} · ${formatSlotTimeRange(slot.start_time, slot.duration_minutes)}.`);
     } catch (err) {
+      if (err instanceof ReconciliationRequired) setReconcile(err);
       setError(err instanceof Error ? err.message : "Не удалось изменить запись");
     } finally {
       setBusySlotId(null);
@@ -93,14 +111,14 @@ export function CalendarPanel({
   }
 
   function showCurrentMonth() {
-    onMonthChange(getInitialCalendarMonth());
+    onMonthChange(moscowCalendarMonth());
     setSelectedDay(null);
     setError("");
     setNotice("");
   }
 
   return (
-    <section className="account-calendar account-calendar--booking" aria-label="Календарь занятий">
+    <section className="account-calendar account-calendar--booking account-calendar--personal" aria-label="Календарь занятий">
       <header className="account-calendar__header">
         <div className="account-calendar__title">
           <span className="account-calendar__icon"><CalendarDays size={19} /></span>
@@ -120,35 +138,40 @@ export function CalendarPanel({
         </div>
       </header>
 
-      <div className="account-calendar__layout">
+      {measurementMessage && <p role="status">{measurementMessage}</p>}
+      {bookingLoading && <p role="status">Загружаем расписание…</p>}
+      {bookingError && <p role="alert">Расписание недоступно: {bookingError}</p>}
+      {(bookingReady || measurementStatus !== "disabled") && <div className={`account-calendar__layout${bookingReady ? "" : " account-calendar__layout--activity-only"}`}>
         <div className="account-calendar__main">
           <div className="account-calendar__month-frame">
             <CalendarMonthGrid
               month={calendarMonth}
               activityDays={activityDays}
-              freeDays={freeDays}
+              freeDays={bookingReady ? freeDays : undefined}
               freeSlotCounts={freeSlotCounts}
-              bookingDays={myDays}
-              completedDays={completedDays}
+              bookingDays={bookingReady ? myDays : undefined}
+              completedDays={bookingReady ? completedDays : undefined}
               showCellEvents={false}
               selectableDays={new Set([...freeDays, ...myDays, ...completedDays, ...activityDays])}
               selectedDay={selectedDay}
-              onSelectDay={(dateKey) => {
+              onSelectDay={bookingReady ? (dateKey) => {
                 setNotice("");
                 setError("");
                 setSelectedDay((current) => current === dateKey ? null : dateKey);
-              }}
+              } : undefined}
               legend={[
-                { marker: "is-free", label: "Свободное время" },
-                { marker: "is-booking", label: "Ваша запись" },
-                { marker: "is-completed", label: "Время занятия прошло" },
-                { marker: "is-activity", label: "Были на платформе" },
+                ...(bookingReady ? [
+                  { marker: "is-free", label: "Свободное время" },
+                  { marker: "is-booking", label: "Ваша запись" },
+                  { marker: "is-completed", label: "Время занятия прошло" },
+                ] as const : []),
+                ...(measurementStatus !== "disabled" ? [{ marker: "is-activity", label: "Учебная активность курса" }] as const : []),
               ]}
             />
           </div>
         </div>
 
-        <aside className={`account-calendar__details ${isCompletedOnlyDay ? "is-completed-day" : ""}`} aria-live="polite">
+        {bookingReady && <aside className={`account-calendar__details ${isCompletedOnlyDay ? "is-completed-day" : ""}`} aria-live="polite">
           <header className="account-calendar__details-heading">
             <span className="account-calendar__details-icon"><CalendarCheck2 size={17} /></span>
             <div>
@@ -166,15 +189,13 @@ export function CalendarPanel({
           {selectedDay && activityDays.has(selectedDay) && (
             <div className="account-calendar__activity-time">
               <span className="account-calendar__activity-icon"><Clock size={16} aria-hidden="true" /></span>
-              <div><strong>Вы заходили</strong><span>Время визита</span></div>
-              {selectedActivityTime
-                ? <time dateTime={activityTimes[selectedDay] ?? undefined}>{selectedActivityTime}</time>
-                : <time>не сохранено</time>}
+              <div><strong>Учебная активность курса</strong></div>
             </div>
           )}
 
           {notice && <p className="account-calendar__notice" role="status">{notice}</p>}
           {error && <div className="form-error" role="alert">{error}</div>}
+          {reconcile && <button type="button" onClick={() => { if (window.confirm("Вы сверили результат предыдущей записи с преподавателем? Повтор автоматически не отправится.")) { acknowledgeReconciliation(reconcile); setReconcile(null); setError(""); } }}>Подтвердить, что результат сверен</button>}
 
           {selectedDay && selectedSlots.length > 0 ? (
             <>
@@ -227,13 +248,13 @@ export function CalendarPanel({
             <div className="account-calendar__empty-state">
               <CalendarDays size={21} aria-hidden="true" />
               <div><strong>{activityDays.has(selectedDay) ? "Свободных слотов нет" : "На этот день пока нет окон"}</strong>
-                <span>{activityDays.has(selectedDay) ? "История визита показана выше. Выберите другой день для записи." : "Выберите другой день, чтобы посмотреть расписание."}</span></div>
+                <span>{activityDays.has(selectedDay) ? "Учебная активность показана выше. Выберите другой день для записи." : "Выберите другой день, чтобы посмотреть расписание."}</span></div>
             </div>
           ) : (
             <div className="account-calendar__overview">
               <div className="account-calendar__overview-intro">
                 <span className="account-calendar__overview-icon"><CalendarDays size={18} aria-hidden="true" /></span>
-                <div><strong>Расписание месяца</strong><span>Выберите отмеченную дату, чтобы увидеть слоты и визиты.</span></div>
+                <div><strong>Расписание месяца</strong><span>Выберите отмеченную дату, чтобы увидеть слоты и активность.</span></div>
               </div>
               <div className="account-calendar__overview-stats">
                 <div><strong>{completedMonthCount}</strong><span>Время занятий прошло</span></div>
@@ -269,16 +290,10 @@ export function CalendarPanel({
               )}
             </div>
           )}
-        </aside>
-      </div>
+        </aside>}
+      </div>}
     </section>
   );
-}
-
-function formatActivityTime(value: string): string | null {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Moscow" });
 }
 
 function formatFreeSlotCount(value: number): string {

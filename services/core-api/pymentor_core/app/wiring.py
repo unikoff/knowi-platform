@@ -17,6 +17,7 @@ async def warm_course_snapshots():
 
 @asynccontextmanager
 async def postgres_resources(app, settings):
+    from fastapi import HTTPException
     from pymentor_core.adapters.runtime import RuntimeAsyncDatabase
     from pymentor_core.adapters.runtime import RuntimeRedisSessionStore
     from pymentor_core.adapters.runtime import RuntimeIdentitySessions
@@ -37,12 +38,51 @@ async def postgres_resources(app, settings):
         revision = connection.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar_one()
+        inspector = inspect(connection)
+        available_tables = set(inspector.get_table_names())
+        from pymentor_core.adapters.sql.analytics_delivery_ops.integration import enabled as analytics_delivery_enabled
+        if analytics_delivery_enabled():
+            from pymentor_core.adapters.sql.analytics_delivery_ops.addon_migration import check_version
+            from pymentor_core.adapters.sql.analytics_delivery_ops.snapshot_export import proof_enabled
+            try:
+                check_version(connection, 2 if proof_enabled() else 1)
+            except (ValueError, TypeError):
+                raise RuntimeError("Analytics delivery addon version is not ready") from None
+            from pymentor_core.adapters.sql.analytics_delivery import metadata as analytics_delivery_metadata
+            from pymentor_core.adapters.sql.analytics_delivery_ops.integration import ensure_mirror_ready, require_write_gate, write_mode
+            if not set(analytics_delivery_metadata.tables).issubset(available_tables):
+                raise RuntimeError("Analytics delivery schema is not ready")
+            for name, table in analytics_delivery_metadata.tables.items():
+                actual_columns = {column["name"] for column in inspector.get_columns(name)}
+                expected_pk = {column.name for column in table.primary_key.columns}
+                actual_pk = set(inspector.get_pk_constraint(name).get("constrained_columns") or ())
+                if not set(table.columns.keys()).issubset(actual_columns) or actual_pk != expected_pk:
+                    raise RuntimeError("Analytics delivery schema is not ready")
+            constraints = inspector.get_unique_constraints("analytics_transfer_outbox")
+            if not any(set(item.get("column_names") or ()) == {"entity_key", "revision"} for item in constraints):
+                raise RuntimeError("Analytics delivery schema is not ready")
+            if proof_enabled():
+                from pymentor_core.adapters.sql.analytics_delivery_ops.snapshot_sql import barriers, preparation, proofs
+                if any(table.name not in available_tables or not set(table.columns.keys()).issubset(
+                        {column["name"] for column in inspector.get_columns(table.name)}) for table in (proofs, barriers, preparation)):
+                    raise RuntimeError("Analytics snapshot proof schema is not ready")
+                for table in (proofs, barriers, preparation):
+                    if set(inspector.get_pk_constraint(table.name).get("constrained_columns") or ()) != {column.name for column in table.primary_key.columns}:
+                        raise RuntimeError("Analytics snapshot proof schema is not ready")
+                uniques = inspector.get_unique_constraints(proofs.name)
+                if not any(set(item.get("column_names") or ()) == {"subject_ref", "cut_revision"} for item in uniques):
+                    raise RuntimeError("Analytics snapshot proof schema is not ready")
+            try:
+                selected_mode = write_mode()
+                require_write_gate(connection, selected_mode)
+                if selected_mode == "mirror":
+                    ensure_mirror_ready(connection)
+            except HTTPException:
+                raise RuntimeError("Analytics activity write gate unavailable") from None
         if (
             not matches_database_identity(identity, engine.url)
             or not compatible_schema_revision(revision, SCHEMA_REVISION)
-            or not set(REQUIRED_TABLES).issubset(
-                inspect(connection).get_table_names()
-            )
+            or not set(REQUIRED_TABLES).issubset(available_tables)
         ):
             raise RuntimeError("Configured PostgreSQL schema is not ready")
     async with AsyncExitStack() as resources:
@@ -116,6 +156,31 @@ def identity_repository(database, uow=None):
     return AccountReader(database, uow)
 
 
+def role_identity_projection(database, user):
+    from pymentor_core.adapters.sql.role_identity import project
+    return project(database, user)
+
+
+def lock_lifecycle_user(database, user_id, reference):
+    from pymentor_core.adapters.sql.role_identity import lock_lifecycle_user as lock_user
+    return lock_user(database, user_id, reference)
+
+
+def role_admin_reads():
+    from pymentor_core.adapters.sql import role_admin_reads as adapter
+    return adapter
+
+
+def role_admin_commands():
+    from pymentor_core.adapters.sql import role_admin_commands as adapter
+    return adapter
+
+
+def scoped_booking():
+    from pymentor_core.adapters.sql import scoped_booking as adapter
+    return adapter
+
+
 def ensure_notification_schema(engine):
     if engine.dialect.name != "postgresql":
         raise RuntimeError("Notification worker requires PostgreSQL")
@@ -150,6 +215,7 @@ def configure_bindings():
         email_auth,
     )
 
+    from pymentor_core.adapters.sql.analytics_delivery_ops import integration as analytics_delivery
     from pymentor_core.adapters.telegram import transport
 
     install_bindings(
@@ -166,5 +232,6 @@ def configure_bindings():
             notifications=notification_outbox,
             telegram=transport,
             email_auth=email_auth,
+            analytics_delivery=analytics_delivery,
         )
     )

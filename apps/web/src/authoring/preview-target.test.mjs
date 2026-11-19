@@ -5,10 +5,11 @@ import { previewTarget } from "./preview-target.ts";
 test("local preview accepts a new page without a catalog entry", () => {
   assert.equal(previewTarget("http://127.0.0.1:5173", true, "chapter_05/block_17/Lesson81_1"), "chapter_05/block_17/Lesson81_1");
   assert.equal(previewTarget("http://127.0.0.1:5173", true, null), "examples");
+  assert.equal(previewTarget("http://127.0.0.1:5181", true, "examples"), "examples");
 });
 
 test("production and other origins cannot open the authoring preview", () => {
-  for (const origin of ["https://pymentor.ru", "http://localhost:5173", "http://127.0.0.1:4173"]) {
+  for (const origin of ["https://pymentor.ru", "http://localhost:5173", "http://127.0.0.1.evil:5181", "http://127.0.0.1:65536", "http://user@127.0.0.1:5181", "http://127.0.0.1:5181/path", "http://127.0.0.1:5181?x", "http://127.0.0.1:5181#x"]) {
     assert.throws(() => previewTarget(origin, true, "examples"));
   }
   assert.throws(() => previewTarget("http://127.0.0.1:5173", false, "examples"));

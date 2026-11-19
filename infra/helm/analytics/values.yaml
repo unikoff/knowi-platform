@@ -1,0 +1,123 @@
+image:
+  repository: knowi-analytics
+  tag: an1-local
+  digest: "" # Optional immutable manifest digest; takes precedence over tag.
+  pullPolicy: IfNotPresent
+
+# Opt-in only for a fresh, synthetic benchmark namespace.
+syntheticBenchmark:
+  enabled: false
+
+# One trusted public-key manifest source for all roles; no private signing keys.
+trustManifest:
+  configMapName: ""
+  key: TRUST_MANIFEST_JSON
+
+# Public synthetic v2 snapshots only; collector receives this optional fixture.
+fixtureCatalog:
+  configMapName: ""
+  key: FIXTURE_CATALOG_JSON
+
+# Common private reader configuration; never place credentials in values or a ConfigMap.
+privacyAuthority:
+  secretName: ""
+  key: PRIVACY_AUTHORITY_JSON
+
+# Optional a007+ features; ConfigMaps contain public metadata only.
+coreTransfer:
+  enabled: false
+  proofEnabled: false
+  statusSecretName: ""
+  namespacesConfigMapName: ""
+  namespacesKey: CORE_TRANSFER_NAMESPACES_JSON
+  queryNamespace: ""
+  rosterSecretName: ""
+  rosterKey: CORE_TRANSFER_ROSTER_JSON
+catalog:
+  enabled: false
+  namespace: ""
+activityProjection:
+  enabled: false
+  runId: "" # Stable per dataset generation, shared by Processor and Query.
+  processorPollMs: 500 # Bounds match PROCESSOR_ACTIVITY_POLL_SECONDS in the runtime.
+activityDay:
+  enabled: false # a011 day worker and Query; requires activityProjection and Privacy.
+activityCourse:
+  enabled: false # a012+ course worker and Query; requires activityDay.
+activityBoundaryCredit:
+  enabled: false # a013+ boundary worker; requires activityCourse.
+
+roles:
+  collector:
+    replicas: 1
+    imageTag: "" # Optional independent role rollout; empty uses image.tag.
+    secretName: analytics-collector-db
+    poolSize: 2
+    poolOverflow: 0
+    concurrency: 4
+    resources:
+      requests: {cpu: 50m, memory: 64Mi}
+      limits: {cpu: 500m, memory: 256Mi}
+  processor:
+    replicas: 1
+    imageTag: "" # Optional independent role rollout; empty uses image.tag.
+    secretName: analytics-processor-db
+    poolSize: 2
+    poolOverflow: 0
+    concurrency: 4
+    resources:
+      requests: {cpu: 50m, memory: 64Mi}
+      limits: {cpu: 500m, memory: 256Mi}
+  query:
+    replicas: 1
+    imageTag: "" # Optional independent role rollout; empty uses image.tag.
+    secretName: analytics-query-db
+    poolSize: 2
+    poolOverflow: 0
+    concurrency: 4
+    resources:
+      requests: {cpu: 50m, memory: 64Mi}
+      limits: {cpu: 500m, memory: 256Mi}
+  privacy:
+    enabled: false
+    replicas: 1
+    imageTag: "" # Optional independent role rollout; empty uses image.tag.
+    secretName: analytics-privacy-db
+    poolSize: 1
+    poolOverflow: 0
+    concurrency: 4
+    resources:
+      requests: {cpu: 50m, memory: 64Mi}
+      limits: {cpu: 500m, memory: 128Mi}
+
+migration:
+  enabled: false
+  revision: a006
+  secretName: analytics-migrate-db
+  poolSize: 1
+  poolOverflow: 0
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 500m, memory: 256Mi}
+
+network:
+  # Empty means database egress remains denied; configure the actual Analytics DB /32 or specific CIDR.
+  databaseCIDR: ""
+  databasePort: 5432
+  authorityCIDR: ""
+  authorityPort: 57420
+  dnsNamespace: kube-system
+  dnsPodLabels: {k8s-app: kube-dns}
+  ingressNamespace: kube-system
+  ingressPodLabels: {app.kubernetes.io/name: traefik}
+  coreIngress:
+    enabled: false
+    namespace: ""
+    podLabels: {}
+    cidr: "" # Alternative to namespace and pod labels: one exact IP only.
+
+ingress:
+  enabled: false
+  host: analytics.local
+  entryPoint: websecure
+  tlsSecretName: ""

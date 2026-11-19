@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
-import { ChevronRight, User } from "lucide-react";
 import { useRecordActivityVisit } from "../features/account";
+import { useAnalyticsTrackerIdentity } from "../features/analytics-tracker/useAnalyticsTracker";
+import { canShowPersonalMeasurements } from "../features/account/course-statistics-analytics";
+import { usePublishedCatalog } from "../features/analytics-tracker/usePublishedCatalog";
+import { activitySources, isTrackableLesson } from "../features/analytics-tracker/integration";
+import type { ToolId } from "../features/analytics-tracker/tracker";
 import { logoutUser } from "../features/auth";
 import { PracticeSessionProvider, useLearningCourse, type Lesson } from "../features/learning";
-import { formatSubscriptionDate, getInitialCalendarMonth } from "../shared/lib/dates";
-import { ThemeToggle } from "../shared/ui/theme-toggle/ThemeToggle";
 import type { UserProfile, CalendarMonth } from "../shared/api/contracts";
+import { moscowCalendarMonth } from "../shared/lib/moscow-month";
 import { WorkspaceActivityBar } from "./workspace/WorkspaceActivityBar";
 import { WorkspaceWorkbench, type ActiveWorkspacePanel, type WorkspaceCommands } from "./workspace/WorkspaceWorkbench";
 import { LessonsDrawerContent, WorkspacePanelContext } from "./workspace/WorkspacePanels";
@@ -16,29 +19,6 @@ import type { CourseId } from "../course-runtime/course-registry";
 const EXPLORER_MIN_WIDTH = 220;
 const EXPLORER_MAX_WIDTH = 480;
 const EXPLORER_DEFAULT_WIDTH = 320;
-
-function formatLessonHeading(lesson: Lesson, trackTitle?: string) {
-  const chapterNumber = trackTitle?.match(/^Глава\s+(\d+)/i)?.[1]
-    ?? lesson.source_file?.match(/chapter_(\d+)/i)?.[1]
-    ?? lesson.module.match(/(?:Блок|Глава)\s+(\d+)/i)?.[1];
-  const lessonMatch = lesson.title.match(/^(\d+(?:\.\d+)*)\.?\s+(.+)$/);
-  return {
-    chapter: chapterNumber ? `Глава ${Number(chapterNumber)}` : undefined,
-    number: lessonMatch?.[1],
-    title: lessonMatch ? lessonMatch[2].replace(/^[.)\-–—]\s*/, "") : lesson.title,
-  };
-}
-
-function getProfileHint(user: UserProfile | null): { tier?: string; detail: string } {
-  if (!user) return { detail: "Гостевой доступ" };
-  if (user.has_active_subscription) {
-    const endDate = user.subscription_until
-      ? formatSubscriptionDate(user.subscription_until).match(/^(\d{2}\.\d{2})\./)?.[1]
-      : undefined;
-    return { tier: "pro", detail: endDate ? `до ${endDate}` : "активен" };
-  }
-  return { detail: user.is_admin ? "Администратор" : "Нет подписки" };
-}
 
 function getInitialExplorerWidth(storageKey: string, legacyKey?: string) {
   try {
@@ -63,11 +43,26 @@ export function Workspace({ user, courseId, onUserChange, onLogout, onRequireAut
 }) {
   const userKey = user ? String(user.id) : "guest";
   const ownerKey = `${userKey}:${courseId}`;
+  const canManageCourse = Boolean((user?.role === undefined && user?.is_admin) || (user?.capabilities?.includes("course.read") && (user.role === "admin" || (user.role === "leader" && user.course_id === courseId))));
   const course = useLearningCourse(user, courseId);
-  const [calendarMonth, setCalendarMonth] = useState<CalendarMonth>(getInitialCalendarMonth);
-  useRecordActivityVisit(user?.id ?? null);
+  const [calendarMonth, setCalendarMonth] = useState<CalendarMonth>(moscowCalendarMonth);
+  const trackerFlag = import.meta.env.VITE_ANALYTICS_TRACKER_ENABLED === "true";
+  const toolsEnabled = import.meta.env.VITE_ANALYTICS_TOOLS_ENABLED === "true";
+  const cutoverFlag = import.meta.env.VITE_ANALYTICS_LEGACY_VISIT_CUTOVER === "true";
+  const analyticsBase = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const publishedCatalog = usePublishedCatalog(trackerFlag && user?.role === "user", user ? userKey : null, courseId, analyticsBase, cutoverFlag ? "cutover" : "parallel");
+  const sources = activitySources(trackerFlag, cutoverFlag, publishedCatalog?.version ?? null, user?.role ?? null);
+  useRecordActivityVisit(sources.legacy ? user?.id ?? null : null);
+  const canTrackLesson = useCallback((target: LessonTarget) => Boolean(publishedCatalog?.lessons.has(target.lessonId) && isTrackableLesson(target, course, user)),
+    [publishedCatalog, course.tracksLoaded, course.tracksError, course.courses, course.materials, user?.id, user?.has_active_subscription]);
+  const analytics = useAnalyticsTrackerIdentity({ enabled: sources.tracker || toolsEnabled, toolsEnabled, identityKey: user ? userKey : null, role: user?.role ?? null,
+    subjectRef: user?.account_ref ?? null,
+    courseId, catalogVersion: sources.tracker ? publishedCatalog?.version ?? null : null, canTrackLesson, baseUrl: analyticsBase });
   const [compact, setCompact] = useState(() => window.matchMedia("(max-width: 900px)").matches);
   const [activePanel, setActivePanel] = useState<ActiveWorkspacePanel>();
+  const [accountTool, setAccountTool] = useState<ToolId>("account-statistics");
+  const [explorerActive, setExplorerActive] = useState(false);
+  const previousActivePanel = useRef<string | undefined>();
   const [lessonTarget, setLessonTarget] = useState<LessonTarget>();
   const [isExplorerOpen, setIsExplorerOpen] = useState(!compact);
   const [lessonMenuPeek, setLessonMenuPeek] = useState<"closed" | "open" | "closing">("closed");
@@ -90,6 +85,9 @@ export function Workspace({ user, courseId, onUserChange, onLogout, onRequireAut
   const ready = Boolean(course.tracksError || (course.tracksLoaded && (!course.activeTrackId || (entry && !entry.loading))));
   const workspaceStyle = { "--explorer": `${explorerWidth}px` } as CSSProperties;
   const isDrawerVisible = isExplorerOpen || lessonMenuPeek === "open";
+  const { onActiveTool } = analytics;
+  const activeTool = explorerActive && isDrawerVisible ? "lessons" : activePanel?.id === "account" ? accountTool : undefined;
+  useEffect(() => { onActiveTool(activeTool); }, [onActiveTool, activeTool]);
 
   useEffect(() => {
     try { localStorage.setItem(explorerWidthKey, String(explorerWidth)); }
@@ -128,6 +126,13 @@ export function Workspace({ user, courseId, onUserChange, onLogout, onRequireAut
   }, []);
 
   const onActivePanel = useCallback((panel?: ActiveWorkspacePanel) => {
+    const previous = previousActivePanel.current;
+    if (previous !== panel?.id) {
+      setExplorerActive(false);
+      if (previous === "account") window.dispatchEvent(new Event("pymentor:personal-analytics-closed"));
+      if (panel?.id === "account") window.dispatchEvent(new Event("pymentor:personal-analytics-opened"));
+      previousActivePanel.current = panel?.id;
+    }
     setActivePanel(panel);
   }, []);
   const onLessonChange = useCallback((target?: LessonTarget) => {
@@ -144,6 +149,7 @@ export function Workspace({ user, courseId, onUserChange, onLogout, onRequireAut
     clearLessonMenuTimers();
     lessonMenuTimers.current.push(window.setTimeout(() => {
       setLessonMenuPeek("closing");
+      setExplorerActive(false);
       lessonMenuTimers.current.push(window.setTimeout(() => {
         setLessonMenuPeek("closed");
         lessonMenuTimers.current = [];
@@ -153,12 +159,18 @@ export function Workspace({ user, courseId, onUserChange, onLogout, onRequireAut
   const toggleLessons = useCallback(() => {
     clearLessonMenuTimers();
     setLessonMenuPeek("closed");
-    setIsExplorerOpen((value) => !value);
-  }, [clearLessonMenuTimers]);
+    setIsExplorerOpen(!isExplorerOpen);
+    setExplorerActive(!isExplorerOpen);
+  }, [clearLessonMenuTimers, isExplorerOpen]);
   const closeLessons = useCallback(() => {
+    const drawer = workspaceRef.current?.querySelector("#workspace-lessons-drawer");
+    if (drawer?.contains(document.activeElement)) {
+      workspaceRef.current?.querySelector<HTMLButtonElement>(".activity-button--lessons")?.focus();
+    }
     clearLessonMenuTimers();
     setLessonMenuPeek("closed");
     setIsExplorerOpen(false);
+    setExplorerActive(false);
   }, [clearLessonMenuTimers]);
   const openLesson = useCallback((kind: LessonPanelKind, target: LessonTarget) => {
     const changingLesson = lessonTarget?.trackId !== target.trackId || lessonTarget?.lessonId !== target.lessonId;
@@ -181,19 +193,16 @@ export function Workspace({ user, courseId, onUserChange, onLogout, onRequireAut
     commands.current?.openAccount();
   }
   async function handleLogout() {
+    analytics.stopBeforeLogout();
     try { await logoutUser(); onLogout(); }
-    catch (error) { window.alert(error instanceof Error ? error.message : "Не удалось выйти из аккаунта"); }
+    catch (error) { analytics.restartAfterFailedLogout(); window.alert(error instanceof Error ? error.message : "Не удалось выйти из аккаунта"); }
   }
-  const activeLesson = activePanel?.kind && lessonTarget ? course.courses[lessonTarget.trackId]?.lessons.find((lesson) => lesson.id === lessonTarget.lessonId) : undefined;
-  const activeTrackTitle = lessonTarget ? course.tracks.find((track) => track.id === lessonTarget.trackId)?.title : undefined;
-  const workspaceHeading = activeLesson ? formatLessonHeading(activeLesson, activeTrackTitle) : undefined;
-  const profileHint = getProfileHint(user);
   return <PracticeSessionProvider>
     <WorkspacePanelContext.Provider value={{ user, courseId, ownerKey, onUserChange, course, calendarMonth, setCalendarMonth,
       selectedLessonId: lessonTarget?.trackId === course.activeTrackId ? lessonTarget.lessonId : "", onSelectLesson, openLesson, onRequireAuth, onLogout: handleLogout,
-      onCloseLessons: closeLessons }}>
+      onCloseLessons: closeLessons, onAccountToolChange: setAccountTool }}>
       <main ref={workspaceRef} className={`workspace workspace--dock ${compact ? "workspace--compact" : ""} ${isExplorerOpen ? "workspace--explorer-open" : "workspace--explorer-closed"}`} style={workspaceStyle}>
-        <WorkspaceActivityBar isExplorerOpen={isDrawerVisible} isAdmin={Boolean(user?.is_admin)}
+        <WorkspaceActivityBar key={userKey} ownerKey={userKey} compact={compact} isExplorerOpen={isDrawerVisible} isAdmin={canManageCourse} isPlatformAdmin={Boolean(user?.role === "admin" && user.capabilities?.includes("platform.read"))}
           isAdminOpen={activePanel?.id === "admin"} isAccountOpen={activePanel?.id === "account"} isInterpreterOpen={activePanel?.id === "interpreter"} activeView={activePanel?.kind}
           onOpenLessons={toggleLessons} onLessonsPointerEnter={previewLessonsOnHover} onLessonsPointerLeave={closeLessonPreview}
           onOpenTheory={() => openStudy("theory")} onOpenPractice={() => openStudy("practice")}
@@ -204,6 +213,14 @@ export function Workspace({ user, courseId, onUserChange, onLogout, onRequireAut
           ref={(element) => { if (element) element.inert = !isDrawerVisible; }}
           aria-hidden={!isDrawerVisible}
           aria-label="Список занятий"
+          onFocusCapture={() => setExplorerActive(true)}
+          onPointerDownCapture={() => setExplorerActive(true)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && !event.defaultPrevented) {
+              event.preventDefault();
+              closeLessons();
+            }
+          }}
           onPointerEnter={(event) => previewLessonsOnHover(event.pointerType)}
           onPointerLeave={(event) => closeLessonPreview(event.pointerType)}>
           <LessonsDrawerContent visible={isDrawerVisible} />
@@ -222,31 +239,11 @@ export function Workspace({ user, courseId, onUserChange, onLogout, onRequireAut
               setExplorerWidth(event.key === "Home" ? EXPLORER_MIN_WIDTH : EXPLORER_MAX_WIDTH);
             }
           }} />}
-        <div className="workspace-body">
-          <header className="top-bar">
-            <div className="breadcrumbs" title={workspaceHeading ? [workspaceHeading.chapter, workspaceHeading.number, workspaceHeading.title].filter(Boolean).join(" · ") : undefined}>
-              {workspaceHeading?.chapter && <span className="workspace-chapter">{workspaceHeading.chapter}</span>}
-              {workspaceHeading?.number && <span className="workspace-lesson-number">{workspaceHeading.number}</span>}
-              <strong className="workspace-title">{workspaceHeading?.title ?? (activePanel?.id === "account" ? "Личный кабинет" : activePanel?.id === "admin" ? "Админ-панель" : activePanel?.id === "interpreter" ? "Интерпретатор Python" : "knowi")}</strong>
-            </div>
-            <div className="top-actions">
-              <ThemeToggle />
-              <button className="profile-button" type="button" onClick={openAccount} aria-label={user ? `Личный кабинет: ${user.username}` : "Войти в личный кабинет"} aria-current={activePanel?.id === "account" ? "page" : undefined}>
-                <span className="profile-button__avatar" aria-hidden="true">{user ? user.username.slice(0, 1).toUpperCase() : <User size={16} />}</span>
-                <span className="profile-button__text">
-                  <strong>{user?.username ?? "Войти"}</strong>
-                  <span className="profile-button__meta" title={[profileHint.tier, profileHint.detail].filter(Boolean).join(" ")}>
-                    {profileHint.tier && <span className="profile-button__tier">{profileHint.tier}</span>}
-                    <small>{profileHint.detail}</small>
-                  </span>
-                </span>
-                <ChevronRight className="profile-button__chevron" size={14} aria-hidden="true" />
-              </button>
-            </div>
-          </header>
+        <div className="workspace-body" onFocusCapture={() => setExplorerActive(false)} onPointerDownCapture={() => setExplorerActive(false)}>
           <WorkspaceWorkbench key={compact ? "mobile" : "desktop"} ownerKey={userKey} courseId={courseId} compact={compact}
-            isAuthenticated={Boolean(user)} isAdmin={Boolean(user?.is_admin)} ready={ready} initialLesson={initialLesson}
-            selectedLesson={lessonTarget} commands={commands} onActivePanel={onActivePanel}
+            isAuthenticated={Boolean(user)} metricsIdentity={user?.account_ref && typeof user.auth_revision === "number" ? { id: user.id, accountRef: user.account_ref, authRevision: user.auth_revision } : null}
+            metricsEnabled={canShowPersonalMeasurements(import.meta.env.VITE_ANALYTICS_REPORTS_ENABLED, import.meta.env.VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED, user?.role)} isAdmin={canManageCourse} ready={ready} initialLesson={initialLesson}
+            selectedLesson={lessonTarget} commands={commands} onActivePanel={onActivePanel} onTrackerPanel={analytics.onActivePanel}
             onLessonChange={onLessonChange} onOpenLessons={() => setIsExplorerOpen(true)} />
         </div>
       </main>

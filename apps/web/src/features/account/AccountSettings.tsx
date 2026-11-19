@@ -1,6 +1,7 @@
 import { Check, Copy, Laptop, LockKeyhole, LogOut, Mail, MapPin, ShieldCheck, UserRound } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import type { UserProfile } from "../../shared/api/contracts";
+import { ThemeToggle } from "../../shared/ui/theme-toggle/ThemeToggle";
 import { requestEmailChange, requestEmailVerification, requestPasswordChange, updateProfile } from "../auth/api";
 
 export interface AccountSessionData {
@@ -163,6 +164,11 @@ export function AccountSettings({ user, data = null, onLogout, onUserChange }: {
           )}
         </section>
       </div>
+
+      <section className="account-surface account-detail-card">
+        <header><div><h3>Оформление</h3><p>Тема и акцентный цвет интерфейса</p></div></header>
+        <div className="account-settings-theme"><ThemeToggle /></div>
+      </section>
 
       <div className="account-settings-logout">
         <div>

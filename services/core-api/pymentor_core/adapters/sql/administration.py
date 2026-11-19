@@ -176,7 +176,7 @@ def _build_learning_progress(user_id: int, db: Session, *, content=None) -> tupl
     return (tracks, completed_lessons)
 
 
-def admin_overview(actor: Principal, db: Session):
+def admin_overview(actor: Principal, db: Session, *, include_activity: bool = True, include_completions: bool = True):
     """Краткая сводка по активности учеников, подпискам и загрузке расписания."""
     now = bookings.now_moscow()
     today = now.date()
@@ -197,32 +197,35 @@ def admin_overview(actor: Principal, db: Session):
     )
     total_students = int(student_totals[0] or 0)
     active_subscriptions_count = int(student_totals[1] or 0)
-    active_students_7d = (
-        db.query(func.count(func.distinct(models.UserActivityDay.user_id)))
-        .join(models.User, models.User.id == models.UserActivityDay.user_id)
-        .filter(
-            models.User.is_admin.is_(False),
-            models.UserActivityDay.activity_date >= today - timedelta(days=6),
-            models.UserActivityDay.activity_date <= today,
+    active_students_7d = None
+    activity_by_date = {}
+    if include_activity:
+        active_students_7d = (
+            db.query(func.count(func.distinct(models.UserActivityDay.user_id)))
+            .join(models.User, models.User.id == models.UserActivityDay.user_id)
+            .filter(
+                models.User.is_admin.is_(False),
+                models.UserActivityDay.activity_date >= today - timedelta(days=6),
+                models.UserActivityDay.activity_date <= today,
+            )
+            .scalar()
+            or 0
         )
-        .scalar()
-        or 0
-    )
-    activity_by_date = {
-        activity_date: active_count
-        for activity_date, active_count in db.query(
-            models.UserActivityDay.activity_date,
-            func.count(func.distinct(models.UserActivityDay.user_id)),
-        )
-        .join(models.User, models.User.id == models.UserActivityDay.user_id)
-        .filter(
-            models.User.is_admin.is_(False),
-            models.UserActivityDay.activity_date >= trend_start_date,
-            models.UserActivityDay.activity_date <= today,
-        )
-        .group_by(models.UserActivityDay.activity_date)
-        .all()
-    }
+        activity_by_date = {
+            activity_date: active_count
+            for activity_date, active_count in db.query(
+                models.UserActivityDay.activity_date,
+                func.count(func.distinct(models.UserActivityDay.user_id)),
+            )
+            .join(models.User, models.User.id == models.UserActivityDay.user_id)
+            .filter(
+                models.User.is_admin.is_(False),
+                models.UserActivityDay.activity_date >= trend_start_date,
+                models.UserActivityDay.activity_date <= today,
+            )
+            .group_by(models.UserActivityDay.activity_date)
+            .all()
+        }
     lessons_completed_7d = (
         db.query(func.count(models.UserLessonProgress.id))
         .join(models.User, models.User.id == models.UserLessonProgress.user_id)
@@ -233,7 +236,7 @@ def admin_overview(actor: Principal, db: Session):
         )
         .scalar()
         or 0
-    )
+    ) if include_completions else None
     lessons_completed_by_date: dict[date, int] = {}
     completion_rows = (
         db.query(models.UserLessonProgress.completed_at)
@@ -244,7 +247,7 @@ def admin_overview(actor: Principal, db: Session):
             models.UserLessonProgress.completed_at <= now_utc,
         )
         .all()
-    )
+    ) if include_completions else []
     for (completed_at,) in completion_rows:
         normalized_at = accounts.normalize_datetime(completed_at)
         if normalized_at is None:
@@ -280,6 +283,7 @@ def admin_overview(actor: Principal, db: Session):
             func.sum(case((models.BookingSlot.student_id.is_not(None), 1), else_=0)),
         )
         .filter(
+            models.BookingSlot.archived_at.is_(None),
             models.BookingSlot.slot_date <= slots_until,
             or_(
                 models.BookingSlot.slot_date > today,
@@ -301,6 +305,7 @@ def admin_overview(actor: Principal, db: Session):
             func.sum(case((models.BookingSlot.student_id.is_not(None), 1), else_=0)),
         )
         .filter(
+            models.BookingSlot.archived_at.is_(None),
             models.BookingSlot.slot_date <= slots_next_week_until,
             or_(
                 models.BookingSlot.slot_date > today,
@@ -329,6 +334,7 @@ def admin_overview(actor: Principal, db: Session):
         for slot, student in db.query(models.BookingSlot, models.User)
         .join(models.User, models.User.id == models.BookingSlot.student_id)
         .filter(
+            models.BookingSlot.archived_at.is_(None),
             models.BookingSlot.student_id.is_not(None),
             models.BookingSlot.slot_date <= slots_next_week_until,
             or_(
@@ -367,7 +373,7 @@ def admin_overview(actor: Principal, db: Session):
         )
         .limit(6)
         .all()
-    ]
+    ] if include_completions else []
     daily_active_students = [
         {
             "date": activity_date.isoformat(),
@@ -377,7 +383,7 @@ def admin_overview(actor: Principal, db: Session):
             trend_start_date + timedelta(days=day_offset)
             for day_offset in range(trend_days)
         )
-    ]
+    ] if include_activity else []
     daily_lessons_completed = [
         {
             "date": activity_date.isoformat(),
@@ -391,7 +397,7 @@ def admin_overview(actor: Principal, db: Session):
     return {
         "total_students": total_students,
         "active_students_7d": active_students_7d,
-        "inactive_students_7d": max(total_students - active_students_7d, 0),
+        "inactive_students_7d": max(total_students - active_students_7d, 0) if active_students_7d is not None else None,
         "active_subscriptions_count": active_subscriptions_count,
         "lessons_completed_7d": lessons_completed_7d,
         "expiring_subscriptions_count": expiring_subscriptions_count,
@@ -455,6 +461,7 @@ def list_users(
         granted = dict(
             db.query(models.BookingQuota.user_id, models.BookingQuota.granted_slots)
             .filter(
+                or_(models.BookingQuota.course_id == 'backend', models.BookingQuota.course_id.is_(None)),
                 models.BookingQuota.user_id.in_(user_ids),
                 models.BookingQuota.year == quota_year,
                 models.BookingQuota.month == quota_month,
@@ -464,6 +471,7 @@ def list_users(
         used = dict(
             db.query(models.BookingSlot.student_id, func.count(models.BookingSlot.id))
             .filter(
+                or_(models.BookingSlot.course_id == 'backend', models.BookingSlot.course_id.is_(None)),
                 models.BookingSlot.student_id.in_(user_ids),
                 models.BookingSlot.slot_date >= start_date,
                 models.BookingSlot.slot_date <= end_date,
@@ -542,6 +550,28 @@ def delete_user(
         raise ApplicationError(
             status_code=400, detail="Нельзя удалить собственный аккаунт"
         )
+    from pymentor_core.adapters.sql.role_admin_cutover import lock_mode
+    from pymentor_core.adapters.sql.role_admin_commands import _authority, _lock_users
+    lock_mode(db)
+    locked_users = _lock_users(db, [actor.id, user_id])
+    _authority(db, actor, locked_users, None)
+    from pymentor_core.adapters.sql.analytics_delivery_ops import integration as analytics_delivery
+    if analytics_delivery.enabled():
+        from uuid import UUID
+        from pymentor_core.adapters.sql.analytics_delivery import deletion_result
+        if expected_account_ref is None:
+            raise ApplicationError(status_code=400, detail="Account reference required")
+        try:
+            if str(UUID(expected_account_ref)) != expected_account_ref:
+                raise ValueError
+        except (ValueError, TypeError, AttributeError):
+            raise ApplicationError(status_code=400, detail="Invalid account reference") from None
+        try:
+            prior = deletion_result(db, user_id, expected_account_ref)
+        except RuntimeError:
+            raise ApplicationError(status_code=503, detail="Deletion status unavailable") from None
+        if prior is not None:
+            return {"_analytics_deletion_state": prior}
     if db.bind is not None and db.bind.dialect.name == "postgresql":
         booking_storage._require_postgres_read_committed(db)
     if expected_account_ref is not None:
@@ -631,6 +661,8 @@ def delete_user(
             db.query(models.BookingNotificationOutbox).filter(
                 models.BookingNotificationOutbox.id.in_(event_ids)
             ).delete(synchronize_session=False)
+    if analytics_delivery.enabled():
+        analytics_delivery.stage_deletion(db, user_id)
     if db.bind is not None and db.bind.dialect.name == "postgresql":
         db.execute(
             text("SELECT pymentor_capture_account_deletion(:uid)"), {"uid": user_id}
@@ -649,8 +681,16 @@ def delete_user(
             synchronize_session=False
         )
     db.delete(user_db)
-    db.commit()
-    return {"deleted": user_id}
+    try:
+        db.commit()
+    except Exception as exc:
+        from sqlalchemy.exc import IntegrityError
+        if isinstance(exc, IntegrityError):
+            original = exc.orig
+            if 'role_admin_pending_booking_transfer_required' in str(original):
+                raise ApplicationError(status_code=409, detail='Сначала перенесите или отмените будущие записи ведущего') from exc
+        raise
+    return {"_analytics_deletion_state": "pending"} if analytics_delivery.enabled() else {"deleted": user_id}
 
 
 def change_subscription(
@@ -661,6 +701,8 @@ def change_subscription(
     *,
     uow: UnitOfWork | None = None,
 ):
+    from pymentor_core.adapters.sql.role_admin_cutover import require_mode
+    require_mode(db, scoped=False)
     if uow is None:
         user_db = db.query(models.User).filter(models.User.id == user_id).first()
     else:
@@ -718,11 +760,13 @@ def _build_student_profile(
     *,
     account_ref: str | None = None,
     content=None,
+    analytics_activity=None,
 ) -> dict:
     start_date, end_date = bookings.month_bounds(year, month)
     booking_rows = (
         db.query(models.BookingSlot)
         .filter(
+            or_(models.BookingSlot.course_id == 'backend', models.BookingSlot.course_id.is_(None)),
             models.BookingSlot.student_id == user.id,
             models.BookingSlot.slot_date >= start_date,
             models.BookingSlot.slot_date <= end_date,
@@ -732,20 +776,14 @@ def _build_student_profile(
         )
         .all()
     )
-    activity_records = activity.get_activity_records(
-        user_id=user.id, year=year, month=month, db=db
-    )
-    activity_summary = (
-        db.query(
-            func.count(models.UserActivityDay.id),
-            func.max(models.UserActivityDay.activity_date),
-        )
-        .filter(models.UserActivityDay.user_id == user.id)
-        .one()
-    )
+    if analytics_activity is None:
+        activity_records = activity.get_activity_records(user_id=user.id, year=year, month=month, db=db)
+        activity_totals = (db.query(func.count(models.UserActivityDay.id), func.max(models.UserActivityDay.activity_date))
+                           .filter(models.UserActivityDay.user_id == user.id).one())
     total_bookings = (
         db.query(func.count(models.BookingSlot.id))
-        .filter(models.BookingSlot.student_id == user.id)
+        .filter(models.BookingSlot.student_id == user.id,
+                or_(models.BookingSlot.course_id == 'backend', models.BookingSlot.course_id.is_(None)))
         .scalar()
         or 0
     )
@@ -766,17 +804,16 @@ def _build_student_profile(
     data["quota"] = bookings.get_quota_status(
         user_id=user.id, year=year, month=month, db=db
     )
-    data["activity_days_count"] = len(activity_records)
-    data["activity_days"] = [
-        record.activity_date.isoformat() for record in activity_records
-    ]
-    data["total_activity_days"] = int(activity_summary[0] or 0)
-    data["last_activity_date"] = (
-        activity_summary[1].isoformat() if activity_summary[1] else None
-    )
+    if analytics_activity is None:
+        data["activity_days_count"] = len(activity_records)
+        data["activity_days"] = [record.activity_date.isoformat() for record in activity_records]
+        data["total_activity_days"] = int(activity_totals[0] or 0)
+        data["last_activity_date"] = activity_totals[1].isoformat() if activity_totals[1] else None
+        data["activity_summary"] = activity.get_activity_summary(user_id=user.id, db=db)
+    else:
+        data.update(analytics_activity)
     data["total_bookings"] = int(total_bookings)
     data["completed_lessons_7d"] = int(completed_lessons_7d)
-    data["activity_summary"] = activity.get_activity_summary(user_id=user.id, db=db)
     data["learning_progress"] = learning_progress
     data["bookings"] = [
         {
@@ -828,16 +865,25 @@ def _guarded_profile_user(db: Session, user_id: int):
     return result
 
 
-def student_profile(user_id: int, actor: Principal, year: int, month: int, db: Session, *, content=None):
+def student_profile(user_id: int, actor: Principal, year: int, month: int, db: Session, *, content=None, analytics_activity=None):
     user_db, account_ref = _guarded_profile_user(db, user_id)
     return {
         "profile": _build_student_profile(
-            user_db, year, month, db, account_ref=account_ref, content=content
+            user_db, year, month, db, account_ref=account_ref, content=content, analytics_activity=analytics_activity
         )
     }
 
 
-def change_quota(user_id: int, payload: QuotaChange, actor: Principal, db: Session, *, content=None):
+def change_quota(user_id: int, payload: QuotaChange, actor: Principal, db: Session, *, content=None,
+                 analytics_activity=None, expected_account_ref=None):
+    if analytics_activity is not None:
+        from pymentor_core.adapters.sql.role_admin_cutover import require_mode
+        from pymentor_core.modules.analytics_delivery.grants import authorize_grant
+        # Preserve booking's cutover-gate-before-user lock order.
+        require_mode(db, scoped=False)
+        granted = authorize_grant(db, actor, purpose="report", course_id=None, target_ref=None, target_user_id=user_id)
+        if granted.get("role") != "admin" or granted.get("target_subject_ref") != expected_account_ref:
+            raise ApplicationError(status_code=409, detail="Account lifecycle changed")
     user_db = db.query(models.User).filter(models.User.id == user_id).first()
     if user_db is None:
         raise ApplicationError(status_code=404, detail="User not found")
@@ -848,4 +894,5 @@ def change_quota(user_id: int, payload: QuotaChange, actor: Principal, db: Sessi
         amount=payload.add,
         db=db,
     )
-    return {"profile": _build_student_profile(user_db, payload.year, payload.month, db, content=content)}
+    return {"profile": _build_student_profile(user_db, payload.year, payload.month, db, content=content,
+                                               analytics_activity=analytics_activity)}

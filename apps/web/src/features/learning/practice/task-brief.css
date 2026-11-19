@@ -438,6 +438,11 @@
   text-transform: uppercase;
 }
 
+:root[data-color-scheme="light"] :is(.task-requirements, .task-code-panel, .task-spec__item--check, .task-examples) {
+  border-color: var(--line);
+  background: var(--surface-2);
+}
+
 .task-example {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);

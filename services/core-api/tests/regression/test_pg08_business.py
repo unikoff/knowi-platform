@@ -1,6 +1,5 @@
 """Real HTTP/PG/Redis business boundaries replacing SQLite-only golden cases."""
 from datetime import date
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -11,6 +10,7 @@ import test_c2_1_4_auth_legacy as http
 from test_c2_1_4_auth_legacy import runtime_db
 from pymentor_core.adapters.sql import models, progress
 from pymentor_core.adapters.sql import administration
+from pymentor_core.modules.identity.principal import Principal
 
 
 def account(email):
@@ -72,11 +72,17 @@ def test_stale_admin_delete_cannot_remove_recreated_numeric_account(runtime_db):
 
 def test_delete_rollback_restores_account_progress_and_deletion_journal(runtime_db):
     uid, token = account("rollback@example.test")
+    admin_id, _ = account("rollback-admin@example.test")
     with runtime_db() as db:
+        admin = db.get(models.User, admin_id)
+        admin.is_admin = True
         seed_progress(db, uid)
+        admin_ref = db.scalar(text("SELECT lifecycle_id FROM account_lifecycles WHERE user_id=:uid"), {"uid": admin_id})
+        target_ref = db.scalar(text("SELECT lifecycle_id FROM account_lifecycles WHERE user_id=:uid"), {"uid": uid})
+        actor = Principal.from_user(admin, account_ref=admin_ref)
         with patch.object(db, "commit", side_effect=RuntimeError("synthetic delete commit failure")):
             with pytest.raises(RuntimeError, match="delete commit failure"):
-                administration.delete_user(uid, SimpleNamespace(id=99999), db)
+                administration.delete_user(uid, actor, db, expected_account_ref=target_ref)
         db.rollback()
         assert db.get(models.User, uid) is not None
         assert counts(db, uid) == (1, 1, 1)

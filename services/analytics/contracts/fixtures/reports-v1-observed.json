@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "quality": "unknown",
+  "as_of": null,
+  "lag_seconds": null,
+  "timezone": "Europe/Moscow",
+  "metric_version": "activity-v1",
+  "course_id": "backend",
+  "from_time": "2026-01-01T00:00:00Z",
+  "to_time": "2026-01-02T00:00:00Z",
+  "totals": {"unique_visitors": 0, "active_ms": 0, "theory_ms": 0, "practice_ms": 0},
+  "daily": [],
+  "trusted_progress": null
+}

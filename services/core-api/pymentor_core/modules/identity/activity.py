@@ -6,11 +6,12 @@ from pymentor_core.shared.bindings import get_bindings
 
 
 def record_activity_day(
-    user_id, activity_date, db, visited_at=None, *, uow=None, clock=None
+    user_id, activity_date, db, visited_at=None, *, uow=None, clock=None, expected_account_ref=None
 ):
-    return get_bindings().activity.record_activity_day(
-        user_id, activity_date, db, visited_at=visited_at, uow=uow, clock=clock
-    )
+    kwargs = {"visited_at": visited_at, "uow": uow, "clock": clock}
+    if expected_account_ref is not None:
+        kwargs["expected_account_ref"] = expected_account_ref
+    return get_bindings().activity.record_activity_day(user_id, activity_date, db, **kwargs)
 
 
 def get_activity_records(user_id, year, month, db):

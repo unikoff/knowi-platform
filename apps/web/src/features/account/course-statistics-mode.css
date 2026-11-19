@@ -1,0 +1,18 @@
+.course-stats-panel { display: grid; align-content: start; min-width: 0; }
+.course-stats-mode { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; padding-block: 2px 4px; }
+.course-stats-mode__switch { flex-wrap: nowrap; }
+.course-stats-mode__switch button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding-inline: 10px; white-space: nowrap; }
+.course-stats-mode__example { flex: 1; color: var(--muted); font-size: .74rem; line-height: 1.4; }
+.course-stats-mode__subscription { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; margin-left: auto; padding: 6px 10px; border: 1px solid var(--line-soft); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; font-size: .72rem; cursor: pointer; }
+.course-stats-mode button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (hover: hover) and (pointer: fine) {
+  .course-stats-mode__subscription:hover { border-color: var(--accent); background: var(--accent-soft); }
+}
+@container account-dashboard (max-width: 570px) {
+  .course-stats-mode__example { order: 1; flex-basis: 100%; }
+}
+@container account-dashboard (max-width: 350px) {
+  .course-stats-mode { column-gap: 6px; }
+  .course-stats-mode__switch button { gap: 4px; padding-inline: 7px; font-size: .72rem; }
+  .course-stats-mode__subscription { gap: 4px; padding-inline: 7px; font-size: .67rem; }
+}

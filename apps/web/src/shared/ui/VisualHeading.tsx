@@ -3,7 +3,7 @@ import "./visual-heading.css";
 
 const visuals = {
   quiz: { icon: Sparkles, title: "Вопрос" },
-  recall: { icon: Brain, title: "Вспомнить" },
+  recall: { icon: Brain, title: "Подумайте" },
   match: { icon: Link2, title: "Пары" },
   flip: { icon: Layers, title: "Карточки" },
   fill: { icon: TextCursorInput, title: "Пропуск" },

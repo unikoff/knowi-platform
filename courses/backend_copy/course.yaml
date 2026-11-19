@@ -3,6 +3,7 @@
   "course_id": "backend_copy",
   "slug": "backend_copy",
   "title": "Python Backend Copy",
+  "leader_user_id": 3,
   "content_version": "91511a3bad057967b2b58ed8ad7435a23648fdfc8698eb1849e12a4edef62dae",
   "layout": {
     "plans": "backend/plans",

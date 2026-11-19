@@ -13,6 +13,7 @@ from pymentor_core.app.dependencies import get_request_context
 from pymentor_core.app.context import RequestContext
 from pymentor_core.shared.api_contracts import api_contract_responses
 from pymentor_core.modules.identity.api import accounts as service
+from pymentor_core.modules.identity.api.learner_analytics import router as learner_analytics_router
 from pymentor_core.modules.identity import activity
 from pymentor_core.modules.identity.api.schemas import ActivityCalendarResponse
 from pymentor_core.modules.identity.api.schemas import ActivitySummaryResponse
@@ -28,9 +29,12 @@ from starlette.concurrency import run_in_threadpool
 from pymentor_core.modules.identity.api.sessions import async_login_user, async_current_principal, async_logout_user
 from pymentor_core.modules.identity.api.sessions import _local_async_identity
 from pymentor_core.app.wiring import identity_repository
-from fastapi import HTTPException
+from fastapi import HTTPException, Security
+from pymentor_core.modules.identity.api.sessions import session_cookie_scheme
+from pymentor_core.app.wiring import role_identity_projection as role_projection
 
 user_router = APIRouter()
+user_router.include_router(learner_analytics_router)
 logger = logging.getLogger(__name__)
 
 
@@ -47,7 +51,7 @@ async def register_user(user: UserCreate, background_tasks: BackgroundTasks, req
     if identity is None:
         def legacy(db):
             created = service.register_user(user=user, db=db)
-            return service._serialize_user(created), created.id, created.email, created.password
+            return role_projection(db, created), created.id, created.email, created.password
         public, user_id, email, password_hash = await _run_identity_sql(request, None, legacy)
     else:
         from pymentor_core.modules.identity.passwords import hash_password, is_bcrypt_hash
@@ -57,7 +61,7 @@ async def register_user(user: UserCreate, background_tasks: BackgroundTasks, req
         async with identity.database.unit_of_work() as uow:
             def register(db):
                 created = service.register_user(user=prepared, db=db)
-                return service._serialize_user(created), created.id, created.email, created.password
+                return role_projection(db, created), created.id, created.email, created.password
             public, user_id, email, password_hash = await uow.session.run_sync(register)
     background_tasks.add_task(_send_registration_verification, user_id, email, password_hash)
     return {"message": "Registration successful", "user": public}
@@ -89,18 +93,26 @@ async def login_user(
         user_db = await async_login_user(response, user, request)
     else:
         def legacy(db):
-            return service._serialize_user(service.login_user(response=response, user=user, db=db, request=request))
+            return role_projection(db, service.login_user(response=response, user=user, db=db, request=request))
         return {"message": "Login successful", "user": await _run_identity_sql(request, None, legacy)}
-    return {"message": "Login successful", "user": service._serialize_user(user_db)}
+    def current(db):
+        record = identity_repository(db).user_by_id(user_db.id)
+        if record is None:
+            raise HTTPException(status_code=401, detail='User not found')
+        projected = role_projection(db, record)
+        if not user_db.account_ref or projected['account_ref'] != user_db.account_ref:
+            raise HTTPException(status_code=401, detail='User lifecycle changed')
+        return projected
+    return {"message": "Login successful", "user": await _run_identity_sql(request, _local_async_identity(request), current)}
 
 
-@user_router.get("/me", responses=api_contract_responses(CurrentUserResponse, 401))
-async def me(request: Request):
+@user_router.get("/me", responses=api_contract_responses(CurrentUserResponse, 401), dependencies=[Security(session_cookie_scheme)])
+async def me(request: Request, response: Response):
     identity = _local_async_identity(request)
     if identity is None:
         def legacy(db):
             context = request.app.state.composition_root.for_request(db)
-            return service._serialize_user(service.get_current_user(request=request, db=db, uow=context.uow))
+            return role_projection(db, service.get_current_user(request=request, db=db, uow=context.uow))
         return {"user": await _run_identity_sql(request, None, legacy)}
     principal = await async_current_principal(request)
     async with identity.database.unit_of_work() as uow:
@@ -108,15 +120,24 @@ async def me(request: Request):
             user_db = identity_repository(db).user_by_id(principal.user_id)
             if user_db is None:
                 raise HTTPException(status_code=401, detail="User not found")
-            return service._serialize_user(user_db)
-        return {"user": await uow.session.run_sync(read_user)}
+            projected = role_projection(db, user_db)
+            if principal.account_ref and projected['account_ref'] != principal.account_ref:
+                raise HTTPException(status_code=401, detail='User lifecycle changed')
+            return projected
+        user = await uow.session.run_sync(read_user)
+        from pymentor_core.modules.identity.cache_session_marker import marker_after_authentication
+        marker = marker_after_authentication(request)
+        response.headers['Cache-Control'] = 'no-store'
+        if marker is not None:
+            response.headers['X-Calendar-Session-Marker'] = marker
+        return {"user": user}
 
 
 @user_router.post(
     "/activity/visit",
     responses=api_contract_responses(ActivityVisitResponse, 401),
 )
-async def record_activity_visit(payload: ActivityVisit, request: Request):
+async def record_activity_visit(payload: ActivityVisit, request: Request, response: Response):
     identity = _local_async_identity(request)
     if identity is None:
         def legacy(db, context):
@@ -124,7 +145,8 @@ async def record_activity_visit(payload: ActivityVisit, request: Request):
             return user.id
         user_id, operation = None, legacy
     else:
-        user_id = (await async_current_principal(request)).user_id
+        principal = await async_current_principal(request)
+        user_id = principal.user_id
         operation = None
     def record(db):
         root = request.app.state.composition_root
@@ -132,8 +154,13 @@ async def record_activity_visit(payload: ActivityVisit, request: Request):
         uid = operation(db, context) if operation else user_id
         visited_at = context.clock.now()
         activity_date = payload.activity_date or visited_at.astimezone(activity.MOSCOW_TZ).date()
+        if getattr(request.app.state, "analytics_retire_legacy_visits", False):
+            response.headers["X-Analytics-Legacy-Visit"] = "retired"
+            return {"activity_date": activity_date.isoformat(), "visited_at": None}
+        from pymentor_core.modules.analytics_delivery.integration import enabled as capture_enabled
+        capture = {"expected_account_ref": getattr(principal, "account_ref", None) if identity else None} if capture_enabled() else {}
         day = activity.record_activity_day(user_id=uid, activity_date=activity_date, db=db,
-            visited_at=visited_at, uow=context.uow, clock=context.clock)
+            visited_at=visited_at, uow=context.uow, clock=context.clock, **capture)
         return {"activity_date": day.activity_date.isoformat(),
                 "visited_at": activity.serialize_activity_timestamp(day.visited_at)}
     return await _run_identity_sql(request, identity, record)
@@ -145,27 +172,39 @@ async def _run_identity_sql(request, identity, operation):
 
 
 @user_router.get("/activity", responses=api_contract_responses(ActivityCalendarResponse, 401))
-async def get_activity_calendar(request: Request, year: int = Query(..., ge=2000, le=2100),
+async def get_activity_calendar(request: Request, response: Response, year: int = Query(..., ge=2000, le=2100),
                                 month: int = Query(..., ge=1, le=12)):
     identity = _local_async_identity(request)
-    user_id = (await async_current_principal(request)).user_id if identity else None
+    principal = await async_current_principal(request) if identity else None
+    user_id = principal.user_id if principal else None
     def read(db):
         uid = user_id if identity else service.get_current_user(request=request, db=db).id
         records = activity.get_activity_records(user_id=uid, year=year, month=month, db=db)
         return {"days": [r.activity_date.isoformat() for r in records],
                 "visits": [{"activity_date": r.activity_date.isoformat(),
                             "visited_at": activity.serialize_activity_timestamp(r.visited_at)} for r in records]}
-    return await _run_identity_sql(request, identity, read)
+    mode = getattr(request.app.state, "analytics_legacy_read_mode", "off")
+    baseline = None if mode == "analytics" else await _run_identity_sql(request, identity, read)
+    if getattr(request.app.state, "analytics_legacy_read_mode", "off") == "off":
+        return baseline
+    from pymentor_core.modules.analytics_delivery.legacy_bridge import apply
+    return await apply(request, response, principal, "calendar", baseline, year=year, month=month)
 
 
 @user_router.get("/activity/summary", responses=api_contract_responses(ActivitySummaryResponse, 401))
-async def get_activity_summary(request: Request):
+async def get_activity_summary(request: Request, response: Response):
     identity = _local_async_identity(request)
-    user_id = (await async_current_principal(request)).user_id if identity else None
+    principal = await async_current_principal(request) if identity else None
+    user_id = principal.user_id if principal else None
     def read(db):
         uid = user_id if identity else service.get_current_user(request=request, db=db).id
         return activity.get_activity_summary(user_id=uid, db=db, clock=request.app.state.composition_root.for_request(db).clock)
-    return await _run_identity_sql(request, identity, read)
+    mode = getattr(request.app.state, "analytics_legacy_read_mode", "off")
+    baseline = None if mode == "analytics" else await _run_identity_sql(request, identity, read)
+    if getattr(request.app.state, "analytics_legacy_read_mode", "off") == "off":
+        return baseline
+    from pymentor_core.modules.analytics_delivery.legacy_bridge import apply
+    return await apply(request, response, principal, "summary", baseline)
 
 
 @user_router.post("/logout", responses=api_contract_responses(LogoutResponse, 401))

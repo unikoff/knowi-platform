@@ -1,0 +1,3524 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Role admin v1 proposed contract",
+    "version": "1.0.0",
+    "description": "Design contract only. See role-admin-v1.md for authorization and transactions."
+  },
+  "security": [
+    {
+      "SessionCookie": []
+    }
+  ],
+  "paths": {
+    "/api/user/me": {
+      "get": {
+        "operationId": "getMe",
+        "description": "Authority: authenticated. See role-admin-v1.md.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Me"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Existing legacy detail envelope"
+          }
+        }
+      }
+    },
+    "/api/admin/courses/{course_id}/overview": {
+      "get": {
+        "operationId": "courseOverview",
+        "description": "Authority: course staff. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/CourseOverview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/courses/{course_id}/study-time": {
+      "get": {
+        "operationId": "courseStudyTime",
+        "description": "Authority: course staff, matching actor lifecycle and authority revision. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "X-Actor-Ref",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Auth-Revision",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/CourseStudyTime"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/courses/{course_id}/roster": {
+      "get": {
+        "operationId": "courseRoster",
+        "description": "Authority: course staff. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Roster"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/courses/{course_id}/roster/{user_id}/progress": {
+      "get": {
+        "operationId": "rosterProgress",
+        "description": "Authority: course staff, roster member. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Progress"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/courses/{course_id}/users/{user_id}/statistics": {
+      "get": {
+        "operationId": "studentStatistics",
+        "description": "Authority: course staff, matching actor and target lifecycles. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "X-Account-Ref",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Actor-Ref",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/StudentStatistics"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/courses/{course_id}/users/{user_id}/profile-details": {
+      "get": {
+        "operationId": "studentProfileDetails",
+        "description": "Authority: course staff, matching actor and target lifecycles. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "X-Account-Ref",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Actor-Ref",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/StudentProfileDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/courses/{course_id}/users/{user_id}/quota": {
+      "get": {
+        "operationId": "courseUserQuota",
+        "description": "Authority: course staff, matching target lifecycle. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          },
+          {
+            "name": "X-Account-Ref",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/QuotaEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/courses/{course_id}/grant-search": {
+      "get": {
+        "operationId": "grantSearch",
+        "description": "Authority: course staff. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/SearchResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/courses/{course_id}/users/{user_id}/quota-grants": {
+      "post": {
+        "operationId": "grantQuota",
+        "description": "Authority: course staff. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Account-Ref",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/QuotaEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./role-admin-v1.schema.json#/$defs/QuotaGrant"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/courses/{course_id}/users/{user_id}/subscription-extensions": {
+      "post": {
+        "operationId": "courseExtendSubscription",
+        "description": "Authority: course staff. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Account-Ref",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Subscription"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./role-admin-v1.schema.json#/$defs/SubscriptionExtend"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/courses/{course_id}/users/{user_id}/subscription-and-quota": {
+      "post": {
+        "operationId": "courseExtendAndGrant",
+        "description": "Authority: course staff, matching actor and target lifecycles. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Account-Ref",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Actor-Ref",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/SubscriptionQuotaResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./role-admin-v1.schema.json#/$defs/SubscriptionQuotaGrant"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/courses/{course_id}/slots": {
+      "get": {
+        "operationId": "courseSlots",
+        "description": "Authority: course staff. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "owner_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Slots"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createSlot",
+        "description": "Authority: course staff. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/SlotEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./role-admin-v1.schema.json#/$defs/SlotCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/courses/{course_id}/calendar-context": {
+      "get": {
+        "operationId": "courseCalendarContext",
+        "description": "Authority: course staff. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/CalendarContext"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/courses/{course_id}/slots/{slot_id}/archive": {
+      "post": {
+        "operationId": "archiveSlot",
+        "description": "Authority: course staff. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "slot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/SlotEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./role-admin-v1.schema.json#/$defs/ReasonCommand"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/courses/{course_id}/booking/context": {
+      "get": {
+        "operationId": "studentBookingContext",
+        "description": "Authority: authenticated. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/BookingContext"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/courses/{course_id}/booking/slots": {
+      "get": {
+        "operationId": "studentSlots",
+        "description": "Authority: authenticated. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "owner_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/StudentSlots"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/courses/{course_id}/booking/slots/{slot_id}/book": {
+      "post": {
+        "operationId": "bookSlot",
+        "description": "Authority: authenticated. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "slot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/BookingEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/courses/{course_id}/booking/bookings/{booking_id}/cancel": {
+      "post": {
+        "operationId": "cancelBooking",
+        "description": "Authority: booking student. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "booking_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/BookingEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin-platform/overview": {
+      "get": {
+        "operationId": "platformOverview",
+        "description": "Authority: admin. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/PlatformOverview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin-platform/courses": {
+      "get": {
+        "operationId": "platformCourses",
+        "description": "Authority: admin. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Courses"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin-platform/users": {
+      "get": {
+        "operationId": "platformUsers",
+        "description": "Authority: admin. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/PlatformUsers"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin-platform/users/{user_id}": {
+      "get": {
+        "operationId": "platformUser",
+        "description": "Authority: admin. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/PlatformUser"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin-platform/users/{user_id}/subscription-extensions": {
+      "post": {
+        "operationId": "platformExtendSubscription",
+        "description": "Authority: admin. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Account-Ref",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Subscription"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./role-admin-v1.schema.json#/$defs/SubscriptionExtend"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin-platform/users/{user_id}/subscription-reset": {
+      "post": {
+        "operationId": "resetSubscription",
+        "description": "Authority: admin. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Account-Ref",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Subscription"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./role-admin-v1.schema.json#/$defs/SubscriptionReset"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin-platform/operations": {
+      "get": {
+        "operationId": "platformOperations",
+        "description": "Authority: admin. See role-admin-v1.md.",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "course_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actor_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Operations"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "See error semantics in role-admin-v1.md",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./role-admin-v1.schema.json#/$defs/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "SessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "session"
+      }
+    }
+  }
+}

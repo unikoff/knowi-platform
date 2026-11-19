@@ -50,8 +50,8 @@
 }
 
 .answer-option.is-wrong {
-  border-color: color-mix(in srgb, var(--negative) 60%, var(--line));
-  background: color-mix(in srgb, var(--negative) 9%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--callout-red) 60%, var(--line));
+  background: color-mix(in srgb, var(--callout-red) 9%, var(--surface-2));
 }
 
 .answer-option:is(.is-correct, .is-matched, .is-wrong) { opacity: 1; }

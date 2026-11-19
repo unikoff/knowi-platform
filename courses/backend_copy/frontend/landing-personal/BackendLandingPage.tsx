@@ -1,3 +1,4 @@
+import { BrandLogo } from "@platform/shared/brand/BrandLogo";
 import { useEffect, useId, useState, type PointerEvent } from 'react';
 import { ArrowDownRight } from 'lucide-react';
 import { ProgrammingBackground } from './components/ProgrammingBackground';
@@ -301,7 +302,7 @@ export function BackendLandingPage({ courseId, landingBaseUrl, learningUrl }: {
 
         <div className="landing-ending">
           <LandingFaq learningUrl={learningUrl} />
-          <footer className="landing-footer"><a className="landing-brand" href={learningUrl}>knowi</a><a href={`${landingBaseUrl}/privacy-policy`}>Политика обработки данных</a><a href={`${landingBaseUrl}/personal-data`}>Согласие на обработку данных</a><span>ИП КИРЮХИН Н.А. ИНН 230109261735</span></footer>
+          <footer className="landing-footer"><a className="landing-brand" href={learningUrl} aria-label="knowi — платформа"><BrandLogo /></a><a href={`${landingBaseUrl}/privacy-policy`}>Политика обработки данных</a><a href={`${landingBaseUrl}/personal-data`}>Согласие на обработку данных</a><span>ИП КИРЮХИН Н.А. ИНН 230109261735</span></footer>
         </div>
         </div>
       </div>

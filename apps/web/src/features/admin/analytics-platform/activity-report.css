@@ -1,0 +1,13 @@
+.activity-report__metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.activity-report__days { display: grid; gap: 7px; }
+.activity-report__day { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; padding: 10px 12px; border: 1px solid var(--line-soft); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--muted); font-size: .78rem; }
+.activity-report__day time, .activity-report__day strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.activity-report__day time { font-weight: 700; }
+@media (max-width: 480px) { .activity-report__metrics { grid-template-columns: minmax(0, 1fr); } }
+.activity-report__detail { min-width: 0; padding: 12px; border: 1px solid var(--line-soft); border-radius: var(--radius-sm); background: var(--surface-2); overflow-wrap: anywhere; }
+.activity-report__detail h3 { margin: 0; font-size: .84rem; }
+.activity-report__detail p { margin: 5px 0 0; }
+.activity-report__detail dl { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 10px 0 0; }
+.activity-report__detail dl > div { display: grid; gap: 3px; }
+.activity-report__detail dt { color: var(--muted); font-size: .68rem; }
+.activity-report__detail dd { margin: 0; font-size: .8rem; font-variant-numeric: tabular-nums; }

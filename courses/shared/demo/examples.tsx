@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { LessonMetadataProvider } from "../ui/metadata-context";
 import {
   RichHero, Section, Callout, LessonScreenshots, TypeCards, TypeCard,
@@ -11,13 +11,18 @@ import {
 import { defineCatalog, type CatalogVariant } from "./catalog";
 
 const demo = (id: string, title: string, content: ReactNode): CatalogVariant => ({ id, title, content });
-const editorImage = new URL("./assets/editor.svg", import.meta.url).href;
-const outputImage = new URL("./assets/output.svg", import.meta.url).href;
-const screenshots = [
-  { src: editorImage, alt: "Демонстрационный редактор с двумя строками Python", title: "Записать команду", description: <>Меняем текст в строке <code>message</code> и запускаем программу.</>, sourceUrl: editorImage, sourceLabel: "Демо-изображение" },
-  { src: outputImage, alt: "Демонстрационная панель с результатом программы", title: "Посмотреть результат", description: <>В выводе появилось содержимое переменной <code>message</code>.</>, sourceUrl: outputImage, sourceLabel: "Демо-изображение" },
-];
+const examplePhoto = new URL("./assets/example-portrait.jpg", import.meta.url).href;
+const photoDescription = <><p>Фотография может дополнять рассказ, не прерывая текст. Она занимает немного места, а строки располагаются рядом с ней и продолжаются ниже.</p><p>Так удобно познакомить читателя с человеком, показать место или добавить иллюстрацию к небольшому объяснению. На узком экране изображение располагается над текстом, чтобы всё оставалось удобным для чтения.</p><p>Например, в истории о команде портрет помогает увидеть человека, о котором идёт речь. Рядом можно рассказать, чем он занимается и почему его опыт важен для темы занятия.</p><p>Подпись или ссылка на источник остаётся рядом с фотографией. Если нужно рассмотреть детали, изображение можно открыть крупнее и затем вернуться к чтению.</p></>;
+const examplePhotoItem = { src: examplePhoto, alt: "Портрет человека в тёмной одежде", title: "Пример портрета", description: photoDescription, sourceUrl: examplePhoto, sourceLabel: "Открыть фотографию" };
 const addition = "total = 2\ntotal = total + 3\nprint(total)";
+
+function CustomColorCallout() {
+  const [color, setColor] = useState("#8dbfe3");
+  return <div>
+    <label>Свой цвет подсветки <input type="color" value={color} onChange={event => setColor(event.target.value)} /></label>
+    <Callout color={color}>Выберите цвет для этого смыслового акцента.</Callout>
+  </div>;
+}
 
 // Curated demonstrations of the public library. Do not import lessons here.
 export const catalogGroups = defineCatalog([
@@ -35,13 +40,16 @@ export const catalogGroups = defineCatalog([
       </Section>),
     ] },
     { id: "callout", title: "Смысловой акцент", api: "Callout", kind: "visual", variants: [
-      demo("callout-success", "Полезный вывод", <Callout tone="success">Меняйте одно условие за раз: так проще связать действие с результатом.</Callout>),
-      demo("callout-warn", "Важная проверка", <Callout tone="warn">Перед запуском проверьте входные данные и ожидаемый результат.</Callout>),
-      demo("callout-danger", "Опасное действие", <Callout tone="danger">Перед удалением данных убедитесь, что выбраны нужные записи.</Callout>),
+      demo("callout-accent", "Акцентный цвет темы", <Callout tone="accent">Обратите внимание на эту мысль.</Callout>),
+      demo("callout-danger", "Красный — опасное действие", <Callout tone="danger">Перед удалением данных убедитесь, что выбраны нужные записи.</Callout>),
+      demo("callout-warn", "Жёлтый — важная проверка", <Callout tone="warn">Перед запуском проверьте входные данные и ожидаемый результат.</Callout>),
+      demo("callout-success", "Зелёный — полезный вывод", <Callout tone="success">Меняйте одно условие за раз: так проще связать действие с результатом.</Callout>),
+      demo("callout-custom", "Свой цвет", <CustomColorCallout />),
     ] },
-    { id: "screenshots", title: "Изображения с увеличением", api: "LessonScreenshots", kind: "interactive", variants: [
-      demo("image-single", "Один экран для подробного разбора", <LessonScreenshots title="Рассмотреть интерфейс" images={[screenshots[0]]} />),
-      demo("image-steps", "Пошаговая инструкция", <LessonScreenshots title="От действия к результату" intro="Два экрана показывают последовательность работы." images={screenshots} footer="Сравните записанную команду и полученный результат." />),
+    { id: "screenshots", title: "Изображение в тексте", api: "LessonScreenshots", kind: "interactive", variants: [
+      demo("image-single", "Изображение с увеличением", <LessonScreenshots title="Фотография рядом с текстом" images={[examplePhotoItem]} />),
+      demo("image-link", "Изображение со ссылкой", <LessonScreenshots title="Фотография со ссылкой" images={[{ ...examplePhotoItem, action: "link", sourceUrl: "#example-section", sourceLabel: "Перейти к примеру текста" }]} />),
+      demo("image-static", "Изображение без действия", <LessonScreenshots title="Фотография в тексте" images={[{ ...examplePhotoItem, action: "none" }]} />),
     ] },
   ] },
   { id: "routes", title: "Списки и карточки", examples: [
@@ -74,6 +82,8 @@ export const catalogGroups = defineCatalog([
     { id: "recall", title: "Вопрос с раскрытием ответа", api: "RecallCard", kind: "interactive", variants: [
       demo("recall-concept", "Вспомнить понятие своими словами", <RecallCard question="Чем гипотеза отличается от наблюдения?" answer="Гипотеза описывает ожидаемый результат, а наблюдение — то, что произошло при проверке." />),
       demo("recall-code", "Подсказка и ответ с примером", <RecallCard question="Чем return отличается от print?" hint="Кому достанется результат: человеку или вызывающему коду?" answer={<><p>Вывод видит человек. Возвращаемое значение получает вызывающий код.</p><CodeBlock code={"def double(value):\n    return value * 2\n\nresult = double(3)\nprint(result)"} /></>} />),
+      demo("recall-prediction", "Прогноз результата кода", <RecallCard question="Что выведет программа?" code={addition} hint="Проследите, как меняется total." answer={<><p>Программа выведет <code>5</code>: к исходному значению 2 прибавляется 3.</p><CodeBlock language="text" code="5" /></>} />),
+      demo("recall-prediction-existing", "Прогноз из существующего занятия", <PredictOutput code={'print("Первая строка")\nprint("  Вторая строка")'} output={"Первая строка\n  Вторая строка\n"} hint="Обратите внимание на пробелы перед второй строкой." />),
     ] },
     { id: "flip-cards", title: "Переворачиваемые карточки", api: "FlipCards", kind: "interactive", variants: [
       demo("flip-terms", "Термин и определение", <FlipCards cards={[{ front: "Аргумент", back: "Значение, которое передаём при вызове функции." }, { front: "Параметр", back: "Имя, которое принимает аргумент в определении функции." }]} />),
@@ -100,11 +110,6 @@ export const catalogGroups = defineCatalog([
       demo("code-command", "Команды без подсветки Python", <CodeBlock caption="В терминале" language="text" code={"python demo.py\npython -m pytest"} />),
       demo("code-output", "Результат или структурированные данные", <CodeBlock caption="Пример ответа" language="text" code={'{\n  "count": 3,\n  "ready": true\n}'} />),
       demo("code-dialog", "Команды вместе с результатами", <CodeBlock caption="Сеанс в терминале" language="text" code={"$ Get-Location\nC:\\Demo\n\n$ python demo.py\nПривет!"} />),
-    ] },
-    { id: "predict", title: "Прогноз результата", api: "PredictOutput", kind: "interactive", variants: [
-      demo("predict-number", "Изменение значения", <PredictOutput code={addition} output="5" hint="Проследите, как меняется total." />),
-      demo("predict-branch", "Выбор ветки", <PredictOutput code={'score = 4\nif score >= 5:\n    print("Готово")\nelse:\n    print("Повторим")'} output="Повторим" />),
-      demo("predict-list", "Изменяемый объект", <PredictOutput code={'items = ["А"]\nsame = items\nsame.append("Б")\nprint(len(items))'} output="2" hint="Оба имени указывают на один список." />),
     ] },
     { id: "step-through", title: "Пошаговое выполнение", api: "StepThrough", kind: "interactive", variants: [
       demo("trace-values", "Последовательное изменение переменной", <StepThrough code={addition} steps={[{ line: 0, note: "Создаём переменную.", vars: { total: "2" } }, { line: 1, note: "Прибавляем три к прежнему значению.", vars: { total: "5" } }, { line: 2, note: "Выводим итоговое значение: 5.", vars: { total: "5" } }]} />),

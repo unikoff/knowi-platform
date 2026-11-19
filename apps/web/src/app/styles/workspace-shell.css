@@ -25,8 +25,8 @@
 :root[data-color-scheme="light"] .explorer-panel,
 :root[data-color-scheme="light"] .panel-title,
 :root[data-color-scheme="light"] .top-bar {
-  background: color-mix(in srgb, var(--surface) 76%, transparent);
-  backdrop-filter: blur(22px) saturate(1.08);
+  background: var(--chrome);
+  backdrop-filter: none;
 }
 
 :root[data-color-scheme="light"] .activity-bar,
@@ -88,16 +88,22 @@
 .module-toggle:focus-visible,
 .lesson-row:focus-visible,
 .track-switch:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 78%, transparent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
 :root[data-color-scheme="light"] .activity-button:hover,
 :root[data-color-scheme="light"] .activity-button--active,
 :root[data-color-scheme="light"] .icon-button:hover {
-  background: color-mix(in srgb, var(--accent) 4%, var(--surface-2));
+  background: var(--surface-2);
   border-color: var(--line);
   box-shadow: none;
+}
+
+:root[data-color-scheme="light"] .activity-button--active {
+  border-color: color-mix(in srgb, var(--accent-border) 50%, var(--line));
+  background: var(--accent-surface);
+  color: var(--accent-text);
 }
 
 .activity-button--bottom {
@@ -176,10 +182,8 @@
 :root[data-color-scheme="light"] .task-result,
 :root[data-color-scheme="light"] .empty-workbench > div {
   border-color: var(--line);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--card-highlight) 94%, transparent), color-mix(in srgb, var(--card-end) 88%, transparent)),
-    var(--card);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--surface-shadow) 4%, transparent);
+  background: var(--card);
+  box-shadow: none;
 }
 
 .track-status span {
@@ -226,9 +230,9 @@
   display: flex;
   flex-direction: column;
   font-size: 1rem;
-  padding: 10px;
+  padding: 6px;
   border: 1px solid var(--line);
-  border-radius: 24px;
+  border-radius: 18px;
   background: var(--surface);
 }
 
@@ -236,33 +240,14 @@
   position: fixed;
   z-index: 1000;
   box-sizing: border-box;
-}
-
-.track-menu__header {
-  display: grid;
-  gap: 4px;
-  flex: 0 0 auto;
-  padding: 8px 11px 13px;
-  margin-bottom: 5px;
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.track-menu__header strong {
-  color: var(--text);
-  font-size: inherit;
-  font-weight: 800;
-}
-
-.track-menu__header span {
-  color: var(--muted);
-  font-size: inherit;
+  container-type: inline-size;
 }
 
 .track-menu__list {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 2px;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 2px;
@@ -271,36 +256,32 @@
 }
 
 .track-menu button {
-  display: flex;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 40px;
   flex: 0 0 auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 50px;
-  padding: 7px 9px 7px 12px;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 12px;
   border: 1px solid transparent;
-  border-radius: 16px;
+  border-radius: 12px;
   background: transparent;
   cursor: pointer;
   text-align: left;
   transition: background 140ms ease, border-color 140ms ease;
 }
 
+.track-menu button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+
 .track-menu button:hover {
-  background: linear-gradient(125deg, color-mix(in srgb, var(--accent) 4%, var(--surface-2)), var(--surface-2));
+  background: color-mix(in srgb, var(--text) 5%, transparent);
   border-color: color-mix(in srgb, var(--text) 12%, transparent);
   box-shadow: none;
 }
 
-:root[data-color-scheme="light"] .track-menu button:hover,
-:root[data-color-scheme="light"] .lesson-row:hover,
-:root[data-color-scheme="light"] .lesson-row.is-active {
-  background: linear-gradient(125deg, color-mix(in srgb, var(--accent) 4%, var(--surface-2)), var(--surface-2));
-}
-
 .track-menu button.is-active {
-  border-color: color-mix(in srgb, var(--border-tint-accent) 48%, var(--line));
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 6%, var(--surface-2)), var(--surface-2));
+  border-color: color-mix(in srgb, var(--border-tint-accent) 28%, var(--line));
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
   box-shadow: inset 2px 0 color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
@@ -309,27 +290,20 @@
   overflow: hidden;
   color: var(--text);
   font-size: 1rem;
-  font-weight: 700;
-  line-height: 1.34;
+  font-weight: 500;
+  line-height: 1.45;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.track-menu button > div { flex: 1 1 auto; min-width: 0; overflow: hidden; }
+.track-menu button.is-active strong { font-weight: 650; }
+.track-menu__number { color: var(--faint); font-size: .8125rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.track-menu__progress { color: var(--muted); text-align: right; font-size: .875rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+.track-menu button.is-active :is(.track-menu__number, .track-menu__progress) { color: var(--accent-text); }
 
-.track-menu button > span {
-  flex-shrink: 0;
-  align-self: flex-start;
-  padding: 4px 7px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--surface-2) 60%, transparent);
-  color: var(--accent);
-  font-weight: 700;
-  font-size: inherit;
+@container (max-width: 260px) {
+  .track-menu button { grid-template-columns: 20px minmax(0, 1fr) 30px; gap: 6px; padding-inline: 8px; }
 }
-
-.track-menu button.is-active > span { border-color: color-mix(in srgb, var(--border-tint-accent) 20%, var(--line)); background: var(--accent-soft); }
 
 .progress-line {
   height: 7px;
@@ -339,7 +313,7 @@
 }
 
 :root[data-color-scheme="light"] .progress-line {
-  background: color-mix(in srgb, var(--progress-track) 10%, transparent);
+  background: var(--progress-track);
 }
 
 .progress-line i {
@@ -362,12 +336,14 @@
 .lesson-tree::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
   border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--accent) 24%, var(--muted));
+  background: color-mix(in srgb, var(--muted) 42%, var(--surface-3));
   background-clip: padding-box;
 }
 
 .module-toggle,
 .lesson-row {
+  position: relative;
+  isolation: isolate;
   width: 100%;
   border: 0;
   background: transparent;
@@ -413,22 +389,37 @@
   transition: background 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
 }
 
+.lesson-row::before {
+  position: absolute;
+  inset: 50% auto auto 0;
+  width: 2px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  opacity: 0;
+  transform: translateY(-50%) scaleY(.4);
+  content: "";
+  pointer-events: none;
+}
+.lesson-row::after {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(115deg, color-mix(in srgb, var(--white) 8%, transparent), transparent 55%);
+  opacity: 0;
+  content: "";
+  pointer-events: none;
+}
 
 .lesson-row svg {
   margin-top: 2px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   color: var(--faint);
 }
 
-.lesson-row:hover,
-.lesson-row.is-active {
-  background: linear-gradient(125deg, color-mix(in srgb, var(--accent) 4%, var(--surface-2)), var(--surface-2));
-  color: var(--text);
-}
-
-.lesson-row:hover {
-  border-color: color-mix(in srgb, var(--text) 12%, transparent);
-  box-shadow: none;
-}
 .lesson-row:disabled {
   cursor: not-allowed;
 }
@@ -437,55 +428,71 @@
   opacity: 0.62;
 }
 
-.lesson-row.is-locked:hover {
-  background: transparent;
-  color: var(--muted);
-}
-
-.lesson-row.is-active {
-  border-color: color-mix(in srgb, var(--border-tint-accent) 50%, var(--line));
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 6%, var(--surface-2)), var(--surface-2));
-  box-shadow: inset 2px 0 color-mix(in srgb, var(--accent) 55%, transparent);
-}
-
-:root[data-color-scheme="light"] .lesson-row.is-active {
-  border-color: color-mix(in srgb, var(--border-tint-accent) 45%, var(--line));
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 5%, var(--surface-2)), var(--surface-2));
-  box-shadow: inset 2px 0 color-mix(in srgb, var(--accent) 55%, transparent);
-}
-
-.lesson-row.is-active svg { color: var(--accent); }
-
-.lesson-row.is-completed,
-:root[data-color-scheme="light"] .lesson-row.is-completed {
-  border-color: color-mix(in srgb, var(--border-tint-achievement) 30%, var(--line));
-  background: linear-gradient(115deg, color-mix(in srgb, var(--achievement) 7%, var(--surface)), var(--surface));
-  box-shadow: inset 0 0 22px color-mix(in srgb, var(--achievement) 3%, transparent);
+.lesson-row.is-completed:not(.is-locked) {
+  border-color: color-mix(in srgb, var(--achievement) 15%, transparent);
+  background-color: color-mix(in srgb, var(--achievement) 5%, transparent);
   color: var(--text);
 }
-
-.lesson-row.is-completed:hover,
-:root[data-color-scheme="light"] .lesson-row.is-completed:hover {
-  border-color: color-mix(in srgb, var(--border-tint-achievement) 52%, var(--line));
-  background: color-mix(in srgb, var(--achievement) 10%, var(--surface));
+.lesson-row.is-active {
+  border-color: color-mix(in srgb, var(--accent) 36%, transparent);
+  background-color: color-mix(in srgb, var(--accent) 9%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--white) 8%, transparent);
+  color: var(--text);
 }
-
-.lesson-row.is-completed.is-active,
-:root[data-color-scheme="light"] .lesson-row.is-completed.is-active {
-  border-color: color-mix(in srgb, var(--border-tint-accent) 55%, var(--line));
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 6%, var(--surface-2)), var(--surface-2));
-  box-shadow: inset 2px 0 color-mix(in srgb, var(--accent) 55%, transparent), inset 0 0 22px color-mix(in srgb, var(--achievement) 7%, transparent);
+.lesson-row.is-active::before { opacity: 1; transform: translateY(-50%) scaleY(1); }
+.lesson-row.is-active::after { opacity: .45; }
+.lesson-row.is-active > svg { color: var(--accent); }
+.lesson-row.is-active.is-completed:not(.is-locked) {
+  border-color: color-mix(in srgb, var(--accent) 36%, transparent);
+  background-color: color-mix(in srgb, var(--accent) 9%, transparent);
 }
+.lesson-row:not(:disabled):not(.is-locked):focus-visible {
+  background-color: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--text);
+}
+@media (hover: hover) and (pointer: fine) {
+  .lesson-row:not(:disabled):not(.is-locked):hover {
+    border-color: color-mix(in srgb, var(--accent) 24%, transparent);
+    background-color: color-mix(in srgb, var(--accent) 7%, transparent);
+    color: var(--text);
+  }
+  .lesson-row:not(:disabled):not(.is-locked):hover::after { opacity: 1; }
+  .lesson-row:not(:disabled):not(.is-locked):not(.is-active):hover::before { opacity: .65; transform: translateY(-50%) scaleY(.8); }
+  .lesson-row:not(:disabled):not(.is-locked):hover > svg { color: var(--accent); }
+  .lesson-row.is-completed:not(:disabled):not(.is-locked):hover {
+    border-color: color-mix(in srgb, var(--achievement) 32%, transparent);
+    background-color: color-mix(in srgb, var(--achievement) 9%, transparent);
+  }
+  .lesson-row.is-completed:not(:disabled):not(.is-locked):hover > svg {
+    color: var(--achievement);
+  }
+  .lesson-row.is-active:not(:disabled):not(.is-locked):hover {
+    border-color: color-mix(in srgb, var(--accent) 48%, transparent);
+    background-color: color-mix(in srgb, var(--accent) 13%, transparent);
+  }
+}
+.lesson-row:not(:disabled):not(.is-locked):active,
+.lesson-row:is(.is-active, .is-completed):not(:disabled):not(.is-locked):active {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background-color: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.lesson-row.is-active.is-locked {
+  border-color: var(--line);
+  background-color: color-mix(in srgb, var(--text) 3%, transparent);
+  color: var(--muted);
+}
+.lesson-row.is-active.is-locked::before { background: var(--faint); }
+.lesson-row.is-active.is-locked > svg { color: var(--faint); box-shadow: none; }
 
-:root[data-color-scheme="light"] .lesson-row.is-completed.is-active {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 5%, var(--surface-2)), var(--surface-2));
+:root[data-color-scheme="light"] .track-menu button.is-active {
+  border-color: var(--accent-border);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  box-shadow: inset 2px 0 var(--accent-border);
 }
 
 .lesson-row svg.lesson-done-icon {
   color: var(--achievement);
-  border-radius: 50%;
-  background: var(--achievement-soft);
-  box-shadow: 0 0 0 3px var(--achievement-soft);
 }
 
 .lesson-row span {

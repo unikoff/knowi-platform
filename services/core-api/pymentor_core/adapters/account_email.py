@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from email.message import EmailMessage
 from html import escape
+from pathlib import Path
 import smtplib
 import ssl
 from urllib.parse import urlencode, urlsplit, urlunsplit
@@ -70,12 +71,13 @@ def _email_content(purpose: str, link: str, new_email: str | None = None, side: 
 @media (prefers-color-scheme: dark) {{
   .email-body, .email-background {{ background-color:#1b1b1b !important; }}
   .email-card {{ background-color:#202020 !important; border-color:#343434 !important; }}
-  .email-heading, .email-brand {{ color:#e0e0e0 !important; }}
+  .email-heading {{ color:#e0e0e0 !important; }}
   .email-copy {{ color:#c8c8c8 !important; }}
   .email-muted {{ color:#a0a0a0 !important; }}
-  .email-dot {{ color:#b7ff5a !important; }}
   .email-footer {{ border-color:#343434 !important; }}
   .email-button {{ background-color:#b7ff5a !important; color:#202020 !important; }}
+  .email-logo-light {{ display:none !important; }}
+  .email-logo-dark {{ display:block !important; }}
 }}
 </style></head>
 <body class="email-body" style="margin:0;padding:0;background:#ededed;color:#414141;font-family:Arial,Helvetica,sans-serif;">
@@ -83,7 +85,7 @@ def _email_content(purpose: str, link: str, new_email: str | None = None, side: 
   <table class="email-background" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#ededed;"><tr><td align="center" style="padding:24px 16px;">
     <table class="email-card" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;border-collapse:separate;border-spacing:0;background:#f4f4f4;border:1px solid #d5d5d5;border-radius:16px;">
       <tr><td style="padding:26px 28px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;"><tr>
-        <td class="email-brand" style="font-size:23px;font-weight:800;letter-spacing:-1px;color:#414141;white-space:nowrap;">knowi<span class="email-dot" style="color:#416622;">.</span></td>
+        <td style="width:138px;"><img class="email-logo-light" src="cid:knowi-account-logo" width="138" height="35" alt="knowi" style="display:block;width:138px;height:35px;border:0;color:#202820;font-family:monospace;font-weight:bold;font-size:20px;"><img class="email-logo-dark" src="cid:knowi-account-logo-dark" width="138" height="35" alt="knowi" style="display:none;width:138px;height:35px;border:0;color:#edefe8;font-family:monospace;font-weight:bold;font-size:20px;mso-hide:all;"></td>
         <td align="right" style="padding-left:16px;"><h1 class="email-heading" style="margin:0;font-size:18px;line-height:1.25;letter-spacing:-0.3px;color:#414141;">{escape(title)}</h1></td>
       </tr></table></td></tr>
       <tr><td class="email-copy" style="padding:20px 28px 0;font-size:15px;line-height:1.4;color:#494949;">{escape(intro)}</td></tr>
@@ -111,6 +113,14 @@ def send_account_email(config: EmailConfig, recipient: str, purpose: str, token:
     message["Subject"] = subject
     message.set_content(plain)
     message.add_alternative(html, subtype="html")
+    logo = Path(__file__).with_name("account_email_logo.png").read_bytes()
+    message.get_payload()[-1].add_related(
+        logo, maintype="image", subtype="png", cid="<knowi-account-logo>", disposition="inline"
+    )
+    dark_logo = Path(__file__).with_name("account_email_logo_dark.png").read_bytes()
+    message.get_payload()[-1].add_related(
+        dark_logo, maintype="image", subtype="png", cid="<knowi-account-logo-dark>", disposition="inline"
+    )
     try:
         connection = smtp_factory(config.host, config.port, timeout=10)
     except (OSError, smtplib.SMTPServerDisconnected):

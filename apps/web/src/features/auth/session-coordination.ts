@@ -95,8 +95,10 @@ export function createAuthSession(
   async function refresh(announceChange = false) {
     if (!active) return;
     const request = ++generation;
-    // The view gates Workspace while retaining email-action component state.
-    publish({ ...snapshot, checking: true, revision: request });
+    // Focus/visibility probes revalidate in the background. Only an explicit
+    // auth invalidation must gate and discard the previous owner's workspace.
+    const background = announceChange && snapshot.initialized;
+    if (!background) publish({ ...snapshot, checking: true, revision: snapshot.revision + 1 });
     let user: UserProfile | null;
     try { user = (await probe()).user ?? null; }
     catch { user = null; }
@@ -104,7 +106,7 @@ export function createAuthSession(
     const identity = user?.id ?? null;
     const changed = lastIdentity !== undefined && lastIdentity !== identity;
     lastIdentity = identity;
-    publish({ user, checking: false, initialized: true, revision: request });
+    publish({ user, checking: false, initialized: true, revision: snapshot.revision + (background && changed ? 1 : 0) });
     // A focus-discovered change is shared once. Remote probes never rebroadcast.
     if (announceChange && changed) announceIdentityChange();
   }

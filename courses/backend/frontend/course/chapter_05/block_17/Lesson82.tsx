@@ -1,219 +1,234 @@
-import { Callout, CodeBlock, CodeSequence, Diagram, DiagramArrow, DiagramFlow, DiagramNode, Lead, LinkedNotes, RichHero, RichLesson, Section, QuizCard } from "../../shared";
+import { BranchExplorer, Callout, CodeBlock, ContentList, InteractiveTable, Lead, LinkedNotes, QuizCard, RichHero, RichLesson, Section } from "@course-ui";
 
-const pathsExample = `from pathlib import Path
+const reserveDemo = `from pathlib import Path
+from sqlalchemy.engine import URL
 
-folder = Path("demo_snapshot")
-folder.mkdir()
-occupied = folder / "occupied.bin"
-new_file = folder / "new.bin"
+Path(".lesson-lab").mkdir(exist_ok=True)
+demo_root = Path(".lesson-lab/baseline-demo")
+demo_root.mkdir()
+db_path = (demo_root / "books.sqlite3").resolve()
+db_path.touch(exist_ok=False)
+print(db_path)
+print(URL.create("sqlite", database=db_path.as_posix()))`;
 
-with occupied.open("xb") as file:
-    file.write(b"KEEP")
-before = occupied.read_bytes()
-try:
-    with occupied.open("xb"):
-        pass
-except FileExistsError:
-    print("Занятое имя: отказ")
-print("Байты сохранены:", before == occupied.read_bytes())
-with new_file.open("xb"):
-    pass
-print("Новое имя создано:", new_file.is_file())`;
+const bookRevision = `from alembic import op
+import sqlalchemy as sa
 
-const demo = `from pathlib import Path
+revision = "b_demo"
+down_revision = None
+branch_labels = None
+depends_on = None
+
+def upgrade():
+    op.create_table(
+        "book_stock",
+        sa.Column("id", sa.Integer(), primary_key=True, nullable=False),
+        sa.Column("copies", sa.Integer(), nullable=False, server_default="1"),
+        sa.CheckConstraint("copies >= 0", name="ck_book_stock_copies"),
+    )
+
+def downgrade():
+    raise RuntimeError("Removing the baseline is not supported")`;
+
+const inspectBook = `from pathlib import Path
 import sqlite3
-from contextlib import closing
 
-folder = Path("demo_snapshot")
-source = folder / "books.sqlite3"
-snapshot = folder / "books-copy.sqlite3"
+db_path = Path("books.sqlite3").resolve()
+if not db_path.is_file():
+    raise FileNotFoundError(db_path)
+db = sqlite3.connect(db_path)
+try:
+    print(db.execute("PRAGMA table_info(book_stock)").fetchall())
+    print(db.execute(
+        "SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = ?",
+        ("book_stock",),
+    ).fetchone()[0])
+    print(db.execute("PRAGMA index_list(book_stock)").fetchall())
+    print(db.execute("PRAGMA foreign_key_list(book_stock)").fetchall())
+    print(db.execute("SELECT version_num FROM alembic_version").fetchall())
+finally:
+    db.close()`;
 
-with source.open("xb"):
-    pass
-with closing(sqlite3.connect(source)) as db:
-    db.execute("CREATE TABLE books (id INTEGER PRIMARY KEY, name TEXT)")
-    db.execute("INSERT INTO books VALUES (1, 'Atlas')")
-    db.execute("INSERT INTO books VALUES (2, 'River')")
+const insertBooks = `from pathlib import Path
+import sqlite3
+
+db_path = Path("books.sqlite3").resolve()
+if not db_path.is_file():
+    raise FileNotFoundError(db_path)
+db = sqlite3.connect(db_path)
+try:
+    db.execute("INSERT INTO book_stock (id) VALUES (?)", (7,))
     db.commit()
-
-if not source.is_file() or source.resolve() == snapshot.resolve():
-    raise ValueError("Проверьте источник и назначение")
-with snapshot.open("xb"):
-    pass
-with closing(sqlite3.connect(source)) as src:
-    with closing(sqlite3.connect(snapshot)) as dst:
-        src.backup(dst)
-
-with closing(sqlite3.connect(snapshot)) as copy:
-    rows = copy.execute("SELECT id, name FROM books ORDER BY id").fetchall()
-print("Снимок:", rows)
-with closing(sqlite3.connect(source)) as db:
-    original = db.execute("SELECT id, name FROM books ORDER BY id").fetchall()
-print("Исходник:", original)`;
-
-const errorExample = `from pathlib import Path
-import sqlite3
-from contextlib import closing
-
-folder = Path("demo_error")
-folder.mkdir()
-source = folder / "damaged.bin"
-destination = folder / "unfinished.sqlite3"
-with source.open("xb") as file:
-    file.write(b"NOT SQLITE")
-with destination.open("xb"):
-    pass
-try:
-    with closing(sqlite3.connect(source)) as src:
-        with closing(sqlite3.connect(destination)) as dst:
-            src.backup(dst)
-except sqlite3.DatabaseError:
-    print("Ошибка после резервирования: файл не передаём")
-print("Новое имя осталось:", destination.is_file())`;
-
-const checkPathsExample = `from pathlib import Path
-
-folder = Path("demo_snapshot")
-source = folder / "books.sqlite3"
-missing = folder / "missing.sqlite3"
-new_copy = folder / "another-copy.sqlite3"
-
-def check_paths(source, destination):
-    if not source.is_file():
-        raise ValueError("Источник отсутствует")
-    if source.resolve() == destination.resolve():
-        raise ValueError("Пути совпадают")
-
-for first, second in [(missing, new_copy), (source, source), (source, new_copy)]:
+    db.execute("INSERT INTO book_stock (id, copies) VALUES (?, ?)", (8, 0))
+    db.commit()
     try:
-        check_paths(first, second)
-    except ValueError as error:
-        print("Отказ:", error)
-    else:
-        print("Пути подходят для следующего шага")
-print("Новое имя ещё свободно:", not new_copy.exists())`;
+        db.execute("INSERT INTO book_stock (id, copies) VALUES (?, ?)", (9, -1))
+        db.commit()
+    except sqlite3.IntegrityError:
+        db.rollback()
+        print("CHECK: отрицательный остаток отклонён")
+    print(db.execute("SELECT id, copies FROM book_stock ORDER BY id").fetchall())
+finally:
+    db.close()`;
 
-const argumentsExample = `# Файл show_paths.py в project/
-import sys
+const defaultProbe = `import sqlite3
 
-if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Нужны два пути")
-        raise SystemExit(1)
-    print("Источник:", sys.argv[1])
-    print("Назначение:", sys.argv[2])`;
+db = sqlite3.connect(":memory:")
+try:
+    db.execute("CREATE TABLE stock_probe (id INTEGER PRIMARY KEY, copies INTEGER NOT NULL)")
+    try:
+        db.execute("INSERT INTO stock_probe (id) VALUES (?)", (1,))
+        db.commit()
+    except sqlite3.IntegrityError:
+        db.rollback()
+        print("NOT NULL: copies не передан")
+    db.execute("INSERT INTO stock_probe (id, copies) VALUES (?, ?)", (2, 4))
+    db.commit()
+    print(db.execute("SELECT id, copies FROM stock_probe").fetchall())
+finally:
+    db.close()`;
 
-const readExample = `# Файл read_snapshot_books.py в project/ после примера со снимком
-from pathlib import Path
-import sqlite3
-from contextlib import closing
+const readVersion = `from pathlib import Path
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import URL
+from sqlalchemy.orm import Session
 
-path = Path("demo_snapshot/books.sqlite3")
-if not path.is_file():
-    raise ValueError("Учебная база не найдена")
-with closing(sqlite3.connect(path)) as db:
-    rows = db.execute("SELECT id, name FROM books ORDER BY id").fetchall()
-print("Количество:", len(rows))
-print("Строки:", rows)`;
+db_path = Path("books.sqlite3").resolve()
+if not db_path.is_file():
+    raise FileNotFoundError(db_path)
+url = URL.create("sqlite", database=db_path.as_posix())
+engine = create_engine(url)
+try:
+    with Session(engine) as session:
+        versions = session.execute(text("SELECT version_num FROM alembic_version")).scalars().all()
+        rows = session.execute(text("SELECT id, copies FROM book_stock ORDER BY id")).all()
+        print(versions)
+        print(rows)
+finally:
+    engine.dispose()`;
 
 export function Lesson82({ module }: { module?: string }) {
   return (
     <RichLesson>
-      <RichHero chip={module ?? "StudyHub · Резервирование"} title="Получаем согласованный снимок" intro="Получим отдельную копию учебной SQLite и проверим, что исходные данные и занятые файлы остались на месте." />
-      <Section number="00" title="От описи к сохранённому состоянию">
-        <Lead>Перед изменением базы нам нужна возможность вернуться к её прежнему состоянию. Сначала выясним, как получить отдельный снимок и не повредить то, что уже есть.</Lead>
+      <RichHero chip={module ?? "Миграции базы"} title="Первая миграция" intro="Запишем способ создания исходной схемы один раз и проверим его на независимых пустых базах. Сохранённые задачи останутся в своей восстановленной копии." />
+      <Section number="00" title="От восстановимых данных к воспроизводимой схеме">
+        <Lead>Сначала подтвердим восстановление: отдельная копия открывается, её задачи и структура совпадают с сохранённой описью. Если это ещё не проверено, вернёмся к восстановлению до изменений схемы.</Lead>
         <LinkedNotes items={[
-          { title: "Точка старта", description: "Для учебного Planner подготовлены отдельная база и опись её схемы и записей. Если описи или адреса нет, сначала проверим их." },
-          { title: "Новый вопрос", description: "Как сохранить состояние базы, когда простое копирование файла может пропустить данные?" },
-          { title: "Результат", description: "Создадим отдельный снимок, проверим открытие и защитим существующий файл от перезаписи." },
+          { title: "Точка старта", description: "Есть исходная SQLite, резерв, восстановленная заполненная копия и опись. Их адреса различимы и записаны." },
+          { title: "Новый вопрос", description: "Как получить ту же исходную структуру в новом пустом файле, не копируя готовую базу?" },
+          { title: "Результат", description: "Настроим Alembic и подготовимся самостоятельно записать исходную ревизию, воспроизводимую на двух новых SQLite." },
         ]} />
-        <p>Опись помогает сравнить исходное состояние после операции. Открываемый снимок станет входом для отдельной проверки восстановления.</p>
+        <p>Резерв сохраняет существующее состояние. История схемы описывает действия создания структуры. Для первого опыта возьмём маленький книжный склад, а в практике перенесём способ на исходную Task-схему Planner.</p>
       </Section>
-      <Section number="01" title="Почему одного файла может быть недостаточно">
-        <Lead>SQLite сохраняет данные согласованно, но состояние работающей базы нельзя всегда определить по одному основному файлу.</Lead>
-        <p>Пока программа записывает данные, SQLite использует журнал отката или режим WAL. В WAL подтверждённые изменения могут ещё находиться в отдельном журнале. Если взять только основной файл активной базы, эти изменения могут не попасть в копию. Файл может открываться и при этом содержать не все ожидаемые записи.</p>
-        <p>Для нашего опыта останавливаем API, CLI и другие известные процессы записи, закрываем соединения и работаем только с отдельной учебной базой без личных данных. SQLite Backup API создаёт согласованный снимок через соединение с базой. Поддержка активной базы у Backup API есть, но здесь мы намеренно используем остановленную учебную базу.</p>
-        <p>Проследим путь от остановленной учебной базы к открытому снимку. Журнал на схеме относится к исходной базе; отдельно восстанавливать данные мы пока не будем.</p>
-        <Diagram caption="От источника к проверке открытия" orientation="vertical">
-          <DiagramFlow label="Путь учебного снимка" orientation="vertical">
-            <DiagramNode title="До остановки записи" shape="database">Основной файл и журнал WAL, если он используется: подтверждённые изменения могут быть в журнале</DiagramNode>
-            <DiagramArrow label="останавливаем учебные процессы и закрываем соединения" />
-            <DiagramNode title="Учебный источник готов" shape="database">Путь к существующей базе подтверждён описью</DiagramNode>
-            <DiagramArrow label="SQLite Backup API получает состояние" />
-            <DiagramNode title="Новый снимок" shape="database">Отдельный файл в учебном каталоге</DiagramNode>
-            <DiagramArrow label="открываем и читаем" />
-            <DiagramNode title="Открытие проверено" shape="process">Полноту восстановленных данных ещё не проверяли</DiagramNode>
-          </DiagramFlow>
-        </Diagram>
-        <p>Стрелки обозначают создание и отдельное чтение снимка. Остановка записи является условием нашего учебного опыта; схема не изображает уже выполненное восстановление.</p>
-        <QuizCard question="Если файл снимка открылся, мы уже доказали, что восстановленные данные полны." options={["Правда", "Ложь"]} correctIndex={1} explanation="Открытие показывает доступность файла. Для проверки полноты нужно восстановить копию в новый путь и сравнить её содержимое с описью." />
-        <p>Дальше нам нужно защитить имя назначения: снимок не должен заменить уже существующий файл.</p>
+      <Section number="01" title="История, таблицы и метка отвечают на разные вопросы">
+        <p>Файл миграции содержит команды изменения структуры. Такие SQL-команды, например CREATE TABLE, относятся к <strong>DDL</strong>, языку определения данных. Один шаг истории называется <strong>ревизией</strong> (revision). Его имя связывает файл с историей; это не номер строки и не имя SQLite-файла. Исходную ревизию будем называть <strong>baseline</strong>: она создаёт структуру, с которой начинается история.</p>
+        <InteractiveTable title="Три независимых состояния" columns={["Объект", "Что содержит", "Что ещё нужно проверить"]} rows={[
+          { id: "files", label: "Файлы истории", values: ["Ревизию b_demo и операции CREATE", "Исполнялась ли она на выбранной БД"] },
+          { id: "schema", label: "Реальная SQLite", values: ["book_stock, ограничения и строки", "Совпадает ли структура с исходным шагом"] },
+          { id: "mark", label: "alembic_version", values: ["Метка применённой ревизии", "Есть ли соответствующая ей структура"] },
+        ]} />
+        <p><code>upgrade</code> исполняет нужные ревизии и отмечает пройденный шаг. <code>stamp</code> меняет метку без исполнения этих операций. Надпись b_demo не доказывает, что таблица создана. Здесь используем upgrade; заполненную восстановленную копию пока не маркируем.</p>
+        <p>Родитель ревизии записан в <code>down_revision</code>. У первой ревизии значение <code>None</code>, родителя нет. <strong>Head</strong> есть конец файловой истории; <strong>current</strong> есть шаг, записанный в выбранной базе. Пока у нас одна цепочка и один конец.</p>
+        <Callout>Новая пустая цель отличается от существующего источника. Не очищаем восстановленную копию. Сравниваем новый путь с адресами исходника, резерва и копии, затем резервируем исключительно. Занятый путь означает остановку и выбор другого имени.</Callout>
+        <p>В независимом опыте новый каталог тоже создаётся исключительно. Из корня ученического project откроем Python командой <code>python</code> в подготовленном venv. <code>mkdir()</code> без exist_ok=True откажет для занятого каталога; <code>touch(exist_ok=False)</code> откажет для занятого файла. <code>resolve()</code> получает абсолютный адрес, а <code>as_posix()</code> записывает разделители как косые черты. Импорт URL из SQLAlchemy собирает SQLite URL из выбранного имени файла.</p>
+        <CodeBlock caption="Python из корня project: новый каталог и пустая цель" code={reserveDemo} />
+        <p>Вывод показывает фактический полный путь books.sqlite3 и его URL. Сохраним обе строки. Пустой файл пока без таблиц и метки. При занятом каталоге опыта выберем свободное имя и последовательно подставим его дальше; прежний опыт не удаляем. Повтор touch для того же файла также должен отказать.</p>
+        <p>На изменённом наборе подписанных адресов ещё раз выберем допустимую роль без создания дополнительного файла: свободная новая цель подходит, резерв и заполненная копия не подходят. Закроем Python через <code>exit()</code>, чтобы следующие команды исполнялись в терминале.</p>
       </Section>
-      <Section number="02" title="Как защитить адрес назначения">
-        <Lead>Путь источника указывает на существующую базу, а путь назначения выбираем новым в отдельном учебном каталоге.</Lead>
-        <p><code>Path</code> из <code>pathlib</code> представляет путь. Относительный путь отсчитывается от папки, где запущен Python. <code>is_file()</code> проверяет существующий обычный файл; <code>resolve()</code> помогает сравнить нормализованные пути. Отсутствующий источник нельзя сразу передавать обычному <code>sqlite3.connect</code>: вместо ошибки может появиться новая пустая база.</p>
-        <p><code>path.open("xb")</code> создаёт новый файл для двоичных данных. Буква <code>x</code> запрещает открывать уже занятый путь и вызывает <code>FileExistsError</code>, а <code>b</code> обозначает байты. В отличие от него режим <code>w</code> может обнулить существующий файл. <code>read_bytes()</code> читает байты для сравнения. После <code>with</code> файловый объект закрывается.</p>
-        <p>Проверим защиту имени отдельно, пока не подключая SQLite. В <code>project/</code> сохраним следующий файл как <code>demo_paths.py</code>. Каталога <code>demo_snapshot</code> заранее быть не должно; затем из <code>project/</code> выполним <code>python demo_paths.py</code>.</p>
-        <CodeBlock caption="demo_paths.py: занятое и новое имя" code={pathsExample} />
-        <p>Видим «Занятое имя: отказ», затем <code>Байты сохранены: True</code> и <code>Новое имя создано: True</code>. Первое открытие записало известные байты, второе с тем же именем вызвало ошибку до записи. Пустой новый файл уже существует, но ещё не является снимком базы.</p>
-        <p>Для собственной пробы заменим оба имени файлов и имя каталога на новые. Запустим опыт и сравним результат. При повторном запуске с тем же каталогом <code>mkdir()</code> остановится: так мы не затрём результаты первой попытки.</p>
-        <Callout tone="warn">Проверка пути не защищает от всех сторонних изменений и жёстких ссылок. Используем выделенный учебный каталог без параллельных изменений и не работаем с единственным оригиналом.</Callout>
+      <Section number="02" title="Сначала окружение инструмента, затем его история">
+        <Lead>Alembic управляет файлами миграций и их применением. Используем тот же venv, где работает проект, чтобы команды обращались к выбранному Python.</Lead>
+        <p>В терминале из project проверим <code>python --version</code> и <code>python -m pip --version</code>. Форма python -m запускает модуль именно этим Python. Для выбранного Alembic нужен Python не ниже 3.10. Если окружение уже согласовано, не устанавливаем его повторно. Иначе используем версии этого материала:</p>
+        <CodeBlock caption="Терминал: установка в активный venv" language="text" code={'python -m pip install "alembic==1.20.1" "SQLAlchemy==2.0.55"\npython -m alembic --version'} />
+        <p>Кавычки сохраняют требование версии одним аргументом; == фиксирует версию. Проверка должна показать Alembic 1.20.1. В практике этот pin попадёт в существующий requirements без изменения остальных зависимостей.</p>
+        <p>Перейдём в созданный каталог опыта. Команда init создаёт миграционное окружение с именем migrations, но ещё не таблицы:</p>
+        <CodeBlock caption="Терминал из project" language="text" code={'cd .lesson-lab/baseline-demo\npython -m alembic init migrations'} />
+        <ContentList items={[
+          { title: "alembic.ini", description: "Настройки: где скрипты, какую БД открыть и как писать служебные сообщения." },
+          { title: "migrations/env.py", description: "Python-код, связывающий конфигурацию, соединение и миграции." },
+          { title: "migrations/script.py.mako", description: "Шаблон новых ревизий. Сейчас его не переписываем; отдельный язык шаблонов не нужен." },
+          { title: "migrations/versions/ и README", description: "Каталог истории и сгенерированная справка. Versions пока пуст." },
+        ]} />
+        <p>В alembic.ini сохраним стандартные логирующие секции. В секции <code>[alembic]</code> укажем <code>script_location = %(here)s/migrations</code>: %(here)s обозначает каталог ini. В <code>sqlalchemy.url</code> вставим URL, напечатанный при резервировании. Шаблонный driver://user:pass@localhost/dbname не является нашей целью.</p>
+        <p>На Windows URL имеет форму <code>sqlite:///C:/каталог/books.sqlite3</code>, на POSIX перед абсолютным путём четыре косые черты. Используем собственный синтетический путь без процента и URI-параметров. Prepend_sys_path относится к поиску Python-модулей; <code>path_separator = os</code> оставляет разделение списков путей операционной системе.</p>
+        <p>После клонирования проекта <code>%(here)s</code> указывает на каталог нового ini, а абсолютный <code>sqlalchemy.url</code> сохраняет прежний адрес. Перед первой командой Alembic укажем URL выбранной учебной копии в своей среде и сверим его с ролью файла из описи.</p>
+        <p>В env.py импорт <code>fileConfig</code> настраивает сообщения по ini. <code>engine_from_config</code> читает параметры с префиксом sqlalchemy. и создаёт Engine. <code>pool.NullPool</code> не удерживает возвращённые соединения в пуле. <code>context</code> из Alembic связывает конфигурацию, соединение и миграции.</p>
+        <p>Online-ветвь открывает connect(), передаёт соединение в context.configure и вызывает run_migrations() внутри begin_transaction(). Offline-ветвь выводит SQL без подключения; здесь её не запускаем. Стандартный шаблон сохраняем, новую обвязку не пишем.</p>
+        <p>Metadata есть описание таблиц в Python, связанное с ORM-моделью. Оставляем <code>target_metadata = None</code>: ревизию напишем явно, текущая модель для её исполнения не нужна. Приложение и init_db в env.py не импортируем. Стандартный шаблон не читает .env Planner: DATABASE_URL приложения не меняет цель Alembic. Перед подключением читаем sqlalchemy.url.</p>
+        <CodeBlock caption="Терминал из каталога опыта" language="text" code="python -m alembic heads" />
+        <p>Пока ревизий нет, список heads пуст. Инструмент настроен, но историю и структуру мы ещё не создали. Неверный script_location исправляем в ini, а не переименованием файлов приложения.</p>
       </Section>
-      <Section number="03" title="Законченный опыт на другой базе">
-        <Lead>Создадим базу книг, затем получим отдельный снимок по новому имени. Защиту занятого имени мы уже проверили в отдельном опыте. Все данные вымышленные.</Lead>
-        <p>Сохраним код в <code>demo_books.py</code> внутри <code>project/</code>. Сначала выполним <code>demo_paths.py</code> из предыдущего раздела: он создаст каталог <code>demo_snapshot</code> и контрольный файл. В этом же каталоге ещё не должно быть файлов <code>books.sqlite3</code> и <code>books-copy.sqlite3</code>. Из <code>project/</code> выполним <code>python demo_books.py</code> подготовленным Python. Для повторения выберем другой новый каталог в обоих файлах, не удаляя существующие данные.</p>
-        <CodeBlock caption="demo_books.py: исходная база и отдельный снимок" code={demo} />
-        <p>Сначала появились две строки в исходной базе: <code>commit()</code> сохранил их, а <code>closing</code> закрыл соединение. Затем <code>is_file()</code> подтвердил существование источника, а <code>resolve()</code> позволил сравнить пути. Так мы не откроем отсутствующий источник как новую пустую базу и не используем один файл в обеих ролях.</p>
-        <p>После проверки <code>open("xb")</code> резервирует свободное имя и закрывает пустой файл. <code>sqlite3.connect(path)</code> возвращает соединение с указанной базой. У нас их два: <code>src</code> для исходника и <code>dst</code> для назначения. Вызов <code>src.backup(dst)</code> выполняется у источника, а назначение передаётся аргументом. Сам метод не защищает занятое имя, поэтому резервирование было отдельным шагом.</p>
-        <p><code>closing</code> из <code>contextlib</code> закрывает каждое соединение и при исключении, даже если второе подключение не удалось. Обычный контекстный менеджер соединения SQLite управляет транзакцией, но сам соединение не закрывает. После закрытия снова открываем снимок, выполняем <code>SELECT</code> и получаем строки через <code>fetchall()</code>.</p>
-        <p>Ожидаем две строки: <code>Снимок: [(1, 'Atlas'), (2, 'River')]</code> и <code>Исходник: [(1, 'Atlas'), (2, 'River')]</code>. Первое чтение показывает, что снимок открылся; второе показывает, что эти исходные строки не изменились. Полная проверка восстановления остаётся отдельным действием.</p>
-        <p>Рассмотрим проверки адресов отдельно от копирования. После опыта с книгами сохраним в <code>project/</code> файл <code>check_paths.py</code> и запустим <code>python check_paths.py</code>. В каталоге <code>demo_snapshot</code> уже есть <code>books.sqlite3</code>, а имена <code>missing.sqlite3</code> и <code>another-copy.sqlite3</code> должны быть свободны. Этот пример только сравнивает пути и не открывает базы.</p>
-        <CodeBlock caption="check_paths.py: три пары путей" code={checkPathsExample} />
-        <p>Сначала получаем «Отказ: Источник отсутствует», затем «Отказ: Пути совпадают», затем «Пути подходят для следующего шага» и <code>Новое имя ещё свободно: True</code>. <code>else</code> у <code>try</code> выполняется только без исключения. Подходящие пути ещё не создают снимок: после проверки потребуется резервирование и работа соединений.</p>
-        <p>Теперь в другом новом учебном каталоге подготовим небольшую базу с другими значениями. Зарезервируем новое имя, запишем вызов на двух соединениях и прочитаем результат. Что произойдёт, если поменять местами источник и назначение? Пустая база станет источником, а база с книгами назначением. Такой вызов может перезаписать исходные данные и не создаст нужный снимок. Не используем путь Planner для этой пробы.</p>
+      <Section number="03" title="Один файл превращает пустую цель в схему">
+        <p>В каталоге опыта создадим ревизию. Флаг <code>--rev-id</code> задаёт стабильное имя шага, а <code>-m</code> задаёт описание файла:</p>
+        <CodeBlock caption="Терминал из каталога опыта" language="text" code={'python -m alembic revision --rev-id b_demo -m "book stock baseline"'} />
+        <p>Появится migrations/versions/b_demo_book_stock_baseline.py. Изменились только файлы истории, в SQLite ещё нет book_stock. Опишем склад с целым ключом id, обязательным числом copies, SQL-default 1 и запретом отрицательного остатка.</p>
+        <p><code>from alembic import op</code> даёт операции текущей миграции. <code>import sqlalchemy as sa</code> даёт типы и описания структуры; sa есть короткое имя модуля. <code>op.create_table</code> принимает имя таблицы, колонки и ограничения. <code>primary_key=True</code> задаёт ключ, <code>nullable=False</code> запрещает NULL, а <code>server_default</code> добавляет SQL DEFAULT прямо в структуру. <code>sa.CheckConstraint</code> хранит SQL-условие и его имя.</p>
+        <CodeBlock caption="Полный файл migrations/versions/b_demo_book_stock_baseline.py" code={bookRevision} />
+        <p>В сгенерированном шаблоне могут быть аннотации и typing-импорты. Они описывают типы служебных значений, а не выполняют DDL; полный вариант выше обходится без них. <code>revision</code> называет шаг, <code>down_revision=None</code> делает его корневым. <code>branch_labels</code> и <code>depends_on</code> оставлены None: дополнительных ветвей и зависимостей нет.</p>
+        <p><code>upgrade()</code> Alembic вызовет при применении. <code>downgrade()</code> в этой учебной baseline явно отказывает: <code>raise RuntimeError</code> останавливает операцию с сообщением. Команду удаления исходной схемы не исполняем; пустой pass в downgrade не означал бы выполненного отката.</p>
+        <CodeBlock caption="Терминал: применяем и читаем историю" language="text" code={'python -m alembic upgrade head\npython -m alembic history\npython -m alembic heads\npython -m alembic current'} />
+        <p>После успешного upgrade ожидаем book_stock и alembic_version. History показывает связь корня с b_demo, heads показывает конец файловой истории, current показывает b_demo в выбранной SQLite. Current не используем для проверки существования источника: команда открывает настроенную БД.</p>
+        <p>Проверим прогноз до просмотра модели переходов. Представим новый пустой файл, которому выполнили только stamp b_demo. Что реально появится?</p>
+        <QuizCard question="Что подтверждает метка после одного stamp на пустой цели?" orientation="vertical" options={[
+          "Созданы book_stock, CHECK и метка b_demo",
+          "Записана метка b_demo; создания book_stock эта команда не выполняла",
+          "Скопированы строки книжного склада из другой БД",
+        ]} correctIndex={1} explanation="Stamp не выполняет upgrade ревизии. Метка появляется отдельно от таблицы и данных; соответствие структуры ею не доказано." />
+        <p>Переключим исходное состояние и действие. Это модель четырёх случаев, она не запускает команды на наших файлах. Перед переключением прогнозируем таблицу, строки и метку, затем сравниваем с результатом:</p>
+        <BranchExplorer code={'upgrade b_demo\nstamp b_demo'} scenarios={[
+          { label: "Пустая: upgrade", activeLine: 0, output: "book_stock создана, строк 0, метка b_demo. Выполнено CREATE из ревизии." },
+          { label: "Пустая: stamp", activeLine: 1, output: "book_stock отсутствует, строк нет, метка b_demo. Stamp не выполняет DDL." },
+          { label: "Готовая: upgrade", activeLine: 0, output: "Таблица уже есть, метки нет: CREATE конфликтует. Останавливаемся, результат не принят." },
+          { label: "Готовая: stamp", activeLine: 1, output: "Таблица и прежние строки сохраняются, метка b_demo. Соответствие схемы ещё нужно доказать." },
+        ]} />
+        <p>Метка есть утверждение о состоянии, а не доказательство. Поэтому заполненную восстановленную копию не подключаем к этому CREATE и не исправляем через слепой stamp. Сейчас создаём новую структуру.</p>
+        <p>Файл принятой baseline сохраняет исходный смысл и явные операции. Будущая модель не должна менять действие прошлого шага. Новые изменения потребуют новых ревизий, а не вызова изменяемой metadata из исходного файла. Кандидат до проверки ещё не является принятой baseline.</p>
       </Section>
-      <Section number="04" title="Что делать при отказе">
-        <Lead>У ошибки до создания назначения и ошибки после резервирования разные последствия.</Lead>
-        <p>Если источник отсутствует, пути совпадают или имя занято, прекращаем операцию до создания назначения. Если ошибка возникла после создания нового файла, он может быть пустым или частичным. Закрываем все открытые ресурсы, сообщаем об ошибке и не называем этот файл успешным снимком. Выясняем причину и повторяем с другим новым именем.</p>
-        <p>В примере <code>try</code> содержит опасную операцию, а <code>except FileExistsError</code> обрабатывает отказ для занятого пути. <code>closing</code> гарантирует закрытие уже открытого соединения даже тогда, когда открытие второго соединения или вызов <code>backup</code> вызовет исключение. Не перехватываем ошибку так, чтобы после неё печаталось сообщение об успехе.</p>
-        <p>Отдельно увидим поздний отказ. Сохраним <code>demo_error.py</code> в <code>project/</code>, убедимся, что каталога <code>demo_error</code> нет, и выполним <code>python demo_error.py</code> из <code>project/</code>.</p>
-        <CodeBlock caption="demo_error.py: ошибка после создания имени" code={errorExample} />
-        <p>Вывод сообщает «Ошибка после резервирования: файл не передаём» и <code>Новое имя осталось: True</code>. Файл создан этой пробой до обращения к повреждённому источнику; он не подтверждён как снимок. Не предполагаем, что при любой ошибке его содержимое будет одинаковым. Для повторения после выяснения причины выбираем другое новое имя.</p>
-        <CodeSequence title="Проследим состояние" prompt="Расположим события успешного опыта с каталогом книг. Какие состояния должны наступить до чтения снимка?" pieces={[
-          { id: "open", code: "Открыли готовый снимок и прочитали строки" },
-          { id: "reserve", code: "Зарезервировали свободное имя и закрыли файл" },
-          { id: "copy", code: "Выполнили backup и закрыли соединения" },
-          { id: "failed", code: "После ошибки передали частичный файл как снимок" },
-        ]} correctOrder={["reserve", "copy", "open"]} explanation="Чтение имеет смысл после завершения backup и закрытия соединений. Проверка восстановления остаётся отдельным действием." incorrectExplanation="Вернёмся к двум соединениям: сначала нужно получить новое имя, затем завершить backup, и только потом читать снимок." />
-        <p>Если резервирование не удалось из-за занятого пути, его байты не меняются. Если ошибка возникла позднее, оставшийся новый файл не передаём дальше как готовый результат.</p>
+      <Section number="04" title="Проверяем фактические правила, включая defaults">
+        <Lead>Успешная команда ещё не показывает, какие правила записаны в файле. Прочитаем структуру с нового соединения, как при исходной описи.</Lead>
+        <p>В каталоге опыта откроем новый Python и выполним полный фрагмент ниже. <code>is_file()</code> не даёт sqlite3 незаметно создать отсутствующий файл. Знак ? обозначает параметр, переданный отдельным кортежем, а не склеенный с SQL. <code>fetchall()</code> получает строки; <code>fetchone()[0]</code> берёт первое значение единственной найденной строки. Закрытие в finally выполняется и при ошибке.</p>
+        <CodeBlock caption="Python из каталога опыта: структура и метка" code={inspectBook} />
+        <p>В table_info строка copies имеет вид <code>{`(1, 'copies', 'INTEGER', 1, "'1'", 0)`}</code>. По порядку: номер колонки, имя, тип, NOT NULL, SQL-default и позиция в ключе. Четвёртое значение 1 подтверждает NOT NULL, пятое хранит SQL DEFAULT '1'. Строка id показывает PK=1 и явно заданный NOT NULL=1. В SQL таблицы отдельно найдём <code>CONSTRAINT ck_book_stock_copies CHECK (copies &gt;= 0)</code>: table_info это условие не показывает.</p>
+        <p>Дополнительные списки индексов и FK пусты: мы их не добавляли. INTEGER PRIMARY KEY всё равно остаётся ключом; отсутствие отдельного индекса SQLite для такого ключа не означает отсутствие PK. Метка читается как <code>[('b_demo',)]</code>. SQL и PRAGMA сравниваем вместе, без требования одинаковых пробелов и регистра SQL.</p>
+        <p>Проверим правило действием. Commit сохраняет успешную запись; rollback после ошибки отменяет неуспешную транзакцию. У ошибочной записи новый положительный id, поэтому отказ не путается с дубликатом ключа.</p>
+        <CodeBlock caption="Python из каталога опыта: выполняем один раз после создания схемы" code={insertBooks} />
+        <CodeBlock caption="Наблюдаемый вывод" language="text" code={'CHECK: отрицательный остаток отклонён\n[(7, 1), (8, 0)]'} />
+        <p>У id=7 не передали copies, и SQLite подставила 1. У id=8 передали 0, он допустим. Copies=-1 у id=9 нарушает CHECK и не сохраняется. Повтор всего фрагмента столкнулся бы с занятыми id 7 и 8. Для собственной пробы выберем новые положительные id и сами запишем вставки для copies=4 и copies=-2. Сначала предскажем результат, затем сравним строки после отдельного rollback. Принятую ревизию и CHECK не меняем.</p>
+        <p>SQL-default отличается от Python-default. <code>sa.Column("copies", sa.Integer(), default=1)</code> задаёт подстановку SQLAlchemy при его INSERT, но не добавляет DEFAULT в CREATE TABLE. Сырой SQL про такую Python-настройку не знает. Отсутствующий SQL-default также не заменяем явным DEFAULT NULL. Проверим другую короткую структуру в памяти, не меняя дисковый склад:</p>
+        <CodeBlock caption="Отдельная SQLite в памяти: нет SQL DEFAULT" code={defaultProbe} />
+        <CodeBlock caption="Вывод сравнения" language="text" code={'NOT NULL: copies не передан\n[(2, 4)]'} />
+        <p>Пропуск copies отвергнут: NOT NULL есть, SQL-default нет. Явно переданное 4 сохраняется. :memory: есть отдельная временная SQLite этого соединения; после close она исчезает. Вся подготовка сравнения показана, второго приложения нет.</p>
+        <p>На входе Planner имеет id, title, priority, is_done, tags, title_normalized. Сверим их с TaskRow и описью. Все колонки обязательны, id является ключом. Именованные ck_tasks_id_positive и ck_tasks_priority_range ограничивают id &gt; 0 и priority от 1 до 5. В ревизии String, Boolean и JSON записываются через уже понятное имя sa.</p>
+        <InteractiveTable title="Что сохраняем при переносе на Task" columns={["Признак", "В модели на входе", "В исходном DDL"]} rows={[
+          { id: "priority", label: "priority", values: ["Integer, default=2", "NOT NULL, SQL DEFAULT отсутствует"] },
+          { id: "done", label: "is_done", values: ["Boolean, default=False", "NOT NULL, SQL DEFAULT отсутствует"] },
+          { id: "tags", label: "tags", values: ["JSON, default=list", "NOT NULL, SQL DEFAULT отсутствует"] },
+        ]} />
+        <p>Default list создаёт новую коллекцию на стороне Python. Server_default для этих трёх полей в исходную историю не добавляем. Различаем Python-список <code>{'["book"]'}</code> и строку JSON <code>{`'["book"]'`}</code>: в параметр сырого SQLite INSERT передаём заданный текст JSON. Модель SQLAlchemy умеет работать с JSON-значением сама.</p>
+        <p>У исходного TaskRow нет User, owner, description, UNIQUE, дополнительного Boolean CHECK или JSON CHECK. Их не добавляем. Проверяем колонки, PK/nullable, defaults, выражения и имена CHECK, индексы/FK и прочие объекты по описи, а не только имя tasks.</p>
+        <p><strong>Autogenerate</strong> сравнивает metadata с БД и предлагает файл-кандидат. Для него в env.py подключают metadata, но файл всё равно читают и исправляют до принятия. В основном пути baseline пишем вручную, не подключая приложение. Проверим маленький независимый кандидат:</p>
+        <CodeBlock caption="Кандидат книжной схемы: фрагмент для чтения" code={'op.create_table(\n    "book_stock",\n    sa.Column("id", sa.Integer(), primary_key=True, nullable=False),\n    sa.Column("copies", sa.Integer(), nullable=False, server_default="1"),\n)'} />
+        <p>Колонки узнаваемы, но CHECK потерян. Сначала найдём расхождение, затем назовём наблюдение: отрицательный copies оказался бы допустимым. Даже две одинаковые БД из такого кандидата не докажут соответствие исходному правилу. Будущая mutable metadata не определяет смысл старой baseline.</p>
       </Section>
-      <Section number="05" title="Пути в команде и чтение записей">
-        <Lead>Обёртке нужно передать два пути. Сначала разберём их на маленькой программе, которая только показывает аргументы.</Lead>
-        <CodeBlock caption="show_paths.py" code={argumentsExample} />
-        <p><code>if __name__ == "__main__"</code> выполняет вложенный блок при прямом запуске файла или модуля, но не при его импорте. <code>sys.argv</code> содержит имя запускаемого файла и переданные аргументы. <code>len</code> считает элементы; если путей не два, <code>SystemExit(1)</code> завершает программу с ненулевым кодом. Из <code>project/</code> выполним <code>python show_paths.py demo_snapshot/books.sqlite3 "demo_snapshot/new copy.sqlite3"</code>. Увидим два подписанных пути. Кавычки удерживают путь с пробелом одним аргументом. Команда с одним путём выведет «Нужны два пути».</p>
-        <p>Чтобы отдельно попробовать запуск модуля, создадим в учебной копии новую папку <code>demo_package</code>, пустой файл <code>demo_package/__init__.py</code> и сохраним тот же пример в <code>demo_package/paths.py</code>. Из <code>project/</code> команда <code>python -m demo_package.paths first second</code> показывает <code>Источник: first</code> и <code>Назначение: second</code>. При одном аргументе она сообщает «Нужны два пути». Папку выбираем новую, не заменяя существующие файлы.</p>
-        <p>В проектной работе мы создадим модуль <code>app/DBase/backup_snapshot.py</code> и будем передавать ему пути командой <code>python -m app.DBase.backup_snapshot SOURCE DEST</code>. Флаг <code>-m</code> запускает модуль из корня <code>project/</code>; <code>SOURCE</code> и <code>DEST</code> заменяем реальными путями, а не вводим как буквальные имена. В PowerShell можно вместо <code>python</code> указать <code>./.venv/Scripts/python.exe</code> подготовленной среды.</p>
-        <p>В PowerShell код завершения последней внешней программы доступен в <code>$LASTEXITCODE</code>. Выполним <code>python -c "raise SystemExit(3)"</code>, затем сразу <code>$LASTEXITCODE</code>: увидим <code>3</code>. Ноль обычно означает успешное завершение, ненулевое значение сообщает об ошибке. Прочитаем или сохраним значение сразу после нужной команды: следующий запуск Python его заменит. Так проверяем результат процесса модуля, а не только исключение, перехваченное внутри программы.</p>
-        <p>Для сравнения состояния отдельно прочитаем строки книг. В PowerShell из <code>project/</code> сначала выполним <code>Test-Path -LiteralPath './read_snapshot_books.py'</code>. Значение <code>False</code> означает, что имя свободно: сохраним следующий код в <code>read_snapshot_books.py</code> и запустим командой <code>python read_snapshot_books.py</code>. Если получили <code>True</code>, остановимся и выберем другое свободное имя, используя его при сохранении и во всех следующих командах. Прежний <code>read_books.py</code> не изменяем.</p>
-        <CodeBlock caption="Читаем существующую базу без изменения строк" code={readExample} />
-        <p>Увидим количество <code>2</code> и те же два кортежа. <code>SELECT</code> выбирает названные столбцы, <code>ORDER BY id</code> задаёт порядок по идентификатору, а <code>len(rows)</code> считает полученные строки. Если путь неверный, проверка остановит программу до открытия новой пустой базы.</p>
-        <p>Для быстрой проверки открытия другой существующей SQLite можно тем же способом выполнить <code>SELECT name FROM sqlite_schema LIMIT 1</code>: системная таблица описывает объекты схемы, а <code>LIMIT 1</code> ограничивает ответ одной строкой. Например, заменим запрос в <code>read_snapshot_books.py</code>, сохраним файл и снова выполним <code>python read_snapshot_books.py</code>. Получим <code>[('books',)]</code> для учебной базы книг. Это проверка чтения схемы, а не сравнение содержимого.</p>
-        <p>В Planner используем тот же способ чтения с запросом <code>SELECT id, title, priority, is_done, tags, title_normalized FROM tasks ORDER BY id</code>. Сравним число строк и все значения с ранее составленной описью; внутренние <code>tags</code> не нужно добавлять в API или CLI.</p>
+      <Section number="05" title="Повтор, новая Session и второй пустой файл">
+        <p>Сначала запишем книжные строки и метку в наблюдениях, закроем соединения и Python. В каталоге опыта повторим применение к прежнему файлу:</p>
+        <CodeBlock caption="Терминал: повтор на прежнем файле" language="text" code="python -m alembic upgrade head" />
+        <p>При прежней истории current уже равен head. Alembic не должен повторить CREATE или добавить строки. Это не ремонт самовольно повреждённой таблицы: её структуру мы проверяли отдельно.</p>
+        <p>Откроем новый процесс командой python и прочитаем метку новой SQLAlchemy Session. Импорт create_engine создаёт Engine по явному URL, Session даёт короткое обращение к БД. Text обозначает явный SQL, execute выполняет его. Scalars() оставляет значения первой колонки, all() собирает их в список. Для двух колонок используем all без scalars, чтобы не потерять copies.</p>
+        <CodeBlock caption="Новый Python из каталога опыта" code={readVersion} />
+        <p>Новая Session видит <code>['b_demo']</code>, прежние пары <code>(7, 1)</code>, <code>(8, 0)</code> и собственные успешно сохранённые строки пробы, если мы их добавили. Ошибочных вставок нет. With закрывает Session, dispose освобождает ресурсы Engine. Новый процесс подтверждает состояние файла, а не старый объект в памяти.</p>
+        <p>В практике получим две новые SQLite одной Task-ревизией. Перед каждым применением читаем фактический URL ini. После первого файла закрываем соединения, явно меняем URL и применяем ту же историю ко второму без редактирования ревизии. Обе структуры сравниваем с описью, а не только друг с другом.</p>
+        <p>Первая цель сохранит синтетическую строку для проверки повтора. Вторая останется без Task-строк и станет чистым образцом схемы с меткой. Если upgrade отказал, не объявляем всю DDL автоматически откаченной: читаем фактические таблицы/метку, отмечаем цель как неэталонную и останавливаем перенос. Stamp не исправляет такой результат.</p>
+        <p>Прежний init_db остаётся для исходного runtime Planner. Новые БД доказывают работу истории без create_all при запуске приложения. Восстановленная заполненная копия, её данные и адрес приложения сохраняются отдельно.</p>
       </Section>
-      <Section number="06" title="Готовимся к собственной обёртке">
-        <Lead>Теперь перенесём знакомые приёмы на учебную базу Planner, не изменяя её записи.</Lead>
-        <p>Сначала выясним действительный путь из описи и настроек, остановим процессы и проверим, что новый путь лежит в учебном каталоге. Затем создадим собственную функцию с двумя путями и модульным запуском. При занятом назначении она должна отказаться без перезаписи, а при отсутствии источника или совпадении путей остановиться до создания файла.</p>
-        <p>После успешного вызова откроем снимок отдельно и перечитаем исходные записи по описи. Если какой-либо шаг завершился ошибкой, не передаём частичный файл дальше. Полноту и восстановление проверим отдельно.</p>
-      </Section>
-      <Section number="07" title="Что мы будем делать в практике">
-        <Lead>Перенесём опробованный способ на учебный Planner: сначала подтвердим исходное состояние, затем защитим файлы и получим снимок.</Lead>
+      <Section number="06" title="Что мы будем делать в практике">
+        <Lead>Книжный пример остаётся опытом, а Task-ревизию напишем самостоятельно по реальной модели и сохранённой описи.</Lead>
         <LinkedNotes items={[
-          { title: "Проверим вход", description: "Установим адрес учебной базы и сравним её записи с описью после остановки процессов." },
-          { title: "Создадим обёртку", description: "Напишем модуль с двумя путями, защитой занятого имени и закрытием соединений; проверим неверные аргументы." },
-          { title: "Проверим отказ", description: "Попробуем занятое имя, сравним байты контрольного файла и перечитаем источник." },
-          { title: "Получим снимок", description: "Вызовем модуль с новым именем, откроем снимок и снова сверим источник с описью." },
+          { title: "Выбираем две новые цели", description: "Отделяем E1/E2 от исходника, резерва и восстановленной копии; занятый путь сохраняется." },
+          { title: "Настраиваем и записываем историю", description: "Создаём конфигурацию и корневую p0001 с явным исходным Task-DDL, не вызывающим будущую metadata." },
+          { title: "Применяем и различаем ошибки", description: "Сравниваем обе схемы с описью, проверяем CHECK и отсутствие SQL-default отдельными вставками и rollback." },
+          { title: "Повторяем и передаём", description: "Новая Session читает единственную метку; E1 сохраняет контрольную строку, E2 остаётся пустым эталоном." },
         ]} />
-        <p>В каждой карточке есть своя проверка. Открытый снимок и опись передадим на проверку восстановления только после успешной операции.</p>
+        <p>При затруднении вернёмся к настройке, полной книжной ревизии, PRAGMA и сравнению defaults. Фактические URL и наблюдения сохраним в короткой секции README. Заполненную копию подключим к истории только после отдельного доказательства соответствия схеме, в следующей теме.</p>
       </Section>
     </RichLesson>
   );

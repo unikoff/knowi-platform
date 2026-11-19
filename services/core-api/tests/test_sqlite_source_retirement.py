@@ -30,3 +30,16 @@ def test_course_content_and_negative_dsn_checks_are_allowed(tmp_path):
     checks.parent.mkdir(parents=True)
     checks.write_text("INVALID_URL = 'sqlite:///:memory:'\n")
     assert scan_retired_sources(tmp_path) == []
+
+
+def test_analytics_journal_exception_is_exact_and_does_not_allow_retired_core_imports(tmp_path):
+    journal = tmp_path / "services/analytics/pymentor_analytics/adapters/privacy_authority/journal.py"
+    journal.parent.mkdir(parents=True)
+    journal.write_text("import sqlite3\n")
+    assert scan_retired_sources(tmp_path) == []
+    journal.write_text("import sqlite3\nimport tools.migration.c232_import\n")
+    assert any("retired-source-import" in item for item in scan_retired_sources(tmp_path))
+    journal.write_text("import sqlite3\n")
+    other = journal.with_name("other.py")
+    other.write_text("import sqlite3\n")
+    assert any("other.py" in item for item in scan_retired_sources(tmp_path))

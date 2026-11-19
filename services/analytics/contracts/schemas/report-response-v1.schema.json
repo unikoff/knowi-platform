@@ -1,0 +1,106 @@
+{
+  "$defs": {
+    "ReportRow": {
+      "additionalProperties": false,
+      "properties": {
+        "active_ms": {
+          "minimum": 0,
+          "title": "Active Ms",
+          "type": "integer"
+        },
+        "course_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Course Id",
+          "type": "string"
+        },
+        "subject_ref": {
+          "format": "uuid",
+          "title": "Subject Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "course_id",
+        "subject_ref",
+        "active_ms"
+      ],
+      "title": "ReportRow",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "as_of": {
+      "description": "Timezone-aware RFC 3339 timestamp",
+      "format": "date-time",
+      "title": "As Of",
+      "type": "string"
+    },
+    "lag_seconds": {
+      "minimum": 0,
+      "title": "Lag Seconds",
+      "type": "integer"
+    },
+    "metric_version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Metric Version",
+      "type": "string"
+    },
+    "projection_version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Projection Version",
+      "type": "string"
+    },
+    "quality": {
+      "enum": [
+        "complete",
+        "partial",
+        "unknown"
+      ],
+      "title": "Quality",
+      "type": "string"
+    },
+    "rows": {
+      "items": {
+        "$ref": "#/$defs/ReportRow"
+      },
+      "maxItems": 100,
+      "title": "Rows",
+      "type": "array"
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "no_data",
+        "stale",
+        "unavailable"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "timezone": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Timezone",
+      "type": "string"
+    }
+  },
+  "required": [
+    "status",
+    "as_of",
+    "lag_seconds",
+    "quality",
+    "timezone",
+    "metric_version",
+    "projection_version",
+    "rows"
+  ],
+  "title": "ReportResponse",
+  "type": "object"
+}

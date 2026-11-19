@@ -8,7 +8,7 @@ const coursesRoot = path.join(root, "courses");
 const idPattern = /^[a-z0-9]+(?:_[a-z0-9]+)*$/;
 const slugPattern = /^[a-z0-9]+(?:[-_][a-z0-9]+)*$/;
 // These segments belong to the app/Vite, API or public assets, never a course.
-const reservedSlugs = new Set(["shared", "courses", "api", "assets", "devtools", "src", "node_modules", "public", "config", "tools", "authoring", "preview-loading", "platform"]);
+const reservedSlugs = new Set(["shared", "courses", "catalog", "api", "assets", "devtools", "src", "node_modules", "public", "config", "tools", "authoring", "preview-loading", "platform"]);
 const windowsReserved = /^(?:CON|PRN|AUX|NUL|CONIN\$|CONOUT\$|COM[1-9¹²³]|LPT[1-9¹²³])(?:\..*)?$/i;
 function inside(parent, child) {
   const rel = path.relative(parent, child);
@@ -32,7 +32,7 @@ function rejectSymlinks(directory) {
     if (entry.isDirectory()) rejectSymlinks(name);
   }
 }
-export function discoverCourses(base = coursesRoot) {
+export function discoverCourseRegistry(base = coursesRoot) {
   base = fs.realpathSync(base);
   const registry = readCourseDocument(checkedPath(base, "registry.json", "registry"));
   if (registry.schema_version !== 1 || !Array.isArray(registry.courses)) throw new Error("Invalid course registry");
@@ -57,15 +57,19 @@ export function discoverCourses(base = coursesRoot) {
       if (!inside(frontendDir, resolved) || !fs.statSync(resolved).isFile()) throw new Error(`Invalid frontend entry ${key}`);
       entries[key] = resolved;
     }
-    if (entry.enabled) result.push({ id, slug: manifest.slug, frontendDir, entries });
+    const title = typeof manifest.title === "string" && manifest.title.trim() ? manifest.title.trim() : id;
+    if (entry.enabled) result.push({ id, slug: manifest.slug, title, frontendDir, entries });
   }
-  return result;
+  return { courses: result, allCourseIds: [...ids] };
+}
+export function discoverCourses(base = coursesRoot) {
+  return discoverCourseRegistry(base).courses;
 }
 export function generateCourses() {
-  const courses = discoverCourses();
+  const { courses, allCourseIds } = discoverCourseRegistry();
   const output = path.join(root, "apps/web/.cache/course-registry");
   fs.mkdirSync(output, { recursive: true });
-  const ids = `// Generated from courses/registry.json by tools/course-registry.mjs.\nexport const registeredCourses: ReadonlyArray<{ id: string; slug: string }> = ${JSON.stringify(courses.map(({ id, slug }) => ({ id, slug })))};\nexport const courseIds = registeredCourses.map(course => course.id);\n`;
+  const ids = `// Generated from courses/registry.json by tools/course-registry.mjs.\nexport const registeredCourses: ReadonlyArray<{ id: string; slug: string; title: string }> = ${JSON.stringify(courses.map(({ id, slug, title }) => ({ id, slug, title })))};\nexport const courseIds = registeredCourses.map(course => course.id);\nexport const allRegisteredCourseIds: readonly string[] = ${JSON.stringify(allCourseIds)};\n`;
   const imports = courses.map(course => {
     const imports = Object.entries(course.entries).map(([key, file]) => {
       let rel = path.relative(output, file).split(path.sep).join("/");

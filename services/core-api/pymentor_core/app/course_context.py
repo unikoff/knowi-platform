@@ -5,6 +5,17 @@ from pymentor_core.modules.learning.course_context import course_scope
 from pymentor_core.adapters.course_local.packages import CourseNotFoundError, CoursePackageError
 
 
+def enabled_course_ids(course_id: str | None = None) -> list[str]:
+    try:
+        registry = default_runtime().registry
+        if course_id is None:
+            return [entry.course_id for entry in registry.entries.values() if entry.enabled]
+        registry.require_enabled(course_id)
+    except CourseNotFoundError:
+        raise HTTPException(status_code=404, detail="Course not found") from None
+    return [course_id]
+
+
 async def course_request_scope(request: Request, course_id: str | None = Query(default=None, max_length=80)):
     if len(request.query_params.getlist('course_id')) > 1:
         raise HTTPException(status_code=400, detail='Ambiguous course_id')

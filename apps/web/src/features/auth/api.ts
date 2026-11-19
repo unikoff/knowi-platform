@@ -2,6 +2,7 @@ import { apiRequest } from "../../shared/api/client";
 import type { UserProfile } from "../../shared/api/contracts/user";
 import { loginWithRetry } from "./login-retry";
 import { announceAuthChange } from "./session-coordination";
+import { runCalendarAuthTransition } from "./calendar-auth-boundary";
 
 export function getCurrentUser() {
   return apiRequest<{ user: UserProfile }>("/user/me");
@@ -12,13 +13,13 @@ export function registerUser(payload: { username: string; email: string; passwor
 }
 
 export async function loginUser(payload: { email: string; password: string }) {
-  const result = await loginWithRetry(payload);
+  const result = await runCalendarAuthTransition(() => loginWithRetry(payload));
   announceAuthChange();
   return result;
 }
 
 export async function logoutUser() {
-  const result = await apiRequest("/user/logout", {});
+  const result = await runCalendarAuthTransition(() => apiRequest("/user/logout", {}));
   announceAuthChange();
   return result;
 }

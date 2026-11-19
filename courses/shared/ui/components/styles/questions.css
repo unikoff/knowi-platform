@@ -55,6 +55,7 @@
 
 .quiz-option-body { display: grid; align-content: start; gap: 8px; width: 100%; min-width: 0; }
 .quiz-option-title { white-space: pre-wrap; }
+.quiz-option-result { color: var(--muted); font-size: 0.8rem; font-weight: 650; }
 .quiz-option-description {
   color: var(--reading);
   font-size: 0.94em;
@@ -65,6 +66,7 @@
 }
 
 .quiz-answer { min-width: 0; margin-top: 14px; }
+.quiz-retry { margin-top: 12px; }
 
 .quiz-explanation {
   margin: 0;
@@ -74,7 +76,7 @@
 }
 
 .quiz-explanation.is-correct { color: var(--accent); }
-.quiz-explanation.is-wrong { color: var(--negative); }
+.quiz-explanation.is-wrong { color: var(--callout-red); }
 
 .lesson-done-icon {
   color: var(--accent);

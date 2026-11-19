@@ -1,0 +1,20 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ .Release.Name }}-analytics
+spec:
+  entryPoints: [{{ .Values.ingress.entryPoint | quote }}]
+  routes:
+    - kind: Rule
+      match: {{ printf "Host(`%s`) && Path(`/api/analytics/events/batch`)" .Values.ingress.host | quote }}
+      priority: 110
+      services: [{name: {{ .Release.Name }}-analytics-collector, port: 8000}]
+    - kind: Rule
+      match: {{ printf "Host(`%s`) && (Path(`/api/analytics/reports`) || PathPrefix(`/api/analytics/reports/`))" .Values.ingress.host | quote }}
+      priority: 110
+      services: [{name: {{ .Release.Name }}-analytics-query, port: 8000}]
+{{- if .Values.ingress.tlsSecretName }}
+  tls: {secretName: {{ .Values.ingress.tlsSecretName | quote }}}
+{{- end }}
+{{- end }}

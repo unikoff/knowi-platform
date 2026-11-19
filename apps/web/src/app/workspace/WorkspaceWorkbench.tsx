@@ -3,6 +3,8 @@ import { DockviewReact, themeDark, themeLight, type DockviewApi, type DockviewRe
 import { X } from "lucide-react";
 import { useTheme } from "../../shared/theme";
 import { workspacePanels } from "./WorkspacePanels";
+import { WorkspaceMetrics } from "./WorkspaceMetrics";
+import { observeDockview } from "../../features/analytics-tracker/dockview";
 import type { CourseId } from "../../course-runtime/course-registry";
 import { isLessonTarget, layoutKey, legacyLayoutKey, lessonPanelId, normalizeLayout, readLayout, sameLesson, writeLayout, type LessonPanelKind, type LessonTarget } from "./layout";
 
@@ -41,16 +43,17 @@ function DockTab({ api }: IDockviewPanelHeaderProps) {
   </div>;
 }
 
-export function WorkspaceWorkbench({ ownerKey, courseId, isAuthenticated, isAdmin, compact, ready, initialLesson, selectedLesson, commands, onActivePanel, onLessonChange, onOpenLessons }: {
+export function WorkspaceWorkbench({ ownerKey, courseId, isAuthenticated, metricsIdentity, metricsEnabled, isAdmin, compact, ready, initialLesson, selectedLesson, commands, onActivePanel, onTrackerPanel, onLessonChange, onOpenLessons }: {
   ownerKey: string; courseId: CourseId; isAuthenticated: boolean; isAdmin: boolean; compact: boolean; ready: boolean;
+  metricsIdentity: { id: number; accountRef: string; authRevision: number } | null; metricsEnabled: boolean;
   initialLesson?: LessonTarget; selectedLesson?: LessonTarget; commands: MutableRefObject<WorkspaceCommands | null>;
   onActivePanel: (panel?: ActiveWorkspacePanel) => void;
+  onTrackerPanel?: (panel?: ActiveWorkspacePanel) => void;
   onLessonChange: (target?: LessonTarget) => void;
   onOpenLessons: () => void;
 }) {
   const { colorScheme } = useTheme();
   const [api, setApi] = useState<DockviewApi>();
-  const [workspaceCount, setWorkspaceCount] = useState(0);
   const initialized = useRef<DockviewApi>();
   const currentTarget = useRef<LessonTarget>();
   const snapshot = useRef<SerializedDockview>();
@@ -115,22 +118,6 @@ export function WorkspaceWorkbench({ ownerKey, courseId, isAuthenticated, isAdmi
 
   useEffect(() => {
     if (!api) return;
-    const updateWorkspaceCount = () => setWorkspaceCount(
-      api.groups.filter((group) => group.api.location.type === "grid").length,
-    );
-    updateWorkspaceCount();
-    const added = api.onDidAddGroup(updateWorkspaceCount);
-    const removed = api.onDidRemoveGroup(updateWorkspaceCount);
-    const layout = api.onDidLayoutChange(updateWorkspaceCount);
-    return () => {
-      added.dispose();
-      removed.dispose();
-      layout.dispose();
-    };
-  }, [api]);
-
-  useEffect(() => {
-    if (!api) return;
     const report = () => {
       const panel = api.activePanel;
       const kind = panel?.id === "theory" || panel?.id === "practice" ? panel.id : undefined;
@@ -158,6 +145,11 @@ export function WorkspaceWorkbench({ ownerKey, courseId, isAuthenticated, isAdmi
       if (snapshot.current) writeLayout(key, snapshot.current, currentTarget.current);
     };
   }, [api, key, access, onActivePanel]);
+
+  useEffect(() => {
+    if (!api || !onTrackerPanel) return;
+    return observeDockview(api, onTrackerPanel);
+  }, [api, onTrackerPanel]);
 
   useEffect(() => {
     if (!api || !ready || initialized.current === api) return;
@@ -189,15 +181,20 @@ export function WorkspaceWorkbench({ ownerKey, courseId, isAuthenticated, isAdmi
 
   useEffect(() => {
     if (!api) return;
+    if (isAdmin && ready && initialized.current === api && new URLSearchParams(window.location.search).get("admin") === "1") {
+      openSingleton("admin");
+      const url = new URL(window.location.href); url.searchParams.delete("admin"); window.history.replaceState(window.history.state, "", url);
+    }
     commands.current = { openAccount: () => openSingleton("account"), openAdmin: () => openSingleton("admin"), openInterpreter, openLesson };
     return () => { commands.current = null; };
-  }, [api, commands, openSingleton, openInterpreter, openLesson]);
+  }, [api, commands, openSingleton, openInterpreter, openLesson, isAdmin, ready]);
 
   const Watermark = useMemo(() => function EmptyWorkspace() {
     return <div className="empty-workbench"><div><h2>Рабочая область свободна</h2><p>Откройте теорию или практику выбранного занятия.</p>
       <button className="secondary-action" type="button" onClick={() => currentTarget.current ? openLesson("theory", currentTarget.current) : onOpenLessons()}>Открыть материал</button></div></div>;
   }, [openSingleton, openLesson, onOpenLessons]);
-  return <section className={`dock-workbench ${workspaceCount === 1 ? "dock-workbench--single-workspace" : ""}`} aria-label="Рабочая область">
+  return <section className="dock-workbench" aria-label="Рабочая область">
+    <WorkspaceMetrics isAuthenticated={isAuthenticated} identity={metricsIdentity} enabled={metricsEnabled} dockviewApi={api} />
     <DockviewReact className="pymentor-dock" theme={colorScheme === "dark" ? themeDark : themeLight}
       components={workspacePanels} defaultTabComponent={DockTab} watermarkComponent={Watermark} onReady={onReady}
       disableFloatingGroups dndStrategy="pointer" disableDnd={compact} dndEdges={compact ? false : undefined}
