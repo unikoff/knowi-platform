@@ -1,6 +1,7 @@
 """Prepare standalone maintenance manifests locally; never access a cluster."""
 
 import argparse
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -10,6 +11,8 @@ PUBLIC_HOSTS = ("knowi.ru", "www.knowi.ru", "13-140-29-11.sslip.io", "13.140.29.
 DEFAULT_PAGE = Path(__file__).resolve().parents[3] / "apps/web/public/maintenance.html"
 NAME = "knowi-maintenance"
 NAMESPACE = "pymentor"
+BACKEND_RESOURCES = ("configmap/knowi-maintenance", "deployment.apps/knowi-maintenance",
+                     "service/knowi-maintenance")
 
 NGINX_CONFIG = """pid /tmp/nginx.pid;
 events { worker_connections 256; }
@@ -22,6 +25,7 @@ http {
   server {
     listen 8080;
     add_header Cache-Control 'no-store' always;
+    add_header X-Knowi-Maintenance 'MAINTENANCE_TOKEN' always;
     error_page 404 =503 /maintenance-content.html;
     location ~ ^/api(?:/|$) {
       default_type application/json;
@@ -37,6 +41,13 @@ http {
       error_page 503 /maintenance-content.html;
       return 503;
     }
+  }
+  server {
+    listen 8081;
+    location = /ready {
+      alias /etc/maintenance/maintenance.html;
+    }
+    location / { return 404; }
   }
 }
 """
@@ -59,22 +70,35 @@ def route(name, hosts, entrypoint, secret=None):
             "metadata": metadata(name), "spec": spec}
 
 
-def artifacts(page, digest):
+def routes():
+    items = [route(NAME + "-http", PUBLIC_HOSTS, "web"),
+             route(NAME + "-domain-https", PUBLIC_HOSTS[:2], "websecure", "knowi-tls"),
+             route(NAME + "-preview-https", PUBLIC_HOSTS[2:], "websecure", "preview-tls")]
+    return {"apiVersion": "v1", "kind": "List", "items": items}
+
+
+def artifacts(page, digest, token="1"):
     if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
         raise ValueError("Frontend digest must be sha256: followed by 64 lowercase hex characters")
     if not page.strip():
         raise ValueError("Maintenance page must not be empty")
-    config = {"apiVersion": "v1", "kind": "ConfigMap", "metadata": metadata(NAME),
-              "data": {"nginx.conf": NGINX_CONFIG, "maintenance.html": page}}
+    if not isinstance(token, str) or not re.fullmatch(r"(?:1|[a-f0-9]{32})", token):
+        raise ValueError("Maintenance token must be 1 or 32 lowercase hexadecimal characters")
+    nginx_config = NGINX_CONFIG.replace("MAINTENANCE_TOKEN", token)
+    config_hash = hashlib.sha256((nginx_config + page).encode("utf-8")).hexdigest()
+    config_metadata = metadata(NAME)
+    config_metadata["annotations"] = {"knowi.io/maintenance-token": token}
+    config = {"apiVersion": "v1", "kind": "ConfigMap", "metadata": config_metadata,
+              "data": {"nginx.conf": nginx_config, "maintenance.html": page}}
     deployment = {"apiVersion": "apps/v1", "kind": "Deployment", "metadata": metadata(NAME), "spec": {
         "replicas": 1, "selector": {"matchLabels": {"app": NAME}}, "template": {
-            "metadata": {"labels": {"app": NAME}}, "spec": {
+            "metadata": {"labels": {"app": NAME}, "annotations": {"knowi.io/maintenance-config-sha256": config_hash}}, "spec": {
                 "automountServiceAccountToken": False,
                 "securityContext": {"runAsNonRoot": True, "runAsUser": 101, "runAsGroup": 101, "fsGroup": 101},
                 "containers": [{"name": "nginx", "image": "ghcr.io/unikoff/knowi-platform-frontend@" + digest,
                     "command": ["nginx", "-c", "/etc/maintenance/nginx.conf", "-g", "daemon off;"],
-                    "ports": [{"containerPort": 8080}],
-                    "readinessProbe": {"tcpSocket": {"port": 8080}, "periodSeconds": 2},
+                    "ports": [{"containerPort": 8080}, {"containerPort": 8081}],
+                    "readinessProbe": {"httpGet": {"port": 8081, "path": "/ready"}, "periodSeconds": 2},
                     "securityContext": {"readOnlyRootFilesystem": True, "allowPrivilegeEscalation": False,
                                         "capabilities": {"drop": ["ALL"]}},
                     "volumeMounts": [{"name": "config", "mountPath": "/etc/maintenance", "readOnly": True},
@@ -83,11 +107,8 @@ def artifacts(page, digest):
                             {"name": "tmp", "emptyDir": {}}]}}}}
     service = {"apiVersion": "v1", "kind": "Service", "metadata": metadata(NAME), "spec": {
         "selector": {"app": NAME}, "ports": [{"port": 8080, "targetPort": 8080}]}}
-    routes = [route(NAME + "-http", PUBLIC_HOSTS, "web"),
-              route(NAME + "-domain-https", PUBLIC_HOSTS[:2], "websecure", "knowi-tls"),
-              route(NAME + "-preview-https", PUBLIC_HOSTS[2:], "websecure", "preview-tls")]
     return {"backend.json": {"apiVersion": "v1", "kind": "List", "items": [config, deployment, service]},
-            "routes.json": {"apiVersion": "v1", "kind": "List", "items": routes}}
+            "routes.json": routes()}
 
 
 def prepare(page_path, digest, output):
