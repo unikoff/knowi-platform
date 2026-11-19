@@ -1,7 +1,8 @@
 {
-  "source_sha": "7fdeb2e13e6ddcb92071dc936d79a4ebcd241e06",
-  "core_digest": "sha256:6387b3f141f23a556cd2bce9de1421a5cdb338ba6e4c4b0f2e8db1f883be6b73",
-  "frontend_digest": "sha256:ae5dad11eb90c786363a95c0d160cfc4c1489817ed3500d86ae7000f31a70069",
-  "runner_digest": "sha256:6e6337a62f918af6394d4f6404565542832748b3e9a12d628dd7f8b15c52fbe0",
-  "migration_digest": "sha256:32ec62aee8eb7e9ad3eff1275b6812bb644f6cdb9291862d49553c45e9384770"
+  "source_sha": "37ddf5224e615b1dc6240a4552fb9e73db0dc29e",
+  "core_digest": "sha256:22ae77b99de97bd828cfa8e142ff4359a730d32c5074cf6698bdabef2a5a6fc6",
+  "frontend_digest": "sha256:f2bb818960565aed6d3ebff3b63660922a373f6f4a767ad2ee7af53ca44498b3",
+  "runner_digest": "sha256:dedc5668947b152d4215748f462b4466f78c8f10579aec50d3b704399819c282",
+  "migration_digest": "sha256:396249b73987d41b69afe590bb09943395f1b4efdc7ec102d189787142afa73b",
+  "analytics_digest": "sha256:51948edc077af604bf3b5535031ed681e512fd9a195a3b62804debfc42b47fd7"
 }
