@@ -298,6 +298,18 @@ def _without_content_revision(response_fixture: dict[str, Any]) -> dict[str, Any
     return comparable
 
 
+def _historical_catalog(response_fixture: dict[str, Any]) -> dict[str, Any]:
+    """Validate the extended fields before comparing the legacy response snapshot."""
+    comparable = _without_content_revision(response_fixture)
+    for lesson in comparable["body"]["lessons"]:
+        assert type(lesson.pop("counts_toward_statistics")) is bool
+        completed_on = lesson.pop("completed_on")
+        if completed_on is not None:
+            assert lesson["completed"] is True
+            date.fromisoformat(completed_on)
+    return comparable
+
+
 def test_frontend_route_inventory_and_openapi_compatibility():
     baseline_path = (
         Path(__file__).resolve().parents[1]
@@ -700,6 +712,7 @@ def test_all_frontend_operations_asgi_contracts_and_legacy_errors(clients):
     assert response.status_code == 200
     current_lesson = next(item for item in response.json()["courses"][track_id] if item["id"] == lesson["id"])
     assert current_lesson["completed"] is True
+    assert date.fromisoformat(current_lesson["completed_on"]) <= date.today() + timedelta(days=1)
     record("catalog_after", response, catalog=True, track_id=track_id)
 
     response = client.post("/api/user/logout", cookies=student_cookies)
@@ -741,7 +754,7 @@ def test_all_frontend_operations_asgi_contracts_and_legacy_errors(clients):
                 assert result["passed"] is True
                 result.update(name=f"Проверка {index}", expected=None, actual=None, error=None)
         if name in {"catalog_before", "catalog_after"}:
-            assert _without_content_revision(actual) == _without_content_revision(expected)
+            assert _historical_catalog(actual) == _without_content_revision(expected)
         else:
             assert actual == expected
 

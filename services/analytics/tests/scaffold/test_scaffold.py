@@ -38,6 +38,8 @@ def test_isolated_lifespan_and_probes(role):
                 "/api/analytics/reports/activity/chapters",
                 "/api/analytics/reports/activity/outline",
                 "/api/analytics/reports/activity/outline/lifetime",
+                "/api/analytics/reports/activity/outline/lifetime/student",
+                "/api/analytics/reports/activity/calendar",
                 "/api/analytics/reports/measured-calendar",
             },
         }.get(role, set())

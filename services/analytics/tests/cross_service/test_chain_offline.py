@@ -8,6 +8,10 @@ from . import resources as r
 from . import chain_checks
 
 
+def core_python():
+    return str(os.environ.get("KNOWI_ANALYTICS_CI_CORE_PYTHON") or r.CORE / ".venv/Scripts/python.exe")
+
+
 def test_proof_vector_requires_matching_cut_epoch_and_no_newer_projection():
     classify = chain_checks.proof_vector_state
     assert classify(3, (3, 0, 0, False)) == "current"
@@ -55,7 +59,7 @@ assert task['id'] == 'lesson-1-task-01' and len(task['revision']) == 64
 assert task['starter_code'].startswith('def solve(number):') and 'tests' not in task
 """
     try:
-        python = r.CORE / ".venv/Scripts/python.exe"
+        python = core_python()
         subprocess.run([str(python), "-B", str(r.ROOT / "tests/cross_service/core_fixture.py"), "courses"], cwd=r.CORE, env=env, check=True, timeout=15)
         subprocess.run([str(python), "-B", "-c", program], cwd=r.CORE, env=env, check=True, timeout=15)
     finally:
@@ -85,7 +89,7 @@ assert message['catalog_version'].startswith('sha256:') and len(digest) == 64
 assert [item['lesson_id'] for item in message['catalog']['lessons']] == ids
 """
     try:
-        python = r.CORE / ".venv/Scripts/python.exe"
+        python = core_python()
         subprocess.run([str(python), "-B", str(r.ROOT / "tests/cross_service/core_fixture.py"), "courses"], cwd=r.CORE, env=env, check=True, timeout=15)
         subprocess.run([str(python), "-B", "-c", program], cwd=r.CORE, env=env, check=True, timeout=15)
     finally:
@@ -125,7 +129,8 @@ asyncio.run(main())
 """
     env = os.environ.copy()
     env.update(PYTHONPATH=str(r.CORE), PYTHONDONTWRITEBYTECODE="1", DATABASE_URL="postgresql+psycopg://synthetic:synthetic@127.0.0.1:1/synthetic")
-    subprocess.run([str(r.CORE / ".venv/Scripts/python.exe"), "-B", "-c", program], cwd=r.CORE, env=env, check=True, timeout=15)
+    python = core_python()
+    subprocess.run([str(python), "-B", "-c", program], cwd=r.CORE, env=env, check=True, timeout=15)
 
 
 def test_profile_outage_requires_two_503s_and_unchanged_quota(monkeypatch):

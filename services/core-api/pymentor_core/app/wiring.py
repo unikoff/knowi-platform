@@ -181,6 +181,12 @@ def scoped_booking():
     return adapter
 
 
+def course_analytics_client(endpoint, *, study_time=False):
+    from pymentor_core.adapters.analytics_http.course_visitors import CourseStudyTimeClient, CourseVisitorsClient
+    client_type = CourseStudyTimeClient if study_time else CourseVisitorsClient
+    return client_type(endpoint)
+
+
 def ensure_notification_schema(engine):
     if engine.dialect.name != "postgresql":
         raise RuntimeError("Notification worker requires PostgreSQL")

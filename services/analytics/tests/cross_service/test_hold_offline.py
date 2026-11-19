@@ -153,6 +153,11 @@ def test_a011_still_requires_runtime_go(runner, monkeypatch, capsys):
 
 def test_redis_prefix_recorded_before_owned_process_setup(owned, runner, monkeypatch):
     folder, token = owned
+    core_dir = folder / "synthetic-core"
+    core_python = core_dir / ".venv/Scripts/python.exe"
+    core_python.parent.mkdir(parents=True)
+    core_python.touch()
+    monkeypatch.setattr(runner, "CORE", core_dir)
     monkeypatch.setenv("ANALYTICS_CROSS_SERVICE_GO", "1")
     monkeypatch.setattr(sys, "argv", ["test_cross_service.py", "--run"])
     monkeypatch.setattr(runner.r, "available_memory_mib", lambda: 4096)

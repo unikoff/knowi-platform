@@ -5,6 +5,7 @@ import copy
 import http.server
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -275,7 +276,7 @@ def test_day_chart_roles_and_fail_closed_dependencies():
         assert ("ANALYTICS_PROCESSOR_ACTIVITY_DAY_WORKER_ENABLED" in doc) == (role == "processor")
         assert ("ANALYTICS_QUERY_ACTIVITY_DAY_QUERY_ENABLED" in doc) == (role == "query")
         assert (str(RUN) in doc) == (role in ("processor", "query"))
-    for section, key, bad in (("migration", "revision", "a010"), ("migration", "revision", "a012"),
+    for section, key, bad in (("migration", "revision", "a010"), ("migration", "revision", "a015"),
                               ("activityProjection", "enabled", False), ("roles", "privacy", {"enabled": False}),
                               ("privacyAuthority", "secretName", ""), ("activityDay", "enabled", "true")):
         changed = copy.deepcopy(values)
@@ -318,9 +319,9 @@ def test_packaged_probe_script_compiles_with_existing_history_probe():
 def test_verified_histories_require_full_head_and_exact_target_prefix():
     import bootstrap_runtime
     full, prefix = bench.verified_histories(bootstrap_runtime, "a010")
-    assert full[0] == "a013" and prefix[0] == "a010" and full[1][3:] == prefix[1]
+    assert full[0] == "a014" and prefix[0] == "a010" and full[1][4:] == prefix[1]
     day_prefix = bench.verified_histories(bootstrap_runtime, "a011")[1]
-    assert day_prefix[0] == "a011" and full[1][2:] == day_prefix[1]
+    assert day_prefix[0] == "a011" and full[1][3:] == day_prefix[1]
     with pytest.raises(bench.LiveFailure): bench.verified_histories(bootstrap_runtime, "a012")
     for bad_full, bad_prefix in ((full[:2] + ("0" * 64,), prefix),
                                  (full, ("a010", tuple(reversed(prefix[1])), prefix[2])),
@@ -395,6 +396,7 @@ def test_a011_database_setup_requires_privacy_grants_and_fresh_day_state(monkeyp
 def test_packaged_probe_matches_local_image_tree_and_detects_migration_drift():
     import inspect
     import run_local
+    (SERVICE / ".local").mkdir(exist_ok=True)
     base = (SERVICE / ".local").resolve(strict=True)
     folder = base / ("offline-image-source-" + uuid4().hex)
     folder.mkdir()
@@ -573,6 +575,7 @@ def test_host_archive_rejects_oversized_json_and_tar_metadata():
 def test_host_save_pins_docker_id_and_reconciles_on_mismatch(monkeypatch, wrong_diff, discover):
     data, config_digest = _fake_docker_archive(entrypoint=["python", "-m", "pymentor_analytics.app.cli"])
     assert HOST_IMAGE_ID != config_digest
+    (SERVICE / ".local").mkdir(exist_ok=True)
     base = (SERVICE / ".local").resolve(strict=True)
     folder = base / ("offline-host-archive-" + uuid4().hex)
     folder.mkdir()
@@ -614,6 +617,7 @@ def test_host_save_pins_docker_id_and_reconciles_on_mismatch(monkeypatch, wrong_
 
 
 def test_host_save_preserves_partial_archive_and_does_not_retry(monkeypatch):
+    (SERVICE / ".local").mkdir(exist_ok=True)
     base = (SERVICE / ".local").resolve(strict=True)
     folder = base / ("offline-host-archive-" + uuid4().hex)
     folder.mkdir()
@@ -652,9 +656,9 @@ def test_host_save_preserves_partial_archive_and_does_not_retry(monkeypatch):
 
 def test_source_probe_is_bounded_host_id_pinned_and_preserves_unknown_outcome(monkeypatch):
     events = []
-    revisions = tuple(f"a{n:03d}" for n in range(13, 0, -1))
-    history = ("a013", revisions, bench.HISTORY_SHA256["a013"])
-    prefix = ("a010", revisions[3:], bench.HISTORY_SHA256["a010"])
+    revisions = tuple(f"a{n:03d}" for n in range(14, 0, -1))
+    history = ("a014", revisions, bench.HISTORY_SHA256["a014"])
+    prefix = ("a010", revisions[4:], bench.HISTORY_SHA256["a010"])
     source = SimpleNamespace(runtime=SimpleNamespace(schema_history=lambda revision=None: prefix if revision == "a010" else history), ROOT=Path("source"),
                              runtime_files_fingerprint=lambda root: "runtime-hash", IMAGE_HISTORY_PROBE="read-only hash script")
     runtime = SimpleNamespace(resource_snapshot=SimpleNamespace(local_context=lambda env: "local"))
@@ -675,7 +679,7 @@ def test_source_probe_is_bounded_host_id_pinned_and_preserves_unknown_outcome(mo
     evidence = bench._source_probe("folder", "token", RUN, "application", HOST_IMAGE_ID, runtime, source, owned)
     assert events == ["owner", "pending", "probe", "confirmed"]
     assert evidence["runtime_sha256"] == "runtime-hash"
-    assert evidence["packaged_history_head"] == "a013" and evidence["target_revision"] == "a010"
+    assert evidence["packaged_history_head"] == "a014" and evidence["target_revision"] == "a010"
     events.clear()
     def timeout(command, **kw):
         if "run" in command:
@@ -1164,6 +1168,10 @@ def test_case_orders_fresh_setup_load_and_reconciliation(monkeypatch, a011, fail
                            retained_authority_image_id=None, web_temporarily_paused=False, a011=a011)
     monkeypatch.setenv("ANALYTICS_BENCHMARK_GO", "1")
     monkeypatch.setenv("ANALYTICS_BENCHMARK_IMAGE_PROBE_GO", "1")
+    class WindowsOS:
+        name = "nt"
+        def __getattr__(self, key): return getattr(os, key)
+    monkeypatch.setattr(bench, "os", WindowsOS())
     monkeypatch.setattr(bench, "_binary", lambda path, digest: Path(path))
     monkeypatch.setattr(bench, "_assert_target", lambda *a: {"status": "budget_verified"})
     monkeypatch.setattr(bench, "_image_attestation", lambda *a: {

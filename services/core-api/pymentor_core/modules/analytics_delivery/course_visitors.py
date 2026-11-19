@@ -8,9 +8,8 @@ from secrets import token_hex
 from fastapi import HTTPException
 from sqlalchemy import text
 
-from pymentor_core.adapters.analytics_http.course_visitors import CourseStudyTimeClient, CourseVisitorsClient
 from pymentor_core.app.async_request import run_request_sql
-from pymentor_core.app.wiring import role_admin_reads
+from pymentor_core.app.wiring import course_analytics_client, role_admin_reads
 from pymentor_core.modules.identity.activity_policy import MOSCOW_TZ
 
 def _read_scope(db, principal, course_id, expected_revision=None):
@@ -76,8 +75,7 @@ async def _read_course_cohorts(request, principal, course_id, *, expected_revisi
         if not configured:
             return unavailable
         if client is None:
-            client_type = CourseStudyTimeClient if study_time else CourseVisitorsClient
-            client = client_type(endpoint)
+            client = course_analytics_client(endpoint, study_time=study_time)
         sign = signer.course_study_time if study_time else signer.course_visitors
         at = datetime.now(timezone.utc)
         nonce = token_hex(16)

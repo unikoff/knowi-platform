@@ -14,6 +14,14 @@ import prepare_k3s_image as prepare
 HOST_ID = "sha256:" + "c" * 64
 
 
+@pytest.fixture
+def windows_boundary(monkeypatch):
+    class WindowsOS:
+        name = "nt"
+        def __getattr__(self, key): return getattr(os, key)
+    monkeypatch.setattr(prepare, "os", WindowsOS())
+
+
 def test_default_plan_and_incomplete_cli_never_open_external_resources(monkeypatch, capsys):
     monkeypatch.setattr(subprocess, "Popen", lambda *a, **kw: pytest.fail("unexpected process"))
     monkeypatch.setattr(socket, "socket", lambda *a, **kw: pytest.fail("unexpected socket"))
@@ -22,7 +30,7 @@ def test_default_plan_and_incomplete_cli_never_open_external_resources(monkeypat
     assert prepare.main(["--prepare-image"]) == 2
 
 
-def test_preparation_requires_go_and_rejects_invalid_cap_before_external_work(monkeypatch):
+def test_preparation_requires_go_and_rejects_invalid_cap_before_external_work(monkeypatch, windows_boundary):
     monkeypatch.delenv("ANALYTICS_BENCHMARK_IMAGE_PREPARE_GO", raising=False)
     monkeypatch.setattr(subprocess, "Popen", lambda *a, **kw: pytest.fail("unexpected process"))
     args = SimpleNamespace(operation_id=str(uuid4()), host_image_id=HOST_ID, archive_max_mib=1025, target_revision="a011")
@@ -36,7 +44,7 @@ def test_preparation_requires_go_and_rejects_invalid_cap_before_external_work(mo
 
 
 @pytest.mark.parametrize("failed", [False, True])
-def test_one_shot_preparation_records_intent_before_save_and_retains_unknown(monkeypatch, tmp_path, failed):
+def test_one_shot_preparation_records_intent_before_save_and_retains_unknown(monkeypatch, tmp_path, failed, windows_boundary):
     service = tmp_path / "analytics"
     local = service / ".local"
     (service / "tools").mkdir(parents=True)
