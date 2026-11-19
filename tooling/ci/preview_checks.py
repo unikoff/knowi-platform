@@ -113,7 +113,9 @@ def main():
     import json
     updater_tests()
     run([sys.executable, '-B', '-m', 'unittest', 'tooling.ci.test_preview_checks_contract', '-v'], os.environ.copy())
-    run([sys.executable, '-B', '-m', 'unittest', 'tooling.ci.test_cutover_package', '-v'], os.environ.copy())
+    run([sys.executable, '-B', '-m', 'unittest', '-v',
+         'tooling.ci.test_cutover_package', 'tooling.ci.test_c528_cutover_package',
+         'tooling.ci.test_c528_rollout', 'tooling.ci.test_maintenance_control'], os.environ.copy())
     run([sys.executable, 'tooling/ci/check_single_runtime.py'], os.environ.copy())
     run([sys.executable, 'services/core-api/tools/check_architecture.py'], os.environ.copy())
     env = os.environ.copy()

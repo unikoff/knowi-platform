@@ -332,10 +332,11 @@ class Rehearsal:
         self.command("delete", "namespace", self.namespace, "--wait=true", "--timeout=120s")
 
 
-def run_fresh_cluster(args):
+def run_fresh_cluster(args, rehearsal_class=Rehearsal, run_id="c504"):
     token = uuid.uuid4().hex
-    name = "knowi-c504-" + token[:12]
-    label = "pymentor.c504.rehearsal=" + token
+    name = "knowi-" + run_id + "-" + token[:12]
+    label_key = "pymentor." + run_id + ".rehearsal"
+    label = label_key + "=" + token
     container_id = None
 
     def docker(*parts, check=True, timeout=300):
@@ -400,7 +401,7 @@ def run_fresh_cluster(args):
             result = subprocess.run(base + ["apply", "--server-side", "-f", traefik_crds], text=True, capture_output=True, timeout=300)
             if result.returncode:
                 raise RuntimeError("pinned Traefik CRD install failed: " + result.stderr)
-            rehearsal = Rehearsal(args.kubectl, str(config_path), "default", args.timeout)
+            rehearsal = rehearsal_class(args.kubectl, str(config_path), "default", args.timeout)
             try:
                 rehearsal.run()
             except Exception:
@@ -418,7 +419,7 @@ def run_fresh_cluster(args):
         # Reconcile by unique name as well if docker run timed out after creation.
         candidate = container_id or name
         if candidate:
-            result = docker("inspect", "--format", '{{ index .Config.Labels "pymentor.c504.rehearsal" }}', candidate, check=False)
+            result = docker("inspect", "--format", '{{ index .Config.Labels "' + label_key + '" }}', candidate, check=False)
             if result.returncode or result.stdout.strip() != token:
                 if container_id:
                     print("WARNING: container ownership could not be verified; cleanup skipped", file=sys.stderr)

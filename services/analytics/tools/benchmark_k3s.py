@@ -31,12 +31,13 @@ MEASUREMENT_SECONDS = 900
 REPEATS = 3
 NAMESPACE_PREFIX = "knowi-analytics-bench-"
 IMAGE_REPOSITORY = "docker.io/library/knowi-analytics"
-PACKAGED_HISTORY_HEAD = "a013"
+PACKAGED_HISTORY_HEAD = "a014"
 HISTORY_SHA256 = {
     "a010": "834da297a72e0c6d7e1738aa76f6b07dcf27868e54fe132c882228f970b6700a",
     "a011": "8a9e80bd33828e53d737fe1f5803af9bb41dd72f95b073fbffb402b90720aa50",
     "a012": "a92fd75f37789bead5c0b6e87b9b1418f5922844bd786249ca3d9f3eb90f21ab",
     "a013": "d77cc10160169d3e3ee656af1c9d4327b30b6e8ddbbc51cbb2a72b2950c797e1",
+    "a014": "7fd0bc65c7ce44cd7166f0ddd409c0966e32e604b6791b855ffc0e6de1a3aa04",
 }
 
 
@@ -1168,7 +1169,7 @@ def verified_histories(runtime, target_revision):
         raise LiveFailure("unsupported database target")
     full = runtime.schema_history()
     target = runtime.schema_history(target_revision)
-    if (full[0] != PACKAGED_HISTORY_HEAD or len(full[1]) != 13 or full[2] != HISTORY_SHA256[PACKAGED_HISTORY_HEAD]
+    if (full[0] != PACKAGED_HISTORY_HEAD or len(full[1]) != 14 or full[2] != HISTORY_SHA256[PACKAGED_HISTORY_HEAD]
             or target[0] != target_revision or target[2] != HISTORY_SHA256[target_revision]
             or tuple(full[1][-len(target[1]):]) != tuple(target[1])):
         raise LiveFailure("packaged full history or target prefix mismatch")

@@ -55,3 +55,48 @@ services/core-api/.venv/Scripts/python.exe tooling/ci/rehearse_c528_cutover.py -
 строк, событий удаления, owners и ACL. Запись после snapshot демонстрирует
 потребность в reconciliation. Реальный legacy binary, HTTP, полный набор таблиц,
 конкурентных writers и K3s rollout эта репетиция не проверяет.
+
+## Офлайн-пакет c528
+
+`prepare_c528_cutover.py` создаёт только локальные JSON-файлы и не исполняет
+операцию. Он требует пять digest (`core`, `frontend`, `runner`, `migration`,
+`analytics`) и совпадение `source_sha`, затем сравнивает весь `release.json`
+с содержимым `infra/gitops/preview/release.json` в локально доступном
+`GITOPS_SHA`. Эта сверка сама по себе не доказывает публикацию commit, успешный
+CI, доступность образов или соответствие реальных deployment manifests: их
+нужно независимо подтвердить по источнику публикации и registry.
+
+```powershell
+python infra/gitops/operations/prepare_c528_cutover.py `
+  --release-file $releaseFile --code-revision $codeSha --gitops-revision $gitopsSha `
+  --app-uid $liveApplicationUid --old-path $liveApplicationPath `
+  --old-revision $liveApplicationRevision --owner $actualOwner --app-role $actualAppRole `
+  --output $newOutputDirectory
+```
+
+UID, path и revision считываются из фактического Application в проверенном
+context/namespace; оба JSON Patch атомарно проверяют UID и исходный source,
+а switch также требует отключённый auto-sync и закрепляет GitOps SHA. Если
+публикация изменит отслеживаемую ветку, auto-sync надо остановить **до неё**
+отдельно подготовленным и проверенным UID-guarded patch: пакет с опубликованным
+release не может служить предварительным барьером до самой публикации. Если
+sync уже выключен, сгенерированный pause patch с проверкой `enabled=true` не
+применять; убедиться, что нет выполняющейся sync operation. Проверить также
+целевой Application и SHA непосредственно перед каждым применением.
+
+Job использует временный LOGIN `knowi_c528_<первые 12 символов CODE_SHA>`,
+Secret `knowi-core-migrations` с ключом `KNOWI_MIGRATION_URL`, точный target
+`c528_course_leaders`, `backoffLimit=0` и deadline 300 секунд. Owner и app role
+задаются явно и должны совпадать с реальными ролями БД; login должен иметь
+право SET ROLE владельца. Подтвердить DNS-имя, базу `knowi_core`, endpoint
+57152 и назначение namespace/selector NetworkPolicy до запуска: они переняты
+из исторического c504 и не являются свидетельством актуального состояния.
+Policy добавочная, ограничивает ingress PostgreSQL по namespace и полному SHA;
+проверить также эффективные существующие разрешения, DNS и egress Job. После
+установления результата отозвать временные доступы и удалить именно созданные
+временные ресурсы. Не выводить секреты в лог.
+
+Пакет не управляет maintenance, backup, writers или Argo sync. `maintenance.py
+run` требует отдельно созданных и проверенных оператором operation/check scripts,
+которые удерживают окно до завершения всей операции и внутренних проверок. До
+их готовности автоматизированный production cutover не подготовлен.

@@ -69,7 +69,7 @@ def test_cli_disables_access_log(monkeypatch):
     from types import SimpleNamespace
     captured = {}
     monkeypatch.setattr(cli.sys, "argv", ["analytics", "collector"])
-    monkeypatch.setattr(cli, "load_settings", lambda role: SimpleNamespace(shutdown_timeout_seconds=5))
+    monkeypatch.setattr(cli, "load_settings", lambda role: SimpleNamespace(shutdown_timeout_seconds=5, real_collection=False))
     monkeypatch.setattr(cli, "create_app", lambda *args: object())
     monkeypatch.setattr(cli.uvicorn, "run", lambda *args, **kwargs: captured.update(kwargs))
     assert cli.main() == 0
