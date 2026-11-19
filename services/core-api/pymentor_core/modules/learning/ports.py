@@ -4,6 +4,14 @@ from typing import Any
 from typing import Protocol
 
 
+class CoursePackageError(ValueError):
+    """A registry or course package is invalid or unsafe."""
+
+
+class CourseNotFoundError(LookupError):
+    """A course is unknown or disabled in the explicit registry."""
+
+
 class CourseCatalog(Protocol):
     def get_products(self) -> list[dict[str, str]]: ...
     def get_tracks_summary(self) -> list[dict[str, Any]]: ...

@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from starlette.concurrency import run_in_threadpool
 
-from pymentor_core.adapters.course_local.packages import CourseNotFoundError, CoursePackageError
+from pymentor_core.modules.learning.ports import CourseNotFoundError, CoursePackageError
 from pymentor_core.app.wiring import role_admin_reads, role_admin_commands, scoped_booking
 from pymentor_core.app.async_request import request_principal, run_request_sql, statistics_selection_revision
 from pymentor_core.modules.administration.api import role_admin_schemas as dto

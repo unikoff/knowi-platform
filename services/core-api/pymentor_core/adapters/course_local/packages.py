@@ -12,6 +12,8 @@ from typing import Any, Mapping
 import yaml
 from yaml.tokens import AliasToken
 
+from pymentor_core.modules.learning.ports import CourseNotFoundError, CoursePackageError
+
 
 MAX_DOCUMENT_BYTES = 256 * 1024
 MAX_DOCUMENT_DEPTH = 32
@@ -26,14 +28,6 @@ _WINDOWS_RESERVED = re.compile(
     r"^(?:CON|PRN|AUX|NUL|CONIN\$|CONOUT\$|COM[1-9¹²³]|LPT[1-9¹²³])(?:\..*)?$",
     re.IGNORECASE,
 )
-
-
-class CoursePackageError(ValueError):
-    """A registry or course package is invalid or unsafe."""
-
-
-class CourseNotFoundError(LookupError):
-    """A course is unknown or disabled in the explicit registry."""
 
 
 class _UniqueKeySafeLoader(yaml.SafeLoader):
