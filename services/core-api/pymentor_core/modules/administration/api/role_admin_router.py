@@ -29,12 +29,15 @@ class ContractRoute(APIRoute):
         handler = super().get_route_handler()
         async def wrapped(request):
             try:
-                return await handler(request)
+                response = await handler(request)
             except RequestValidationError:
-                return JSONResponse(status_code=422, content={'detail': 'Invalid request', 'code': 'invalid_request'})
+                response = JSONResponse(status_code=422, content={'detail': 'Invalid request', 'code': 'invalid_request'})
             except HTTPException as exc:
-                return JSONResponse(status_code=exc.status_code, content={'detail': str(exc.detail),
+                response = JSONResponse(status_code=exc.status_code, content={'detail': str(exc.detail),
                     'code': _CODES.get(exc.status_code, 'unavailable')}, headers=exc.headers)
+            if self.path.endswith('/user/booking-mode'):
+                response.headers['Cache-Control'] = 'no-store'
+            return response
         return wrapped
 
 
@@ -91,6 +94,11 @@ async def _booking_write(request, operation, payload, key, course, resource_id=N
     principal = await request_principal(request)
     command = commands.Command(operation=operation, path=request.url.path, key=str(key), payload=payload, course=course)
     return await run_request_sql(request, lambda db: booking.execute(db, principal, command, resource_id=resource_id), identity=identity)
+
+
+@router.get('/user/booking-mode', response_model=dto.BookingMode, responses=_ERRORS)
+async def booking_mode(request: Request):
+    return await _read(request, lambda db, actor: reads.booking_mode(db))
 
 
 @router.get('/admin/courses/{course_id}/overview', response_model=dto.CourseOverview, responses=_ERRORS)

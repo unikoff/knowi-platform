@@ -6,6 +6,7 @@ import type { AccountStatisticsData } from "./AccountStatistics";
 import type { Track } from "../learning/types";
 import type { CourseEntry } from "../learning/useLearningCourse";
 import type { CalendarMonth, UserProfile } from "../../shared/api/contracts";
+import { useBookingMode } from "../../shared/api/useBookingMode";
 import type { ToolId } from "../analytics-tracker/tracker";
 
 export function AccountWorkspace({ courseId, user, tracks, courseEntries, tracksLoaded, calendarMonth, onMonthChange, onLogout, onUserChange, onToolChange }: {
@@ -14,7 +15,8 @@ export function AccountWorkspace({ courseId, user, tracks, courseEntries, tracks
   onToolChange?: (tool: ToolId) => void;
 }) {
   const measured = canShowPersonalMeasurements(import.meta.env.VITE_ANALYTICS_REPORTS_ENABLED, import.meta.env.VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED, user.role);
-  const schedule = useAccountSchedule(user.id, courseId, calendarMonth, typeof user.auth_revision === "number" && user.role ? user.account_ref : undefined, `${user.role}:${user.auth_revision}:${courseId}`, measured);
+  const booking = useBookingMode(user);
+  const schedule = useAccountSchedule(user.id, courseId, calendarMonth, typeof user.auth_revision === "number" && user.role ? user.account_ref : undefined, `${user.role}:${user.auth_revision}:${courseId}`, measured, booking.mode);
   const analyticsCatalog = useMemo(() => tracks.map(track => ({
     id: track.id,
     title: track.title,
@@ -67,7 +69,9 @@ export function AccountWorkspace({ courseId, user, tracks, courseEntries, tracks
 
   return <AccountPanel user={user} calendarMonth={calendarMonth} onMonthChange={onMonthChange}
     activityDays={schedule.activityDays} measurementStatus={schedule.measurementStatus}
-    bookingSlots={schedule.bookingSlots} bookingQuota={schedule.bookingQuota} bookingLoading={schedule.bookingLoading} bookingError={schedule.bookingError} courseId={courseId} ownerName={schedule.ownerName}
+    bookingSlots={schedule.bookingSlots} bookingQuota={schedule.bookingQuota} bookingLoading={booking.loading || schedule.bookingLoading}
+    bookingError={booking.loading ? "" : booking.mode === null ? "Не удалось загрузить расписание. Откройте вкладку снова." : schedule.bookingError}
+    courseId={courseId} ownerName={schedule.ownerName}
     onBookSlot={schedule.bookSlot} onCancelSlot={schedule.cancelSlotBooking} onLogout={onLogout} onUserChange={onUserChange}
     statisticsData={statisticsData} analyticsCatalog={analyticsCatalog} onToolChange={onToolChange} />;
 }
