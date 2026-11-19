@@ -120,9 +120,14 @@ async def exercise():
             await request(1, 'POST', '/api/admin/users/7/quota', 503, json={'year':2099,'month':11,'add':1})
             cli_env = os.environ.copy()
             cli_env.pop('DATABASE_URL', None)
-            retired = subprocess.run([sys.executable, '-m', 'tools.maintenance.make_admin', 'admin@example.test',
-                '--database-url', os.environ['DATABASE_URL'], '--revoke', '--apply'], capture_output=True, text=True, timeout=20, env=cli_env)
-            assert retired.returncode != 0 and 'retired after cutover' in retired.stderr
+            admin_cli = [sys.executable, '-m', 'tools.maintenance.make_admin', 'admin@example.test',
+                         '--database-url', os.environ['DATABASE_URL'], '--revoke']
+            preview = subprocess.run([*admin_cli, '--dry-run'], capture_output=True, text=True, timeout=20, env=cli_env)
+            assert preview.returncode == 0 and 'Preview:' in preview.stdout, (preview.stdout, preview.stderr)
+            refused = subprocess.run([*admin_cli, '--apply'], capture_output=True, text=True, timeout=20, env=cli_env)
+            assert refused.returncode != 0 and 'Cannot remove the last platform administrator' in refused.stderr, (refused.stdout, refused.stderr)
+            with engine.connect() as conn:
+                assert conn.execute(text('SELECT is_admin FROM users WHERE id=1')).scalar_one() is True
             roster = (await request(2, 'GET', base+'/roster', 200)).json()
             assert next(u for u in roster['users'] if u['id'] == 6)['last_booking_status'] == 'completed'
             overview = (await request(1, 'GET', '/api/admin/overview', 200)).json()
