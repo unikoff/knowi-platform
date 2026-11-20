@@ -98,3 +98,5 @@ def validate(event: dict) -> None:
             raise ValueError
     except (ValueError, TypeError, KeyError, AttributeError):
         raise ValueError("invalid transfer event") from None
+
+# CI scope verification fixture.
