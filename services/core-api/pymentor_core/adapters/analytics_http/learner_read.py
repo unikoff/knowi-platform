@@ -10,6 +10,7 @@ class LearnerAnalyticsClient:
     _paths = {
         "history": "/internal/analytics/v1/legacy/history",
         "measured": "/api/analytics/reports/measured-calendar",
+        "statistics": "/api/analytics/reports/activity",
     }
 
     def __init__(self, endpoint, *, transport=None, verify=True):

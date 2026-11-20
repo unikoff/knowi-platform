@@ -1,0 +1,84 @@
+# PREPARED ONLY. Fill the empty target-specific values before rendering.
+# No browser collection, public ingress, projections, or migration Job.
+knowi01Staged:
+  enabled: true
+image:
+  repository: ""
+  digest: ""
+runtime:
+  mode: production
+  hostBootRecoveryGate: true
+migration:
+  enabled: false
+  revision: a014
+ingress:
+  enabled: false
+browserCollection:
+  enabled: false
+coreTransfer:
+  enabled: false
+catalog:
+  enabled: false
+activityProjection:
+  enabled: false
+activityDay:
+  enabled: false
+activityCourse:
+  enabled: false
+activityBoundaryCredit:
+  enabled: false
+roles:
+  privacy:
+    enabled: true
+trustManifest:
+  configMapName: analytics-trust
+privacyAuthority:
+  secretName: analytics-authority-reader
+authorityClientTLS:
+  secretName: analytics-authority-client-tls
+coreDeletion:
+  sourceSecretName: analytics-core-deletion-source
+  statusSecretName: analytics-core-deletion-status
+  relaySecretName: analytics-core-deletion-relay
+  tlsSecretName: analytics-core-deletion-client-tls
+  namespace: knowi-analytics
+  podLabels:
+    app.kubernetes.io/name: analytics-core-source
+    app.kubernetes.io/instance: analytics
+  port: 8443
+internalTLS:
+  enabled: true
+  proxyImageRepository: ""
+  proxyImageDigest: ""
+  collectorSecretName: analytics-collector-server-tls
+  querySecretName: analytics-query-server-tls
+network:
+  databaseCIDR: ""
+  coreIngress:
+    enabled: true
+    namespace: pymentor
+    # Deliberately unmatched until the owner explicitly selects a client.
+    podLabels: {analytics.knowi.io/staged-client: enabled}
+authorityServer:
+  enabled: true
+  configSecretName: analytics-authority-server
+  journalClaimName: analytics-authority-journal
+  anchorCIDR: ""
+  coreNamespace: pymentor
+  corePodLabels: {analytics.knowi.io/staged-client: enabled}
+privateCoreSource:
+  enabled: true
+  imageRepository: ""
+  imageDigest: ""
+  databaseSecretName: analytics-core-source-db
+  hmacSecretName: analytics-core-source-hmac
+  databaseCASecretName: analytics-core-source-db-ca
+  serverTLSSecretName: analytics-core-source-server-tls
+  expectedHost: migrated-data.pymentor-rehearsal-data-20261109.svc.cluster.local
+  expectedDatabase: ""
+  expectedUser: ""
+  instanceId: ""
+  databaseCIDR: ""
+  databaseNamespace: pymentor-rehearsal-data-20261109
+  databasePodLabels: {app: rehearsal-postgres}
+  databasePort: 57152

@@ -85,7 +85,14 @@ spec:
       ports: [{protocol: TCP, port: {{ .Values.internalTLS.port }}}]
   egress:
     - to:
+{{- if $s.databaseCIDR }}
         - ipBlock: {cidr: {{ $s.databaseCIDR | quote }}}
+{{- else }}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: {{ $s.databaseNamespace | quote }}}}
+          podSelector:
+            matchLabels:
+{{ toYaml $s.databasePodLabels | indent 14 }}
+{{- end }}
       ports: [{protocol: TCP, port: {{ $s.databasePort }}}]
     - to:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: {{ .Values.network.dnsNamespace | quote }}}}

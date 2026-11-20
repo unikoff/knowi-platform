@@ -56,6 +56,15 @@ function formatMinuteCount(value: number): string {
   return `${value} ${unit}`;
 }
 
+function formatMeasuredTime(seconds: number | null, complete: boolean): string {
+  if (seconds === null || (seconds === 0 && !complete)) return "Нет данных";
+  if (seconds === 0) return "0 мин";
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainder = seconds % 60;
+  return [hours ? `${hours} ч` : "", minutes ? `${minutes} мин` : "", remainder ? `${remainder} с` : ""].filter(Boolean).join(" ");
+}
+
 function buildSmoothLinePath(points: Array<{ x: number; y: number }>): string {
   if (points.length === 0) return "";
   if (points.length === 1) return `M${points[0].x},${points[0].y}`;
@@ -201,7 +210,7 @@ export function WeeklyTrendChart({ points, title, unit, demo = false, valueDescr
   );
 }
 
-export function AccountStatistics({ data, courseId, userId, analyticsEnabled = false }: {
+export function AccountStatistics({ data, courseId, userId }: {
   data: AccountStatisticsData;
   courseId: string;
   userId: number;
@@ -228,13 +237,20 @@ export function AccountStatistics({ data, courseId, userId, analyticsEnabled = f
           <section className="account-surface account-metric account-metric--blue"><span className="account-metric__label"><BookCheck size={17} aria-hidden="true" />Уроков завершено</span><strong>{summary?.completed_lessons_period}</strong><small>в текущем курсе за {report.period.days} дней</small></section>
         </div>
         <section className="account-surface account-detail-card account-weekly-activity">
-          <header><div><h3>Посещения платформы</h3><p>За последние {report.period.days} дней, время Москвы</p></div><span>{summary?.active_days_period} из {report.period.days} дней</span></header>
+          <header><div><h3>Посещения платформы</h3><p>За последние {report.period.days} дней, время Москвы</p></div><span>{summary?.active_days_period == null ? "Итог за период недоступен" : `${summary.active_days_period} из ${report.period.days} дней`}</span></header>
           {summary?.active_days_period === 0 && <p className="account-statistics__note">За этот период посещений пока нет.</p>}
           <div className="account-statistics__days" role="list" aria-label="Посещения платформы по дням">
-            {report.days.map((day) => { const label = formatWeekday(day.date); return <div className={`account-week-chart__day ${day.visited ? "is-active" : ""}`} role="listitem" aria-label={`${label.full}: ${day.visited ? "было посещение" : "без посещения"}`} key={day.date}><span>{label.short}</span><strong>{label.day}</strong><i aria-hidden="true">{day.visited ? <Check size={12} /> : null}</i></div>; })}
+            {report.days.map((day) => { const label = formatWeekday(day.date); return <div className={`account-week-chart__day ${day.visited ? "is-active" : ""}`} role="listitem" aria-label={`${label.full}: ${day.visited === null ? "нет данных о посещении" : day.visited ? "было посещение" : "без посещения"}`} key={day.date}><span>{label.short}</span><strong>{label.day}</strong><i aria-hidden="true">{day.visited === null ? "?" : day.visited ? <Check size={12} /> : null}</i></div>; })}
           </div>
           <div className="account-statistics__chart"><WeeklyTrendChart points={lessonPoints} title="Завершено уроков в текущем курсе" unit="уроков" /></div>
-          {!analyticsEnabled && <p className="account-statistics__note">Время занятий пока не собирается.</p>}
+          <div className="account-statistics__chart">
+            <section className="account-weekly-trend" aria-label="Время занятий на платформе">
+              <header><div><h4>Время занятий на платформе</h4><p>{report.coverage.time === "measured" ? "Измерено за период" : report.coverage.time === "partial" ? "Имеющиеся измерения за неполный период" : "Измерения недоступны"}: {formatMeasuredTime(summary?.active_seconds ?? null, report.coverage.time === "measured")}</p></div></header>
+              <div className="account-weekly-trend__labels" role="list" aria-label="Время занятий по дням">
+                {report.days.map((day) => { const label = formatWeekday(day.date); const time = formatMeasuredTime(day.active_seconds, report.coverage.time === "measured"); return <span role="listitem" key={day.date} aria-label={`${label.full}: ${time}`}><strong>{time === "Нет данных" ? "—" : time}</strong><small>{label.short} {label.day}</small></span>; })}
+              </div>
+            </section>
+          </div>
         </section>
       </>}
       <div className="account-detail-grid">

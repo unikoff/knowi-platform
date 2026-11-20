@@ -1,0 +1,19 @@
+# Bootstrap separately; it does not create a namespace or grant controller RBAC.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: analytics
+  namespace: argocd-preview
+spec:
+  sourceRepos: [https://github.com/unikoff/knowi-platform.git]
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: knowi-analytics
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - {group: '', kind: ServiceAccount}
+    - {group: '', kind: Service}
+    - {group: '', kind: ConfigMap}
+    - {group: apps, kind: Deployment}
+    - {group: batch, kind: Job}
+    - {group: networking.k8s.io, kind: NetworkPolicy}

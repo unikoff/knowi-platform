@@ -207,6 +207,13 @@ def create_app(profile=None, *, laboratory=False):
             raise RuntimeError("Analytics browser gateway requires grant signing")
         from pymentor_core.app.analytics_browser_gateway import router as analytics_browser_gateway_router
         app.include_router(analytics_browser_gateway_router)
+    from pymentor_core.app.analytics_browser_query_gateway import configure as configure_browser_query_gateway
+    app.state.analytics_browser_query_gateway = configure_browser_query_gateway(os.environ)
+    if app.state.analytics_browser_query_gateway is not None:
+        if not hasattr(app.state, "analytics_grant_signer"):
+            raise RuntimeError("Analytics browser Query gateway requires grant signing")
+        from pymentor_core.app.analytics_browser_query_gateway import router as analytics_browser_query_gateway_router
+        app.include_router(analytics_browser_query_gateway_router)
     from pymentor_core.app.analytics_catalog import production_binding_from_env
     app.state.analytics_production_catalog = production_binding_from_env(os.environ)
     if app.state.analytics_production_catalog is not None and (

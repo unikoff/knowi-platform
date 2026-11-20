@@ -26,6 +26,27 @@ def identity_revision(db, principal):
     return row.revision
 
 
+def read_completions(db, principal, course_id, start, end):
+    """Return bounded, deduplicated Core completions for this account and course."""
+    query = (db.query(models.UserLessonProgress.course_id, models.UserLessonProgress.lesson_id,
+                      models.UserLessonProgress.completed_at)
+        .filter(models.UserLessonProgress.user_id == principal.user_id,
+                models.UserLessonProgress.completed_at >= start,
+                models.UserLessonProgress.completed_at <= end))
+    if course_id is not None:
+        query = query.filter(models.UserLessonProgress.course_id == course_id)
+    rows = query.order_by(models.UserLessonProgress.id).limit(5001).all()
+    if len(rows) > 5000:
+        raise HTTPException(503, "Statistics unavailable")
+    first = {}
+    for course, lesson, completed_at in rows:
+        stamp = completed_at if completed_at.tzinfo else completed_at.replace(tzinfo=timezone.utc)
+        key = (course, lesson)
+        if key not in first or stamp < first[key]:
+            first[key] = stamp
+    return tuple(sorted((course, lesson, stamp.isoformat()) for (course, lesson), stamp in first.items()))
+
+
 def read_snapshot(db, principal, days, course_id, now):
     # This must be the first statement on the fresh PostgreSQL transaction.
     if db.bind.dialect.name == "postgresql":

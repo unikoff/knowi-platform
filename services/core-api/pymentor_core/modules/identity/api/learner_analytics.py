@@ -1,6 +1,7 @@
 """Read learner history and measured dates through Core's session."""
 from calendar import monthrange
-from datetime import date, datetime, timedelta
+from collections import Counter
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response, Security
@@ -11,6 +12,9 @@ from pymentor_core.app.async_request import run_request_sql
 from pymentor_core.modules.analytics_delivery.grants import authorize_grant
 from pymentor_core.modules.analytics_delivery.source_watermark import capture
 from pymentor_core.modules.identity.api.sessions import async_current_principal, session_cookie_scheme
+from pymentor_core.modules.identity.activity_policy import MOSCOW_TZ
+from pymentor_core.modules.identity.learner_statistics import LearnerReport, ProjectionReport
+from pymentor_core.adapters.sql.learner_statistics import read_completions
 
 router = APIRouter(dependencies=[Security(session_cookie_scheme)])
 
@@ -87,6 +91,90 @@ def _request_keys(request, keys):
 
 def _unavailable():
     return HTTPException(503, "Learner Analytics unavailable", headers={"Cache-Control": "no-store"})
+
+
+@router.get("/analytics/statistics", response_model=LearnerReport, responses={401: {}, 403: {}, 503: {}})
+async def statistics(
+    request: Request, response: Response,
+    days: int = Query(ge=7, le=30, json_schema_extra={"enum": [7, 30]}),
+    course_id: str | None = Query(default=None, min_length=1, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$"),
+):
+    params = {"days"} | ({"course_id"} if course_id is not None else set())
+    if days not in (7, 30) or not _request_keys(request, params):
+        raise HTTPException(422, "Invalid statistics query")
+    try:
+        principal = await async_current_principal(request)
+        now = datetime.now(timezone.utc)
+        now = now.replace(microsecond=now.microsecond // 1000 * 1000)
+        today = now.astimezone(MOSCOW_TZ).date()
+        start_day = today - timedelta(days=days - 1)
+        start = datetime.combine(start_day, time.min, MOSCOW_TZ).astimezone(timezone.utc)
+
+        def capture_progress(db):
+            claims = authorize_grant(db, principal, purpose="self_report", course_id=course_id, target_ref=None)
+            if claims["role"] != "user":
+                raise HTTPException(403, "Learner Analytics unavailable for this role")
+            return claims, read_completions(db, principal, course_id, start, now)
+
+        before = await run_request_sql(request, capture_progress)
+        if not getattr(request.app.state, "analytics_grant_signer", None):
+            raise LearnerReadUnavailable()
+        raw = await _read(request, "statistics", {"from_time": start.isoformat(), "to_time": now.isoformat()})
+        projection = ProjectionReport.model_validate(raw)
+        if (projection.from_time != start or projection.to_time != now
+                or any(not start_day <= row.date <= today for row in projection.daily)):
+            raise LearnerReadUnavailable()
+        history_days = set()
+        try:
+            history_value = await _read(request, "history", {"start": start_day.isoformat(), "end": today.isoformat()})
+            history_result = HistoryResponse.model_validate(history_value)
+            history_dates = [item.date for item in history_result.days]
+            _validate_days(history_dates, start_day, today)
+            history_days = set(history_dates)
+        except (LearnerReadUnavailable, ValidationError, ValueError):
+            pass
+        except HTTPException as exc:
+            if exc.status_code != 503:
+                raise
+
+        current = await async_current_principal(request)
+        if (current.user_id, current.account_ref) != (principal.user_id, principal.account_ref):
+            raise LearnerReadUnavailable()
+        after = await run_request_sql(request, capture_progress)
+        if after != before:
+            raise LearnerReadUnavailable()
+        completion_counts = Counter(datetime.fromisoformat(item[2]).astimezone(MOSCOW_TZ).date() for item in before[1])
+        measured_days = {row.date: row for row in projection.daily}
+
+        def seconds(value):
+            return value / 1000 if value else None
+
+        output_days = []
+        for offset in range(days):
+            day = start_day + timedelta(days=offset)
+            row = measured_days.get(day)
+            output_days.append({"date": day, "visited": True if day in history_days or row and row.unique_visitors else None,
+                "completed_lessons": completion_counts[day],
+                "active_seconds": seconds(row.active_ms) if row else None,
+                "theory_seconds": seconds(row.theory_ms) if row else None,
+                "practice_seconds": seconds(row.practice_ms) if row else None})
+        totals = projection.totals
+        result = LearnerReport.model_validate({"schema_version": 1, "source": "analytics", "as_of": now,
+            "period": {"days": days, "start": start_day, "end": today, "timezone": "Europe/Moscow"},
+            "scope": {"course_id": course_id, "activity": "platform"},
+            "coverage": {"visits": "partial", "time": "partial" if totals.active_ms else "unavailable", "progress": "core"},
+            "summary": {"active_days_total": None, "current_streak": None, "active_days_period": None,
+                "completed_lessons_period": sum(completion_counts.values()),
+                "active_seconds": seconds(totals.active_ms), "theory_seconds": seconds(totals.theory_ms),
+                "practice_seconds": seconds(totals.practice_ms)}, "days": output_days})
+        response.headers["Cache-Control"] = "no-store"
+        return result
+    except (LearnerReadUnavailable, ValidationError, ValueError):
+        raise _unavailable() from None
+    except HTTPException as exc:
+        if exc.status_code == 503:
+            raise _unavailable() from None
+        raise
 
 
 @router.get("/activity/history", response_model=HistoryResponse, responses={401: {}, 403: {}, 503: {}})

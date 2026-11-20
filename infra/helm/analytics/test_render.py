@@ -53,6 +53,47 @@ def render(values=None, namespace="knowi-analytics", values_file=None):
 
 
 class RenderTests(unittest.TestCase):
+    def test_knowi01_staged_profile_fails_closed_and_renders_with_inputs(self):
+        profile = CHART / "values-knowi01-staged.yaml"
+        self.assertNotEqual(render(values_file=profile).returncode, 0)
+        inputs = {
+            "image.repository": "example/analytics", "image.digest": DIGEST,
+            "internalTLS.proxyImageRepository": "example/frontend", "internalTLS.proxyImageDigest": DIGEST,
+            "network.databaseCIDR": "192.0.2.1/32", "authorityServer.anchorCIDR": "192.0.2.2/32",
+            "privateCoreSource.imageRepository": "example/core", "privateCoreSource.imageDigest": DIGEST,
+            "privateCoreSource.expectedDatabase": "core",
+            "privateCoreSource.expectedUser": "readonly", "privateCoreSource.instanceId": UUID,
+        }
+        result = render(inputs, values_file=profile)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('ANALYTICS_COLLECTOR_REAL_COLLECTION: "false"', result.stdout)
+        self.assertIn('ANALYTICS_PROCESSOR_BUCKET_WORKER_ENABLED: "false"', result.stdout)
+        self.assertIn("name: analytics-analytics-authority", result.stdout)
+        self.assertIn("name: analytics-private-core-source", result.stdout)
+        self.assertIn('migrated-data.pymentor-rehearsal-data-20261109.svc.cluster.local', result.stdout)
+        source_policy = next(doc for doc in result.stdout.split("\n---\n")
+                             if "kind: NetworkPolicy" in doc and "name: analytics-private-core-source" in doc)
+        self.assertIn('kubernetes.io/metadata.name: "pymentor-rehearsal-data-20261109"', source_policy)
+        self.assertIn("app: rehearsal-postgres", source_policy)
+        self.assertIn("port: 57152", source_policy)
+        self.assertNotIn("ipBlock:", source_policy)
+        self.assertIn("path: /run/knowi-analytics-recovery, type: Directory", result.stdout)
+        self.assertNotIn("kind: Job", result.stdout)
+        self.assertNotIn("kind: IngressRoute", result.stdout)
+        self.assertNotIn("location = /api/analytics/events/batch", result.stdout)
+        for unsafe in ("migration.enabled", "ingress.enabled", "browserCollection.enabled",
+                       "coreTransfer.enabled", "catalog.enabled", "activityProjection.enabled",
+                       "activityDay.enabled", "activityCourse.enabled", "activityBoundaryCredit.enabled"):
+            with self.subTest(unsafe=unsafe):
+                self.assertNotEqual(render({**inputs, unsafe: "true"}, values_file=profile).returncode, 0)
+        for required in ("image.repository", "network.databaseCIDR", "authorityServer.anchorCIDR",
+                         "privateCoreSource.expectedHost", "privateCoreSource.databaseNamespace",
+                         "privateCoreSource.databasePodLabels"):
+            with self.subTest(required=required):
+                self.assertNotEqual(render({**inputs, required: ""}, values_file=profile).returncode, 0)
+        self.assertNotEqual(render({**inputs, "privateCoreSource.databaseCIDR": "192.0.2.3/32"},
+                                   values_file=profile).returncode, 0)
+
     def test_browser_collection_requires_guarded_production(self):
         base = {**PRODUCTION, "migration.revision": "a014", "roles.privacy.enabled": "true",
                 "catalog.enabled": "true", "catalog.namespace": "core",
@@ -244,7 +285,8 @@ class RenderTests(unittest.TestCase):
         self.assertIn("location = /api/internal/analytics/deletions", result.stdout)
         self.assertIn('cidr: "10.42.5.9/32"', result.stdout)
         for changes in ({"privateCoreSource.hmacSecretName": "source-db"}, {"privateCoreSource.databaseCIDR": "0.0.0.0/0"},
-                        {"privateCoreSource.imageDigest": ""}, {"coreDeletion.namespace": "another"}):
+                        {"privateCoreSource.imageDigest": ""}, {"coreDeletion.namespace": "another"},
+                        {"privateCoreSource.databaseNamespace": "db"}):
             with self.subTest(changes=changes):
                 self.assertNotEqual(render({**values, **changes}).returncode, 0)
 

@@ -165,7 +165,17 @@ an unavailable client and a conflicting restored writer before using real data.
 The prepared Helm profile admits backend transfer over private mTLS. A later
 explicit `browserCollection.enabled` requires a private Core Collector gateway,
 publisher acknowledgement, and the activity, day and course projections. The
-release build keeps `VITE_ANALYTICS_TRACKER_ENABLED` false. For production
+release build keeps `VITE_ANALYTICS_TRACKER_ENABLED`,
+`VITE_ANALYTICS_REPORTS_ENABLED` and `VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED`
+false until the protected paths are ready. Enable both report flags for course
+activity marks in the learner calendar. The course student report uses the
+browser Query gateway. Set `PYMENTOR_ANALYTICS_BROWSER_QUERY_ENABLED=1` only
+with the Core grant signer and the configured `PYMENTOR_ANALYTICS_QUERY_URL`,
+`PYMENTOR_ANALYTICS_QUERY_CA_FILE`, `PYMENTOR_ANALYTICS_QUERY_CLIENT_CERT_FILE`
+and `PYMENTOR_ANALYTICS_QUERY_CLIENT_KEY_FILE`. Enable
+`PYMENTOR_ANALYTICS_LEARNER_READS_ENABLED=1` for Core learner reports and the
+measured calendar. Validate the scoped student report and the calendar day
+against the same known projected activity before opening access. For production
 catalog publication use `python -m pymentor_core.app.analytics_catalog
 --production --course-id <course>` inside the approved publisher context. Core
 uses the separate production receipt directory with read-only credentials. Run

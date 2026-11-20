@@ -6,9 +6,9 @@ export interface LearnerStatisticsReport {
   as_of: string;
   period: { days: 7 | 30; start: string; end: string; timezone: "Europe/Moscow" };
   scope: { course_id: string | null; activity: "platform" };
-  coverage: { visits: "legacy_global" | "partial"; time: "unavailable"; progress: "core" };
-  summary: { active_days_total: number | null; current_streak: number | null; active_days_period: number; completed_lessons_period: number; active_seconds: null; theory_seconds: null; practice_seconds: null };
-  days: Array<{ date: string; visited: boolean; completed_lessons: number; active_seconds: null; theory_seconds: null; practice_seconds: null }>;
+  coverage: { visits: "legacy_global" | "partial"; time: "unavailable" | "partial" | "measured"; progress: "core" };
+  summary: { active_days_total: number | null; current_streak: number | null; active_days_period: number | null; completed_lessons_period: number; active_seconds: number | null; theory_seconds: number | null; practice_seconds: number | null };
+  days: Array<{ date: string; visited: boolean | null; completed_lessons: number; active_seconds: number | null; theory_seconds: number | null; practice_seconds: number | null }>;
 }
 
 export function getLearnerStatistics(days: 7 | 30, courseId: string) {

@@ -1,4 +1,12 @@
 {{- define "analytics.guard" -}}
+{{- if .Values.knowi01Staged.enabled -}}
+{{- if or (ne .Release.Namespace "knowi-analytics") (ne .Values.runtime.mode "production") (not .Values.runtime.hostBootRecoveryGate) (not .Values.authorityServer.enabled) (not .Values.privateCoreSource.enabled) (not .Values.roles.privacy.enabled) (not .Values.image.repository) (not .Values.network.databaseCIDR) -}}
+{{- fail "knowi01 staged profile requires production guards, authority, private source, privacy, image repository and exact Analytics DB address" -}}
+{{- end -}}
+{{- if or .Values.migration.enabled .Values.ingress.enabled .Values.browserCollection.enabled .Values.coreTransfer.enabled .Values.catalog.enabled .Values.activityProjection.enabled .Values.activityDay.enabled .Values.activityCourse.enabled .Values.activityBoundaryCredit.enabled -}}
+{{- fail "knowi01 staged profile must keep migration, public and user-facing paths disabled" -}}
+{{- end -}}
+{{- end -}}
 {{- if not (kindIs "bool" .Values.runtime.hostBootRecoveryGate) -}}
 {{- fail "runtime.hostBootRecoveryGate must be boolean" -}}
 {{- end -}}
@@ -129,8 +137,12 @@
 {{- if .Values.privateCoreSource.enabled -}}
 {{- $s := .Values.privateCoreSource -}}
 {{- $dbExact := or (regexMatch "^([0-9]{1,3}\\.){3}[0-9]{1,3}/32$" $s.databaseCIDR) (regexMatch "^[0-9A-Fa-f:]+/128$" $s.databaseCIDR) -}}
-{{- if or (ne .Values.runtime.mode "production") (not $s.imageRepository) (not (regexMatch "^sha256:[0-9a-f]{64}$" $s.imageDigest)) (not $s.databaseSecretName) (not $s.hmacSecretName) (not $s.databaseCASecretName) (not $s.serverTLSSecretName) (not $s.expectedHost) (not $s.expectedDatabase) (not $s.expectedUser) (not (regexMatch "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" $s.instanceId)) (not $dbExact) -}}
-{{- fail "Private Core source requires production, immutable Core image, separate Secrets, DB identity, instance UUID and exact DB address" -}}
+{{- $dbSelector := and $s.databaseNamespace $s.databasePodLabels -}}
+{{- if or (and $s.databaseCIDR (or (not $dbExact) $s.databaseNamespace $s.databasePodLabels)) (and (not $s.databaseCIDR) (not $dbSelector)) -}}
+{{- fail "Private Core source DB egress requires either one exact IP or a namespace and non-empty Pod selector" -}}
+{{- end -}}
+{{- if or (ne .Values.runtime.mode "production") (not $s.imageRepository) (not (regexMatch "^sha256:[0-9a-f]{64}$" $s.imageDigest)) (not $s.databaseSecretName) (not $s.hmacSecretName) (not $s.databaseCASecretName) (not $s.serverTLSSecretName) (not $s.expectedHost) (not $s.expectedDatabase) (not $s.expectedUser) (not (regexMatch "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" $s.instanceId)) -}}
+{{- fail "Private Core source requires production, immutable Core image, separate Secrets, DB identity and instance UUID" -}}
 {{- end -}}
 {{- if ne (len (uniq (list $s.databaseSecretName $s.hmacSecretName $s.databaseCASecretName $s.serverTLSSecretName))) 4 -}}
 {{- fail "Private Core source DB, HMAC, DB CA and TLS Secrets must be distinct" -}}

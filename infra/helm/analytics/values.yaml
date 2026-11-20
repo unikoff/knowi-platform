@@ -4,6 +4,10 @@ image:
   digest: "" # Optional immutable manifest digest; takes precedence over tag.
   pullPolicy: IfNotPresent
 
+# Additional fail-closed checks for the staged single-VPS profile.
+knowi01Staged:
+  enabled: false
+
 # Opt-in only for a fresh, synthetic benchmark namespace.
 syntheticBenchmark:
   enabled: false
@@ -178,4 +182,6 @@ privateCoreSource:
   expectedUser: ""
   instanceId: ""
   databaseCIDR: "" # Exact independent Core DB address.
+  databaseNamespace: "" # Alternative to databaseCIDR: namespace plus Pod labels.
+  databasePodLabels: {}
   databasePort: 5432
