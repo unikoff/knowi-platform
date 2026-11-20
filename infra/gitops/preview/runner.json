@@ -130,7 +130,7 @@
           "metadata": {
             "annotations": {
               "kubectl.kubernetes.io/restartedAt": "2026-11-08T22:50:33Z",
-              "pymentor.io/source-revision": "03a656f06a07d54eb831287fdd516fb215818b44"
+              "pymentor.io/source-revision": "645c38cb8799bcf6f73aadd551d86f8c2f5958be"
             },
             "labels": {
               "app": "preview-pool-broker"
@@ -156,7 +156,7 @@
                   },
                   {
                     "name": "PYMENTOR_RELEASE_REVISION",
-                    "value": "03a656f06a07d54eb831287fdd516fb215818b44"
+                    "value": "645c38cb8799bcf6f73aadd551d86f8c2f5958be"
                   }
                 ],
                 "image": "pymentor/preview-pool:20261109-10",
