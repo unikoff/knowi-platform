@@ -1,4 +1,5 @@
 import asyncio
+import os
 
 import httpx
 import pytest
@@ -83,7 +84,8 @@ def test_factory_registration_and_openapi_fallback(monkeypatch):
               "REDIS_URL": "redis://127.0.0.1:1/0", "KNOWI_REDIS_PREFIX": "query-gateway-test",
               "KNOWI_LOGIN_RECOVERY_KEY": "a" * 64}
     for name, value in values.items():
-        monkeypatch.setenv(name, value)
+        if name not in os.environ:
+            monkeypatch.setenv(name, value)
     monkeypatch.delenv("PYMENTOR_ANALYTICS_BROWSER_QUERY_ENABLED", raising=False)
     monkeypatch.delenv("PYMENTOR_ANALYTICS_GRANTS_ENABLED", raising=False)
     off = create_app()
