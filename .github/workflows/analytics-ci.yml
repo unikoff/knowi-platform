@@ -10,6 +10,11 @@ on:
       - 'infra/gitops/analytics/**'
   workflow_dispatch:
   workflow_call:
+    inputs:
+      verify_image:
+        description: Build and verify a local image when this run has no published candidate
+        type: boolean
+        default: true
 
 permissions: {}
 
@@ -74,8 +79,10 @@ jobs:
             services/analytics/tests/privacy_authority/test_protected_query_http_pg.py \
             services/analytics/tests/activity_day_projection/test_a014_full_restore_pg.py
       - name: Build isolated application image
+        if: github.event_name != 'push' || inputs.verify_image
         run: docker build -t knowi-analytics:ci services/analytics
       - name: Check all image entrypoints without network access
+        if: github.event_name != 'push' || inputs.verify_image
         run: python -B services/analytics/tools/check_image.py knowi-analytics:ci
       - name: Validate separate Helm release
         shell: bash

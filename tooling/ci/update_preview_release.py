@@ -11,9 +11,15 @@ IMAGES = {
     'pymentor/preview-pool': 'ghcr.io/unikoff/knowi-platform-runner-pool',
 }
 RESOURCES = {'applications.json', 'checks.json', 'analysis.json', 'routes.json', 'runner.json', 'notifications.json'}
+WORKLOAD_IMAGES = {
+    'core-api-progressive': 'core',
+    'frontend-progressive': 'frontend',
+    'preview-pool-broker': 'runner-pool',
+}
 
 
-def update(directory, source_sha, core_digest, frontend_digest, runner_digest, migration_digest=None, analytics_digest=None):
+def update(directory, source_sha, core_digest, frontend_digest, runner_digest, migration_digest=None,
+           analytics_digest=None, image_sources=None):
     if not re.fullmatch(r'[0-9a-f]{40}', source_sha):
         raise ValueError('source SHA must be 40 lowercase hexadecimal characters')
     digests = (core_digest, frontend_digest, runner_digest)
@@ -23,6 +29,16 @@ def update(directory, source_sha, core_digest, frontend_digest, runner_digest, m
         raise ValueError('migration digest must be a lowercase sha256 digest')
     if analytics_digest is not None and not re.fullmatch(r'sha256:[0-9a-f]{64}', analytics_digest):
         raise ValueError('analytics digest must be a lowercase sha256 digest')
+    if image_sources is not None:
+        expected = set(WORKLOAD_IMAGES.values())
+        if migration_digest is not None:
+            expected.add('core-migrations')
+        if analytics_digest is not None:
+            expected.add('analytics')
+        if (not isinstance(image_sources, dict) or image_sources.keys() != expected
+                or any(not isinstance(value, str) or not re.fullmatch(r'[0-9a-f]{40}', value)
+                       for value in image_sources.values())):
+            raise ValueError('image_sources must contain the exact image names and their full source SHAs')
     directory = Path(directory)
 
     def path(name):
@@ -68,8 +84,14 @@ def update(directory, source_sha, core_digest, frontend_digest, runner_digest, m
         if not workloads:
             raise ValueError(f'{filename} has no {kind}')
         for workload in workloads:
+            revision = source_sha
+            if image_sources is not None:
+                name = workload.get('metadata', {}).get('name')
+                if name not in WORKLOAD_IMAGES:
+                    raise ValueError(f'Unknown workload in {filename}')
+                revision = image_sources[WORKLOAD_IMAGES[name]]
             template = workload['spec']['template']
-            template.setdefault('metadata', {}).setdefault('annotations', {})['pymentor.io/source-revision'] = source_sha
+            template.setdefault('metadata', {}).setdefault('annotations', {})['pymentor.io/source-revision'] = revision
             containers = template['spec']['containers']
             if not containers:
                 raise ValueError('workload has no containers')
@@ -80,9 +102,9 @@ def update(directory, source_sha, core_digest, frontend_digest, runner_digest, m
                     raise ValueError('duplicate revision environment variable')
                 if revisions:
                     revisions[0].clear()
-                    revisions[0].update(name='PYMENTOR_RELEASE_REVISION', value=source_sha)
+                    revisions[0].update(name='PYMENTOR_RELEASE_REVISION', value=revision)
                 else:
-                    env.append(dict(name='PYMENTOR_RELEASE_REVISION', value=source_sha))
+                    env.append(dict(name='PYMENTOR_RELEASE_REVISION', value=revision))
         changed[filename] = document
     changed['release.json'] = dict(source_sha=source_sha, core_digest=core_digest,
                                    frontend_digest=frontend_digest, runner_digest=runner_digest)
@@ -90,6 +112,8 @@ def update(directory, source_sha, core_digest, frontend_digest, runner_digest, m
         changed['release.json']['migration_digest'] = migration_digest
     if analytics_digest is not None:
         changed['release.json']['analytics_digest'] = analytics_digest
+    if image_sources is not None:
+        changed['release.json']['image_sources'] = image_sources
     # Validate all target paths before the first write.
     for name in changed:
         path(name)
@@ -103,8 +127,10 @@ def main():
         parser.add_argument('--' + name, required=True)
     parser.add_argument('--migration-digest')
     parser.add_argument('--analytics-digest')
+    parser.add_argument('--image-sources-json', type=json.loads)
     args = parser.parse_args()
-    update(ROOT, args.source_sha, args.core_digest, args.frontend_digest, args.runner_digest, args.migration_digest, args.analytics_digest)
+    update(ROOT, args.source_sha, args.core_digest, args.frontend_digest, args.runner_digest, args.migration_digest,
+           args.analytics_digest, args.image_sources_json)
 
 
 if __name__ == '__main__':

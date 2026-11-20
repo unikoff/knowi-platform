@@ -13,6 +13,12 @@ ARG VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED=false
 RUN node tools/course-registry.mjs \
     && npm exec -- tsc --noEmit -p config/tsconfig.json \
     && ./node_modules/.bin/vite build --config config/vite.config.ts --configLoader native --outDir /tmp/frontend-dist
+ARG BUILD_SOURCE_SHA
+RUN if [ -n "$BUILD_SOURCE_SHA" ]; then \
+      test "${#BUILD_SOURCE_SHA}" -eq 40 \
+      && printf '%s\n' "$BUILD_SOURCE_SHA" | grep -Eq '^[0-9a-f]{40}$' \
+      && printf '%s\n' "$BUILD_SOURCE_SHA" > /tmp/frontend-dist/release-revision.txt; \
+    fi
 
 FROM nginx:1.30.7-alpine3.24-slim AS runtime
 

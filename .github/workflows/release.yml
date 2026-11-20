@@ -12,11 +12,13 @@ on:
       - 'services/core-api/**'
       - 'services/analytics/**'
       - '.github/workflows/analytics-ci.yml'
+      - '.github/workflows/release-regression.yml'
       - 'services/runner-pool/**'
       - 'apps/web/**'
       - 'courses/**'
       - 'docs/multicourse/**'
       - 'infra/gitops/**'
+      - 'infra/analytics-local/**'
       - 'infra/helm/**'
       - 'infra/local-postgres-redis/**'
       - 'infra/local-k3s/**'
@@ -28,14 +30,64 @@ concurrency:
 permissions: {}
 
 jobs:
-  checks:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      plan: ${{ steps.scope.outputs.plan }}
+      deploy: ${{ steps.scope.outputs.deploy }}
+      core_checks: ${{ steps.scope.outputs.core_checks }}
+      web_checks: ${{ steps.scope.outputs.web_checks }}
+      core_rehearsal: ${{ steps.scope.outputs.core_rehearsal }}
+      analytics_checks: ${{ steps.scope.outputs.analytics_checks }}
+      analytics_rehearsal: ${{ steps.scope.outputs.analytics_rehearsal }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: scope
+        name: Resolve release scope against the published source
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT" == push ]]; then
+            plan=$(python tooling/ci/release_plan.py --mode push --head "$GITHUB_SHA" --baseline-ref "$BEFORE")
+          else
+            plan=$(python tooling/ci/release_plan.py --mode pr --head "$GITHUB_SHA" --base-ref "$PR_BASE")
+          fi
+          printf 'plan=%s\n' "$(jq -c . <<< "$plan")" >> "$GITHUB_OUTPUT"
+          for key in deploy core_checks web_checks core_rehearsal analytics_checks analytics_rehearsal; do
+            value=$(jq -r --arg key "$key" '.[$key] | if type == "boolean" then . else error("missing release flag") end' <<< "$plan")
+            printf '%s=%s\n' "$key" "$value" >> "$GITHUB_OUTPUT"
+          done
+          printf '### Release scope\n\n```json\n%s\n```\n' "$(jq . <<< "$plan")" >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify the release planner and evidence collector
+        run: python -m unittest tooling.ci.test_release_plan tooling.ci.test_release_evidence
+      - name: Verify image smoke wiring
+        run: python -m unittest discover -s tooling/ci -p test_image_smoke.py
+      - name: Verify production status tool with simulated responses
+        run: python -m unittest discover -s infra/gitops/operations -p test_release_status.py
+
+  core-checks:
+    needs: plan
+    if: needs.plan.outputs.core_checks == 'true' || needs.plan.outputs.core_rehearsal == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        group: ${{ fromJSON(needs.plan.outputs.core_rehearsal == 'true' && '["unit","runtime","http-1","http-2","rehearsals"]' || '["unit","runtime","http-1","http-2"]') }}
     permissions:
       contents: read
     services:
       postgres:
-        image: postgres:16
+        image: ${{ matrix.group != 'unit' && 'postgres:16' || '' }}
         env:
           POSTGRES_USER: pymentor_test
           POSTGRES_PASSWORD: pymentor_test
@@ -45,7 +97,7 @@ jobs:
           --health-cmd "pg_isready -U pymentor_test -d pymentor_test"
           --health-interval 5s --health-timeout 5s --health-retries 12
       redis:
-        image: redis:7
+        image: ${{ matrix.group != 'unit' && matrix.group != 'rehearsals' && 'redis:7' || '' }}
         ports: ['127.0.0.1:57381:6379']
         options: >-
           --health-cmd "redis-cli ping" --health-interval 5s
@@ -57,165 +109,340 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.12'
+          cache: pip
+          cache-dependency-path: services/core-api/requirements*.txt
       - name: Install test dependencies
         run: python -m pip install -r services/core-api/requirements-dev.txt
-      - name: Exercise required PostgreSQL and Redis target suites
-        run: python tooling/ci/preview_checks.py
+      - name: Exercise an isolated Core test group
+        if: matrix.group != 'rehearsals'
+        env:
+          CHECK_GROUP: ${{ matrix.group }}
+        run: python tooling/ci/preview_checks.py --group "$CHECK_GROUP"
       - name: Rehearse c503 backup restore and forward migration
+        if: matrix.group == 'rehearsals'
         run: python tooling/ci/rehearse_c504_backup.py --container '${{ job.services.postgres.id }}' --output '${{ runner.temp }}/c504-backup-rehearsal'
       - name: Rehearse c528 cutover with distinct roles and verified return
+        if: matrix.group == 'rehearsals'
         run: python tooling/ci/rehearse_c528_cutover.py --execute
+
+  web-checks:
+    needs: plan
+    if: needs.plan.outputs.web_checks == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24.18.0'
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
-      - name: Exercise browser contracts and build current courses
+      - name: Exercise browser and course contracts
         working-directory: apps/web
         run: |
           npm ci
           npm run test:release
+      - name: Check lesson visuals before the Web image build
+        if: github.event_name == 'push' && contains(fromJSON(needs.plan.outputs.plan).build, 'frontend')
+        working-directory: apps/web
+        run: npm run check:lesson-visuals
+      - name: Compile and inspect Web when publishing no new Web image
+        if: github.event_name == 'pull_request' || !contains(fromJSON(needs.plan.outputs.plan).build, 'frontend')
+        working-directory: apps/web
+        run: |
           npm run build
           python tools/check_public_course_assets.py dist
-      - name: Build canonical image and exercise disposable image smoke
-        run: python tooling/ci/image_smoke.py
 
-  analytics-checks:
-    uses: ./.github/workflows/analytics-ci.yml
-    permissions:
-      contents: read
-
-  images:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/Release' && github.repository_id == '1288938642'
-    needs: [checks, analytics-checks]
+  core-image-pr:
+    needs: plan
+    if: >-
+      github.event_name == 'pull_request' && (contains(fromJSON(needs.plan.outputs.plan).build, 'core') ||
+      contains(fromJSON(needs.plan.outputs.plan).build, 'core-migrations'))
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 15
     permissions:
       contents: read
-      packages: write
-    outputs:
-      core: ${{ steps.build.outputs.core }}
-      frontend: ${{ steps.build.outputs.frontend }}
-      runner: ${{ steps.build.outputs.runner }}
-      migrations: ${{ steps.build.outputs['core-migrations'] }}
-      analytics: ${{ steps.build.outputs.analytics }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
-      - name: Set up Buildx
+      - name: Smoke test Core using disposable images
+        run: python tooling/ci/image_smoke.py
+
+  analytics-checks:
+    needs: plan
+    if: needs.plan.outputs.analytics_checks == 'true'
+    uses: ./.github/workflows/analytics-ci.yml
+    with:
+      verify_image: ${{ github.event_name == 'pull_request' || needs.plan.outputs.deploy == 'false' }}
+    permissions:
+      contents: read
+
+  analytics-rehearsal:
+    needs: plan
+    if: needs.plan.outputs.analytics_rehearsal == 'true'
+    uses: ./.github/workflows/release-regression.yml
+    with:
+      analytics_only: true
+    permissions:
+      contents: read
+
+  checks:
+    needs: [plan, core-checks, web-checks, core-image-pr, analytics-checks, analytics-rehearsal]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Require a successful plan and PR image check when selected
+        env:
+          PLAN_RESULT: ${{ needs.plan.result }}
+          PR_IMAGE_RESULT: ${{ needs.core-image-pr.result }}
+          PR_IMAGE_SELECTED: >-
+            ${{ needs.plan.result == 'success' && github.event_name == 'pull_request' &&
+            (contains(fromJSON(needs.plan.outputs.plan || '{"build":[]}').build, 'core') ||
+            contains(fromJSON(needs.plan.outputs.plan || '{"build":[]}').build, 'core-migrations')) }}
+        run: |
+          set -euo pipefail
+          test "$PLAN_RESULT" = success
+          if [[ "$PR_IMAGE_SELECTED" == true ]]; then
+            test "$PR_IMAGE_RESULT" = success
+          else
+            test "$PR_IMAGE_RESULT" = skipped
+          fi
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Require an explicit result for every selected check
+        env:
+          PLAN: ${{ needs.plan.outputs.plan }}
+          CORE_RESULT: ${{ needs.core-checks.result }}
+          WEB_RESULT: ${{ needs.web-checks.result }}
+          ANALYTICS_RESULT: ${{ needs.analytics-checks.result }}
+          ANALYTICS_REHEARSAL_RESULT: ${{ needs.analytics-rehearsal.result }}
+        run: python tooling/ci/release_evidence.py check-gates
+
+  images:
+    if: >-
+      ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/Release' &&
+      github.repository_id == '1288938642' && needs.plan.result == 'success' &&
+      needs.plan.outputs.deploy == 'true' && needs.checks.result == 'success' }}
+    needs: [plan, checks]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: core
+            context: .
+            dockerfile: services/core-api/Dockerfile
+            target: runtime
+          - name: core-migrations
+            context: .
+            dockerfile: services/core-api/Dockerfile
+            target: migrations
+          - name: frontend
+            context: .
+            dockerfile: apps/web/Dockerfile
+            target: ''
+          - name: runner-pool
+            context: services/runner-pool
+            dockerfile: services/runner-pool/Dockerfile
+            target: ''
+          - name: analytics
+            context: services/analytics
+            dockerfile: services/analytics/Dockerfile
+            target: ''
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Set up Buildx for a changed image
+        if: contains(fromJSON(needs.plan.outputs.plan).build, matrix.name)
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
       - name: Authenticate to GHCR
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-      - name: Build and publish SHA-tagged images
-        id: build
+      - name: Build a candidate once or resolve its existing digest
+        id: resolve
         shell: bash
         env:
-          # Change this tracked value in a new commit to change the SHA-tagged image.
+          IMAGE_NAME: ${{ matrix.name }}
+          BUILD_CONTEXT: ${{ matrix.context }}
+          DOCKERFILE: ${{ matrix.dockerfile }}
+          BUILD_TARGET: ${{ matrix.target }}
+          # Change these tracked values in a new commit to change the Web image.
           VITE_ANALYTICS_TRACKER_ENABLED: 'false'
           VITE_ANALYTICS_REPORTS_ENABLED: 'false'
           VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED: 'false'
+          PLAN: ${{ needs.plan.outputs.plan }}
         run: |
           set -euo pipefail
-          case "$VITE_ANALYTICS_TRACKER_ENABLED" in
-            true|false) ;;
-            *) echo 'VITE_ANALYTICS_TRACKER_ENABLED must be true or false' >&2; exit 1 ;;
-          esac
-          case "$VITE_ANALYTICS_REPORTS_ENABLED" in
-            true|false) ;;
-            *) echo 'VITE_ANALYTICS_REPORTS_ENABLED must be true or false' >&2; exit 1 ;;
-          esac
-          case "$VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED" in
-            true|false) ;;
-            *) echo 'VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED must be true or false' >&2; exit 1 ;;
-          esac
-          if [[ "$VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED" == true && "$VITE_ANALYTICS_REPORTS_ENABLED" != true ]]; then
-            echo 'Personal measurements require Analytics reports' >&2
-            exit 1
+          image="ghcr.io/unikoff/knowi-platform-$IMAGE_NAME"
+          built=$(jq -r --arg name "$IMAGE_NAME" '.build | index($name) != null' <<< "$PLAN")
+          source=$(jq -er --arg name "$IMAGE_NAME" '.image_sources[$name]' <<< "$PLAN")
+          [[ "$source" =~ ^[0-9a-f]{40}$ ]]
+          if [[ "$built" == true ]]; then
+            test "$source" = "$GITHUB_SHA"
+            args=()
+            if [[ -n "$BUILD_TARGET" ]]; then
+              args+=(--target "$BUILD_TARGET")
+            fi
+            if [[ "$IMAGE_NAME" == frontend ]]; then
+              [[ "$VITE_ANALYTICS_TRACKER_ENABLED" =~ ^(true|false)$ ]]
+              [[ "$VITE_ANALYTICS_REPORTS_ENABLED" =~ ^(true|false)$ ]]
+              [[ "$VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED" =~ ^(true|false)$ ]]
+              if [[ "$VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED" == true && "$VITE_ANALYTICS_REPORTS_ENABLED" != true ]]; then
+                echo 'Personal measurements require Analytics reports' >&2
+                exit 1
+              fi
+              args+=(--build-arg "BUILD_SOURCE_SHA=$GITHUB_SHA"
+                     --build-arg "VITE_ANALYTICS_TRACKER_ENABLED=$VITE_ANALYTICS_TRACKER_ENABLED"
+                     --build-arg "VITE_ANALYTICS_REPORTS_ENABLED=$VITE_ANALYTICS_REPORTS_ENABLED"
+                     --build-arg "VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED=$VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED")
+            fi
+            metadata="$RUNNER_TEMP/image-metadata.json"
+            docker buildx build --push --provenance=mode=max --sbom=true \
+              --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+              --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+              --cache-from "type=registry,ref=$image:buildcache" \
+              --cache-to "type=registry,ref=$image:buildcache,mode=max" \
+              --file "$DOCKERFILE" --tag "$image:$GITHUB_SHA" --metadata-file "$metadata" \
+              "${args[@]}" "$BUILD_CONTEXT"
+            digest=$(jq -er '."containerimage.digest"' "$metadata")
+          else
+            test "$built" = false
+            digest=$(jq -er --arg name "$IMAGE_NAME" '.reuse[$name]' <<< "$PLAN")
           fi
-          build_image() {
-            local name="$1" context="$2" dockerfile="$3"
-            shift 3
-            local metadata="$RUNNER_TEMP/$name-metadata.json"
-            docker buildx build --push --provenance=mode=max --sbom=true --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" --label org.opencontainers.image.revision="$GITHUB_SHA" --cache-from "type=registry,ref=ghcr.io/unikoff/knowi-platform-$name:buildcache" --cache-to "type=registry,ref=ghcr.io/unikoff/knowi-platform-$name:buildcache,mode=max" --file "$dockerfile" --tag "ghcr.io/unikoff/knowi-platform-$name:$GITHUB_SHA" --metadata-file "$metadata" "$@" "$context"
-            local digest
-            digest=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["containerimage.digest"])' "$metadata")
-            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
-            echo "$name=$digest" >> "$GITHUB_OUTPUT"
-            echo "$name: $digest" >> "$GITHUB_STEP_SUMMARY"
-          }
-          build_image core . services/core-api/Dockerfile --target runtime
-          build_image core-migrations . services/core-api/Dockerfile --target migrations
-          build_image frontend . apps/web/Dockerfile \
-            --build-arg "VITE_ANALYTICS_TRACKER_ENABLED=$VITE_ANALYTICS_TRACKER_ENABLED" \
-            --build-arg "VITE_ANALYTICS_REPORTS_ENABLED=$VITE_ANALYTICS_REPORTS_ENABLED" \
-            --build-arg "VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED=$VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED"
-          build_image runner-pool services/runner-pool services/runner-pool/Dockerfile
-          build_image analytics services/analytics services/analytics/Dockerfile
-          echo "runner=$(python -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"] + "/runner-pool-metadata.json"))["containerimage.digest"])')" >> "$GITHUB_OUTPUT"
-      - name: Scan core image
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          printf 'ref=%s@%s\nbuilt=%s\nsource=%s\n' "$image" "$digest" "$built" "$source" >> "$GITHUB_OUTPUT"
+          jq -n --arg name "$IMAGE_NAME" --arg candidate_sha "$GITHUB_SHA" --arg run_id "$GITHUB_RUN_ID" \
+            --arg digest "$digest" --arg source_sha "$source" --argjson built "$built" \
+            '{name: $name, candidate_sha: $candidate_sha, run_id: $run_id, digest: $digest, source_sha: $source_sha, built: $built}' \
+            > "$RUNNER_TEMP/image.json"
+          printf '%s: %s (built=%s)\n' "$IMAGE_NAME" "$digest" "$built" >> "$GITHUB_STEP_SUMMARY"
+      - name: Scan this exact digest, including reused images
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2
         with:
-          image: ghcr.io/unikoff/knowi-platform-core@${{ steps.build.outputs.core }}
+          image: ${{ steps.resolve.outputs.ref }}
           output-format: table
           severity-cutoff: critical
           fail-build: true
-      - name: Scan frontend image
-        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2
+      - name: Inspect assets and Nginx configuration from the exact Web image
+        if: matrix.name == 'frontend' && steps.resolve.outputs.built == 'true'
+        env:
+          IMAGE_REF: ${{ steps.resolve.outputs.ref }}
+          IMAGE_SOURCE: ${{ steps.resolve.outputs.source }}
+        run: |
+          set -euo pipefail
+          docker pull "$IMAGE_REF"
+          container=$(docker create --network none "$IMAGE_REF")
+          trap 'docker rm "$container" >/dev/null' EXIT
+          assets=$(mktemp -d)
+          docker cp "$container:/usr/share/nginx/html/." "$assets"
+          test "$(cat "$assets/release-revision.txt")" = "$IMAGE_SOURCE"
+          test -s "$assets/index.html"
+          python apps/web/tools/check_public_course_assets.py "$assets"
+          docker run --rm --network none --entrypoint nginx "$IMAGE_REF" -t
+      - name: Smoke test the exact Analytics image
+        if: matrix.name == 'analytics' && (steps.resolve.outputs.built == 'true' || needs.plan.outputs.analytics_checks == 'true')
+        env:
+          IMAGE_REF: ${{ steps.resolve.outputs.ref }}
+        run: |
+          set -euo pipefail
+          docker pull "$IMAGE_REF"
+          python services/analytics/tools/check_image.py "$IMAGE_REF"
+      - name: Record the checked image
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
         with:
-          image: ghcr.io/unikoff/knowi-platform-frontend@${{ steps.build.outputs.frontend }}
-          output-format: table
-          severity-cutoff: critical
-          fail-build: true
-      - name: Scan migration image
-        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2
+          name: release-image-${{ matrix.name }}
+          path: ${{ runner.temp }}/image.json
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
+
+  verify-images:
+    needs: [plan, images]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.images.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      core: ${{ steps.collect.outputs.core }}
+      migrations: ${{ steps.collect.outputs['core-migrations'] }}
+      frontend: ${{ steps.collect.outputs.frontend }}
+      runner: ${{ steps.collect.outputs['runner-pool'] }}
+      analytics: ${{ steps.collect.outputs.analytics }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          image: ghcr.io/unikoff/knowi-platform-core-migrations@${{ steps.build.outputs['core-migrations'] }}
-          output-format: table
-          severity-cutoff: critical
-          fail-build: true
-      - name: Scan runner image
-        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          image: ghcr.io/unikoff/knowi-platform-runner-pool@${{ steps.build.outputs.runner }}
-          output-format: table
-          severity-cutoff: critical
-          fail-build: true
-      - name: Scan analytics image
-        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2
-        with:
-          image: ghcr.io/unikoff/knowi-platform-analytics@${{ steps.build.outputs.analytics }}
-          output-format: table
-          severity-cutoff: critical
-          fail-build: true
+          path: ${{ runner.temp }}/release-evidence
+          pattern: release-image-*
+      - name: Match every digest to the candidate and its intended scope
+        id: collect
+        env:
+          PLAN: ${{ needs.plan.outputs.plan }}
+        run: python tooling/ci/release_evidence.py collect "$RUNNER_TEMP/release-evidence"
+      - name: Smoke test Core and migrations from the exact digests
+        if: contains(fromJSON(needs.plan.outputs.plan).build, 'core') || contains(fromJSON(needs.plan.outputs.plan).build, 'core-migrations')
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CORE_DIGEST: ${{ steps.collect.outputs.core }}
+          MIGRATION_DIGEST: ${{ steps.collect.outputs['core-migrations'] }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          python tooling/ci/image_smoke.py \
+            --core-image "ghcr.io/unikoff/knowi-platform-core@$CORE_DIGEST" \
+            --migration-image "ghcr.io/unikoff/knowi-platform-core-migrations@$MIGRATION_DIGEST"
 
   publish:
     timeout-minutes: 5
-    if: github.event_name == 'push' && github.ref == 'refs/heads/Release' && github.repository_id == '1288938642'
-    needs: images
+    if: >-
+      ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/Release' &&
+      github.repository_id == '1288938642' && needs.plan.result == 'success' &&
+      needs.verify-images.result == 'success' }}
+    needs: [plan, verify-images]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      gitops_sha: ${{ steps.publish.outputs.gitops_sha }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ github.sha }}
           persist-credentials: true
       - name: Update and publish preview release
+        id: publish
         env:
-          CORE_DIGEST: ${{ needs.images.outputs.core }}
-          FRONTEND_DIGEST: ${{ needs.images.outputs.frontend }}
-          RUNNER_DIGEST: ${{ needs.images.outputs.runner }}
-          MIGRATION_DIGEST: ${{ needs.images.outputs.migrations }}
-          ANALYTICS_DIGEST: ${{ needs.images.outputs.analytics }}
+          CORE_DIGEST: ${{ needs.verify-images.outputs.core }}
+          FRONTEND_DIGEST: ${{ needs.verify-images.outputs.frontend }}
+          RUNNER_DIGEST: ${{ needs.verify-images.outputs.runner }}
+          MIGRATION_DIGEST: ${{ needs.verify-images.outputs.migrations }}
+          ANALYTICS_DIGEST: ${{ needs.verify-images.outputs.analytics }}
+          PLAN: ${{ needs.plan.outputs.plan }}
         shell: bash
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test -n "$ANALYTICS_DIGEST"
-          python tooling/ci/update_preview_release.py --source-sha "$GITHUB_SHA" --core-digest "$CORE_DIGEST" --frontend-digest "$FRONTEND_DIGEST" --runner-digest "$RUNNER_DIGEST" --migration-digest "$MIGRATION_DIGEST" --analytics-digest "$ANALYTICS_DIGEST"
+          python tooling/ci/update_preview_release.py --source-sha "$GITHUB_SHA" --core-digest "$CORE_DIGEST" --frontend-digest "$FRONTEND_DIGEST" --runner-digest "$RUNNER_DIGEST" --migration-digest "$MIGRATION_DIGEST" --analytics-digest "$ANALYTICS_DIGEST" --image-sources-json "$(jq -c '.image_sources' <<< "$PLAN")"
           git add -- infra/gitops/preview/kustomization.yaml infra/gitops/preview/applications.json infra/gitops/preview/release.json
           if test -f infra/gitops/preview/runner.json; then git add -- infra/gitops/preview/runner.json; fi
           if git diff --cached --quiet; then exit 0; fi
@@ -225,3 +452,29 @@ jobs:
           remote_head=$(git ls-remote origin refs/heads/Release | cut -f1)
           test "$remote_head" = "$GITHUB_SHA" || { echo 'Preview branch advanced; refusing stale publication' >&2; exit 1; }
           git push origin HEAD:refs/heads/Release
+          gitops_sha=$(git rev-parse HEAD)
+          printf 'gitops_sha=%s\n' "$gitops_sha" >> "$GITHUB_OUTPUT"
+          printf 'Published GitOps SHA `%s` for source `%s`.\n' "$gitops_sha" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+
+  public-smoke:
+    needs: [plan, publish]
+    if: >-
+      ${{ !cancelled() && needs.plan.result == 'success' && needs.publish.result == 'success' &&
+      needs.publish.outputs.gitops_sha != '' && needs.plan.outputs.core_rehearsal == 'false' &&
+      needs.plan.outputs.analytics_rehearsal == 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.publish.outputs.gitops_sha }}
+          persist-credentials: false
+      - name: Check public production entrypoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          python infra/gitops/operations/release_status.py --public-only \
+            --release-file infra/gitops/preview/release.json --base-url https://knowi.ru \
+            --timeout 420 --interval 15 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
