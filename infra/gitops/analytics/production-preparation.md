@@ -61,6 +61,10 @@ a verified immutable frontend image containing nginx. The optional private Core
 deletion source is a separate process with a read-only Core DB role, pinned Core
 image, loopback listener and mTLS sidecar; it is disabled by default. Its source
 DB URL must use `sslmode=verify-full` and `sslrootcert=/var/run/source-db-ca/ca.crt`.
+Check `SHOW ssl` on the actual Core database before provisioning that source.
+With TLS disabled, the source cannot connect under the required policy. Rehearse
+the server certificate and CA with the intended database hostname and verify
+that an incorrect hostname or CA is rejected.
 Its HMAC key, database URL, database CA and server TLS keys use four separate
 Secrets. Set `coreDeletion` to the Service's namespace, Pod labels and HTTPS
 port; its JSON URL hostname must match the server certificate SAN. TCP probes
@@ -119,12 +123,34 @@ a complete record of deletions confirmed after the latest copied state. The
 regular server and offsite rotation can also remove a release rollback point,
 so retain that set separately for the release window.
 
+### Option using the existing offsite client
+
+The existing Windows client can be evaluated as an independent destination for
+an encrypted, contiguous deletion journal. Its archive acknowledgement covers a
+single checked archive. A deletion acknowledgement would need to prove durable
+storage of the journal prefix, signing the authority identity, generation,
+sequence and prefix digest only after verification. Confirm completion only
+after purge and this independent acknowledgement. If the client is unavailable,
+completion stays pending. This option requires approval of that behavior and
+implementation and testing of the new acknowledgement protocol.
+
+During disaster recovery, obtain a fresh authenticated checkpoint and the full
+matching prefix from offsite storage. Keep restored consumers and the restored
+journal writer closed until replay and receipt verification succeed and the old
+writer is fenced. Test interruption after the offsite write, retry, prefix gaps,
+an unavailable client and a conflicting restored writer before using real data.
+
 ## Remaining production report gate
 
 The prepared Helm profile admits backend transfer over private mTLS. The
 browser activity input and its bucket workers are disabled in this profile.
 Legacy activity dates cannot provide measured study time. Before production
 acceptance, demonstrate a protected collection and projection path using an
-authorized control lifecycle, then verify the Core course reports return that
-account's expected nonempty Analytics values. A ready pod or a positive query
-against a synthetic projection does not establish this gate.
+authorized non-staff learner and a published catalog version for the intended
+course. Use a leader authorized for that course to read the visit series in
+`GET /api/admin/courses/{course}/overview` and the measured time series in
+`GET /api/admin/courses/{course}/study-time`. Check the expected positive values
+against the control activity and verify the corresponding calls to Analytics
+Query. These endpoints return cohort aggregates, so an HTTP response alone
+cannot attribute the values to the control learner. Confirm attribution using a
+course and cohort with a known baseline and the expected control contribution.
