@@ -4,7 +4,7 @@ import type { AccountStatisticsData } from "./AccountStatistics";
 import type { LearnerAnalyticsCatalog } from "./LearnerAnalytics";
 import type { ChapterTimeState } from "./useCourseChapterAnalytics";
 import { CourseStatisticsProgress } from "./CourseStatisticsProgress";
-import { acceptCourseSnapshot, completionCreditSnapshot, courseTimeChartScale, flattenCourseLessons, formatStudyDate, formatStudyTime, moscowToday, periodDates, shiftDate, summarizeCourseTime, type CourseTimeSnapshot, type CourseTimeValues, type ProgressLesson, type TimeMetric } from "./course-statistics-model";
+import { acceptCourseSnapshot, completionCreditSnapshot, courseTimeChartScale, flattenCourseLessons, formatStudyDate, formatStudyTime, mergeLessonStudyTime, mergeStudyTime, moscowToday, periodDates, shiftDate, summarizeCourseTime, type CourseTimeSnapshot, type CourseTimeValues, type ProgressLesson, type TimeMetric } from "./course-statistics-model";
 import "./course-statistics.css";
 
 const metrics = [
@@ -131,7 +131,6 @@ export function CourseStatisticsDashboard({ courseId, data, catalog, timeData = 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [focusedDate, setFocusedDate] = useState(today);
   const [metric, setMetric] = useState<TimeMetric>("activeMs");
-  const [timeSource, setTimeSource] = useState<"measured" | "estimated" | null>(null);
   const [preview, setPreview] = useState<ChartPreview | null>(null);
   const detailId = useId();
   const dayButtons = useRef<Array<HTMLButtonElement | null>>([]);
@@ -145,29 +144,27 @@ export function CourseStatisticsDashboard({ courseId, data, catalog, timeData = 
   const measurement = useMemo(() => acceptCourseSnapshot(timeState === "ready" || timeState === "stale" ? timeData : null, courseId, dates), [timeData, timeState, courseId, dates]);
   const credit = useMemo(() => !demo && data.tracksLoaded ? completionCreditSnapshot(courseId, dates, progressLessons) : null,
     [courseId, data.tracksLoaded, dates, demo, progressLessons]);
-  const showCredit = credit !== null && (timeSource === "estimated" || (timeSource === null && !(measurement.totals.activeMs ?? 0)));
-  const timeLoading = !showCredit && (timeState === "pending" || timeState === "loading");
+  const timeLoading = !credit?.totals.activeMs && (timeState === "pending" || timeState === "loading");
   const loadingValue = <span className="course-stats__loading" aria-hidden="true" />;
-  const snapshot = showCredit ? credit : measurement;
+  const snapshot = useMemo(() => mergeStudyTime(measurement, credit), [measurement, credit]);
   const outlineState = useMemo<ChapterTimeState | undefined>(() => {
-    if (demo || showCredit) return undefined;
+    if (demo) return undefined;
     if (!chapterTime?.report) return chapterTime;
     const {report} = chapterTime;
     if (report.course_id === courseId) return chapterTime;
     return {status: "loading", report: null};
-  }, [chapterTime, courseId, demo, showCredit]);
+  }, [chapterTime, courseId, demo]);
   const outline = outlineState?.status === "ready" ? outlineState.report : null;
   const completeOutline = outline?.status === "ok" || outline?.status === "no_data" ? outline : null;
-  const lessonRowsComplete = showCredit || (demo ? demoProgressSnapshot !== undefined : completeOutline !== null);
-  const lessonTimeLoading = outlineState?.status === "pending" || outlineState?.status === "loading";
+  const lessonRowsComplete = demo ? demoProgressSnapshot !== undefined : completeOutline !== null;
+  const lessonTimeLoading = !credit && (outlineState?.status === "pending" || outlineState?.status === "loading");
   const progressSnapshot = useMemo<CourseTimeSnapshot>(() => {
-    if (showCredit) return snapshot;
     if (demo) return demoProgressSnapshot ?? {...snapshot, lessons: []};
     const lessons = completeOutline ? [...completeOutline.lessons, ...completeOutline.unmapped_lessons].map(row => ({
       lessonId: row.lesson_id, activeMs: row.active_ms, theoryMs: row.theory_ms, practiceMs: row.practice_ms,
     })) : [];
-    return {...snapshot, lessons};
-  }, [completeOutline, demo, demoProgressSnapshot, showCredit, snapshot]);
+    return {...snapshot, lessons: mergeLessonStudyTime(lessons, credit?.lessons ?? [])};
+  }, [completeOutline, credit, demo, demoProgressSnapshot, snapshot]);
   const activeDate = selectedDate !== null && dates.includes(selectedDate) ? selectedDate : null;
   const tabStopDate = dates.includes(focusedDate) ? focusedDate : endDate;
   const selectedDay = snapshot.days.find(day => day.date === activeDate);
@@ -206,9 +203,9 @@ export function CourseStatisticsDashboard({ courseId, data, catalog, timeData = 
   const distributionState = timeLoading ? "loading" : splitTotal === null ? "unknown" : splitTotal === 0 ? "empty" : "ready";
   const ringAvailable = !timeLoading && theoryShare !== null;
   const detailDateLabel = selectedDay ? formatStudyDate(selectedDay.date, { day: "numeric", month: "long", weekday: "long", year: "numeric" }) : "";
-  const measured = showCredit || ((timeState === "ready" || timeState === "stale") && snapshot.totals.activeMs !== null);
+  const measured = snapshot.totals.activeMs !== null;
   const noRecordedTime = measured && !hasTime && snapshot.days.every(day => day[metric] === 0);
-  const retryAvailable = !demo && !showCredit && (timeState === "error" || timeState === "unavailable") && onRetry;
+  const retryAvailable = !demo && (timeState === "error" || timeState === "unavailable") && onRetry;
 
   useLayoutEffect(() => {
     if (!onRangeChange) return;
@@ -424,8 +421,7 @@ export function CourseStatisticsDashboard({ courseId, data, catalog, timeData = 
     : timeState === "stale" && (measured || snapshot.days.some(day => day.activeMs !== null)) ? "Доступны прошлые замеры"
     : !measured ? "Данные о времени недоступны" : null;
   const coverageNotice = measured && snapshot.quality === "partial" ? "Замеры доступны частично." : null;
-  const chartNotice = showCredit ? "1 ч теории и 1 ч практики за каждое завершённое занятие из перенесённой истории"
-    : [noRecordedTime ? "За этот период 0 мин" : null, statusText, coverageNotice].filter(Boolean).join(" · ");
+  const chartNotice = [noRecordedTime ? "За этот период 0 мин" : null, statusText, coverageNotice].filter(Boolean).join(" · ");
   const totalStudyTime = formatStudyTime(snapshot.totals.activeMs);
   const averageStudyTime = formatStudyTime(averageMs);
   const peakDailyTime = Math.max(0, ...snapshot.days.map(day => day.activeMs ?? 0));
@@ -441,14 +437,10 @@ export function CourseStatisticsDashboard({ courseId, data, catalog, timeData = 
     .map(row => `${row.label}: ${describeTime(row.ms)}${row.share === null ? "" : `, ${row.share}%`}`).join(". ");
 
   return <div className="course-stats">
-    {credit && <div className="course-stats__segments course-stats__segments--small" role="group" aria-label="Источник времени занятий">
-      <button type="button" aria-pressed={!showCredit} onClick={() => { setTimeSource("measured"); dismissPreview(); }}>Измеренное время</button>
-      <button type="button" aria-pressed={showCredit} onClick={() => { setTimeSource("estimated"); dismissPreview(); }}>Условное время за завершения</button>
-    </div>}
     <span className="course-stats__sr-only" role="status">{timeLoading ? "Загружаем время занятий" : ""}</span>
     <section className="course-stats__metrics" aria-label="Сводка по курсу" aria-busy={timeLoading}>
       <div className="course-stats__metric course-stats__metric--lead">
-        <span className="course-stats__metric-label"><i><Clock3 size={17} aria-hidden="true" /></i>{showCredit ? "Условное время в курсе" : "Время в курсе"}</span>
+        <span className="course-stats__metric-label"><i><Clock3 size={17} aria-hidden="true" /></i>Время в курсе</span>
         <strong className="course-stats__metric-value" data-ready={measured} key={totalStudyTime}>
           {timeLoading ? loadingValue : totalStudyTime}
         </strong>
@@ -616,7 +608,7 @@ export function CourseStatisticsDashboard({ courseId, data, catalog, timeData = 
         <p>Дашборд пока в разработке</p>
       </section>
       <div className="course-progress-layout__panel">
-        <CourseStatisticsProgress chapterTime={outlineState} onChapterRetry={onChapterRetry} data={data} lessons={lessons} snapshot={progressSnapshot}
+        <CourseStatisticsProgress chapterTime={outlineState} completionTime={credit?.lessons} onChapterRetry={onChapterRetry} data={data} lessons={lessons} snapshot={progressSnapshot}
           metric="activeMs" timeLoading={lessonTimeLoading} lessonRowsComplete={lessonRowsComplete} lessonTimeLoading={lessonTimeLoading} />
       </div>
     </div>

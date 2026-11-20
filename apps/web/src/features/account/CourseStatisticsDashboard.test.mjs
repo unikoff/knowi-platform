@@ -29,6 +29,20 @@ const render=(timeState,timeData=null,props={}) => renderToStaticMarkup(React.cr
   courseId:"backend",data,catalog:[],timeState,timeData,onRetry:() => {},...props,
 }));
 
+test("completed lesson history is part of ordinary study time with live activity", () => {
+  const dates = model.periodDates(7, today);
+  const time = {activeMs: 120000, theoryMs: 120000, practiceMs: 0};
+  const empty = model.emptyCourseSnapshot("backend", dates);
+  const snapshot = {...empty, totals: time, days: [...empty.days.slice(0, -1), {date: today, ...time}]};
+  const progress = {...data, courses: [{id: "ch1", title: "Глава", blocks: [{id: "b1", title: "Блок", lessons: [
+    {id: "one", title: "Занятие 1", completed: true, completedOn: today, historicalCredit: true},
+    {id: "two", title: "Занятие 2", completed: false, historicalCredit: true},
+  ]}]}]};
+  const html = render("ready", snapshot, {data: progress});
+  assert.match(html, /Время в курсе<\/span><strong[^>]*>2 ч 2 мин<\/strong>/);
+  assert.doesNotMatch(html, /Условное время|Измеренное время|Источник времени/);
+});
+
 test("disabled time is explained without a retry or fabricated values",() => {
   const html=render("disabled");
   assert.match(html,/Отображение личного времени занятий пока не включено/);

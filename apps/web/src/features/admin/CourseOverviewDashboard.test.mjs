@@ -180,22 +180,22 @@ test("study time stacks measured durations and describes each weighted daily ave
   const base = { metric: "studyTime", studyTimeView: timeReport, selectedDay: "2026-11-17" };
   const all = render(undefined, base);
   assert.match(all, /aria-pressed="true"[^>]*>Время учеников<\/button>/);
-  assert.match(all, /aria-label="вторник, 17 ноября, 1 ч 8 мин, С подпиской: 1 ч 1 мин 30 с, Без подписки: 6 мин 30 с, Среднее на ученика с измеренным временем: 17 мин"/);
-  assert.match(all, /aria-label="среда, 18 ноября, Зафиксировано 34 мин, С подпиской: 34 мин, Без подписки: нет данных, Среднее на ученика с измеренным временем: 17 мин"/);
-  assert.match(all, /course-trend-chart__average"><span>Среднее на ученика с измеренным временем<\/span><strong>17 мин<\/strong>/);
+  assert.match(all, /aria-label="вторник, 17 ноября, 1 ч 8 мин, С подпиской: 1 ч 1 мин 30 с, Без подписки: 6 мин 30 с, Среднее время на ученика: 17 мин"/);
+  assert.match(all, /aria-label="среда, 18 ноября, Зафиксировано 34 мин, С подпиской: 34 мин, Без подписки: нет данных, Среднее время на ученика: 17 мин"/);
+  assert.match(all, /course-trend-chart__average"><span>Среднее время на ученика<\/span><strong>17 мин<\/strong>/);
   assert.equal(axisLabels(all).at(-1), "1 ч 8 мин");
   assert.deepEqual(barHeights(all), [100, 50]);
 
   const withSubscription = render(undefined, { ...base, mode: "with_subscription" });
   assert.equal(axisLabels(withSubscription).at(-1), "1 ч 1 мин 30 с");
-  assert.match(withSubscription, /17 ноября, 1 ч 1 мин 30 с, Среднее на ученика с измеренным временем: 1 ч 1 мин 30 с/);
+  assert.match(withSubscription, /17 ноября, 1 ч 1 мин 30 с, Среднее время на ученика: 1 ч 1 мин 30 с/);
 
   const withoutSubscription = render(undefined, { ...base, mode: "without_subscription", selectedDay: "2026-11-18" });
   assert.equal(axisLabels(withoutSubscription).at(-1), "6 мин 30 с");
   assert.deepEqual(barHeights(withoutSubscription), [100]);
-  assert.match(withoutSubscription, /17 ноября, 6 мин 30 с, Среднее на ученика с измеренным временем: 2 мин 10 с/);
-  assert.match(withoutSubscription, /18 ноября, Нет данных, Среднее на ученика с измеренным временем: Нет данных/);
-  assert.match(withoutSubscription, /course-trend-chart__average"><span>Среднее на ученика с измеренным временем<\/span><strong>Нет данных<\/strong>/);
+  assert.match(withoutSubscription, /17 ноября, 6 мин 30 с, Среднее время на ученика: 2 мин 10 с/);
+  assert.match(withoutSubscription, /18 ноября, Нет данных, Среднее время на ученика: Нет данных/);
+  assert.match(withoutSubscription, /course-trend-chart__average"><span>Среднее время на ученика<\/span><strong>Нет данных<\/strong>/);
 });
 
 test("study time receives request context only when selected and shows unavailability explicitly", () => {
@@ -208,6 +208,18 @@ test("study time receives request context only when selected and shows unavailab
   assert.doesNotMatch(unavailable, /<figure /);
   const loading = render(undefined, { ...props, metric: "studyTime", studyTimeView: { status: "loading" } });
   assert.match(loading, /Загружаем время учеников/);
+});
+
+test("ordinary course time includes migrated hours and preserves live-only days", () => {
+  const migrated = daily.map((day, index) => index === 27 ? {...day, with_subscription: 7_200_000} : day);
+  const trends = {estimated_completion_time: {status: "available", daily: migrated}};
+  const base = {metric: "studyTime", studyTimeView: timeReport};
+  const html = render(trends, base);
+  assert.doesNotMatch(html, /Условное время/);
+  assert.match(html, /17 ноября, 3 ч 8 мин, С подпиской: 3 ч 1 мин 30 с, Без подписки: 6 мин 30 с, Среднее время на ученика: Нет данных/);
+  assert.match(html, /18 ноября, Зафиксировано 34 мин/);
+  assert.match(render(trends, {...base, studyTimeView: {status: "unavailable"}}), /17 ноября, Зафиксировано 2 ч/);
+  assert.doesNotMatch(render(trends, {...base, studyTimeView: {status: "denied"}}), /<figure /);
 });
 
 const apiSource = readFileSync(new URL("./course-study-time.ts", import.meta.url), "utf8")

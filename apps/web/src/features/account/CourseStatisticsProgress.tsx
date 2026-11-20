@@ -2,7 +2,7 @@ import { useId, useMemo, useState } from "react";
 import { BookOpen, Check, ChevronDown, Search } from "lucide-react";
 import type { AccountStatisticsData } from "./AccountStatistics";
 import type { ChapterTimeState } from "./useCourseChapterAnalytics";
-import { formatStudyDate, formatStudyTime, type CourseTimeSnapshot, type ProgressLesson, type TimeMetric } from "./course-statistics-model";
+import { formatStudyDate, formatStudyTime, type CourseLessonTime, type CourseTimeSnapshot, type ProgressLesson, type TimeMetric } from "./course-statistics-model";
 import { completeBlockLessonIds, sumBlockTime } from "./course-progress-block-time";
 import "./course-statistics-progress.css";
 
@@ -20,12 +20,13 @@ function completionDate(value: string | null | undefined): string | null {
   catch { return null; }
 }
 
-export function CourseStatisticsProgress({ data, lessons, snapshot, metric, chapterTime, onChapterRetry, timeLoading = false, lessonTimeLoading = timeLoading, lessonRowsComplete = false }: {
+export function CourseStatisticsProgress({ data, lessons, snapshot, metric, chapterTime, completionTime, onChapterRetry, timeLoading = false, lessonTimeLoading = timeLoading, lessonRowsComplete = false }: {
   chapterTime?: ChapterTimeState;
   onChapterRetry?: () => void;
   data: AccountStatisticsData;
   lessons: readonly Lesson[];
   snapshot: CourseTimeSnapshot;
+  completionTime?: readonly CourseLessonTime[];
   metric: TimeMetric;
   timeLoading?: boolean;
   lessonTimeLoading?: boolean;
@@ -53,6 +54,7 @@ export function CourseStatisticsProgress({ data, lessons, snapshot, metric, chap
     return result;
   }, [data.courses, lessons]);
   const times = useMemo(() => new Map(snapshot.lessons.map(item => [item.lessonId, item])), [snapshot.lessons]);
+  const migratedTimes = useMemo(() => new Map(completionTime?.map(item => [item.lessonId, item])), [completionTime]);
   const allLessonRowsLoaded = lessonRowsComplete && !lessonTimeLoading;
   const chapterLoading = chapterTime?.status === "loading" || (chapterTime?.status === "pending" && lessonTimeLoading);
   const loadingNotice = timeLoading ? ""
@@ -112,6 +114,8 @@ export function CourseStatisticsProgress({ data, lessons, snapshot, metric, chap
       } else if (chapterValue === 0) {
         chapterTimeValue = null;
       }
+      const migratedTime = chapter.lessons.reduce((total, lesson) => total + (migratedTimes.get(lesson.id)?.[metric] ?? 0), 0);
+      if (migratedTime > 0 && (chapterTime || !allLessonRowsLoaded)) chapterTimeValue = (chapterTimeValue ?? 0) + migratedTime;
       const countKnown = !!source && source.total > 0;
       const percent = countKnown ? Math.max(0, Math.min(100, source.completed / source.total * 100)) : null;
       const expanded = search ? searchChapters[chapter.key] ?? true : openChapters.has(chapter.key);
@@ -138,7 +142,7 @@ export function CourseStatisticsProgress({ data, lessons, snapshot, metric, chap
               <span className="course-progress__chapter-count">{countKnown ? <><span className="course-stats__sr-only">Пройдено </span>{`${source.completed} / ${source.total}`}</> : "Нет данных"}</span>
               <span className={`course-progress__bar${percent === null ? " is-unknown" : ""}`} aria-hidden="true">{percent !== null && <i style={{ width: `${percent}%` }} />}</span>
             </span>
-            {showChapterTime && <span className="course-progress__time"><small>{metricLabel}</small><strong>{chapterLoading ? loadingValue : formatStudyTime(chapterTimeValue)}</strong></span>}
+            {(showChapterTime || migratedTime > 0) && <span className="course-progress__time"><small>{metricLabel}</small><strong>{chapterLoading && !migratedTime ? loadingValue : formatStudyTime(chapterTimeValue)}</strong></span>}
           </span>
         </button>
         <div id={panelId} hidden={!expanded} className="course-progress__chapter-content">
@@ -156,8 +160,9 @@ export function CourseStatisticsProgress({ data, lessons, snapshot, metric, chap
             const blockCompleted = overviewLessons ? overviewLessons.filter(lesson => lesson.completed).length : blockSource?.completed ?? 0;
             const blockCountKnown = !!blockSource && blockTotal > 0;
             const blockPercent = blockCountKnown ? Math.max(0, Math.min(100, blockCompleted / blockTotal * 100)) : null;
-            const blockTime = sumBlockTime(blockMemberIds ?? block.lessons.map(lesson => lesson.id), times, metric,
-              blockSource?.total, allLessonRowsLoaded && blockMemberIds !== undefined);
+            const blockIds = blockMemberIds ?? block.lessons.map(lesson => lesson.id);
+            const blockTime = sumBlockTime(blockIds, times, metric, blockSource?.total, allLessonRowsLoaded && blockMemberIds !== undefined)
+              ?? (blockIds.some(id => migratedTimes.has(id)) ? sumBlockTime(blockIds.filter(id => times.get(id)?.[metric] != null), times, metric) : null);
             return <div className="course-progress__block" key={blockKey}>
               <button type="button" className="course-progress__block-button" aria-expanded={blockOpen} aria-controls={blockPanelId} onClick={() => {
                 if (search) toggleSearch(setSearchBlocks, blockKey, blockOpen);

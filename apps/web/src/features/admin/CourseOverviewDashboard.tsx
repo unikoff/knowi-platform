@@ -18,9 +18,8 @@ const trendMetrics = {
   visits: { label: "Ученики", icon: Users, title: "Уникальные посетители курса по дням", emptyMessage: "Посещений не было" },
   completions: { label: "Обучение", icon: BookOpenCheck, title: "Завершённые уроки по дням", emptyMessage: "Завершений не было" },
   studyTime: { label: "Время учеников", icon: Clock3, title: "Время занятий учеников по дням", emptyMessage: "Нет зафиксированных данных" },
-  estimated_completion_time: { label: "Условное время", icon: Clock3, title: "Условное время за завершённые занятия по дням", emptyMessage: "Нет завершённых занятий за этот период" },
 };
-const metricKeys = ["visits", "completions", "studyTime", "estimated_completion_time"] as const;
+const metricKeys = ["visits", "completions", "studyTime"] as const;
 
 const subscriptionGroups = [
   { key: "with_subscription", label: "С подпиской" },
@@ -38,7 +37,7 @@ const numberFormat = new Intl.NumberFormat("ru-RU");
 const subsecondFormat = new Intl.NumberFormat("ru-RU", { maximumSignificantDigits: 3 });
 const chartDateFormat = new Intl.DateTimeFormat("ru-RU", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 const shortWeekdayFormat = new Intl.DateTimeFormat("ru-RU", { weekday: "short", timeZone: "UTC" });
-const averageLabel = "Среднее на ученика с измеренным временем";
+const averageLabel = "Среднее время на ученика";
 
 function chartDate(value: string) {
   return new Date(`${value.slice(0, 10)}T00:00:00Z`);
@@ -66,8 +65,27 @@ function toStudyTimeChartDay(day: StudyTimeDay): ChartDay {
   };
 }
 
+function mergeStudyTimeDays(measured: StudyTimeDay[], migrated: DailyTrend[]): ChartDay[] {
+  const byDate = new Map(migrated.map(day => [day.date, day]));
+  const base = measured.length ? measured : migrated.map(({date}) => ({date, with_subscription: null, without_subscription: null}));
+  return base.map(day => {
+    const combined = toStudyTimeChartDay(day);
+    const history = byDate.get(day.date);
+    for (const {key} of subscriptionGroups) {
+      const extra = history?.[key] ?? 0;
+      if (extra > 0) {
+        combined[key] = (combined[key] ?? 0) + extra;
+        // Cohort reports have disjoint subscriptions, but neither source supplies their shared learners.
+        if (combined.learners) combined.learners[key] = null;
+      }
+    }
+    return combined;
+  });
+}
+
 function formatAverage(day: ChartDay, mode: TrendMode) {
   const observedTime = dailyValue(day, mode);
+  if (subscriptionGroups.some(({key}) => (mode === "all" || mode === key) && day[key] !== null && day.learners?.[key] == null)) return "Нет данных";
   const observedLearners = day.learners && dailyValue(day.learners, mode);
   return observedTime !== null && observedLearners ? formatDuration(observedTime / observedLearners) : "Нет данных";
 }
@@ -114,14 +132,13 @@ function isPartialTotal(day: DailyTrend, mode: TrendMode) {
 
 type DayPreview = { date: string; segment?: SubscriptionGroup };
 
-function TrendChart({ daily, title, mode, emptyMessage, quality, isStudyTime, isEstimated }: {
+function TrendChart({ daily, title, mode, emptyMessage, quality, isStudyTime }: {
   daily: ChartDay[];
   title: string;
   mode: TrendMode;
   emptyMessage: string;
   quality?: Trend["quality"];
   isStudyTime: boolean;
-  isEstimated?: boolean;
 }) {
   const lastDate = daily[daily.length - 1]?.date;
   const [focusedDate, setFocusedDate] = useState(lastDate);
@@ -140,7 +157,7 @@ function TrendChart({ daily, title, mode, emptyMessage, quality, isStudyTime, is
   const scale = getChartScale(peak);
   const hasPositive = peak !== null && peak > 0;
   const hasUnknown = daily.some(day => dailyValue(day, mode) === null || isPartialTotal(day, mode));
-  const formatValue = isStudyTime || isEstimated ? formatDuration : numberFormat.format;
+  const formatValue = isStudyTime ? formatDuration : numberFormat.format;
 
   useEffect(() => {
     if (scrollArea.current) scrollArea.current.scrollLeft = scrollArea.current.scrollWidth;
@@ -343,7 +360,12 @@ export function CourseOverviewDashboard({ trends, studyTimeContext }: { trends?:
   const { label, icon: Icon, title, emptyMessage } = trendMetrics[metric];
   const isStudyTime = metric === "studyTime";
   const studyTime = useCourseStudyTime(isStudyTime ? studyTimeContext : undefined);
-  const studyTimeDaily = useMemo(() => studyTime.view.status === "available" ? studyTime.view.daily.map(toStudyTimeChartDay) : [], [studyTime.view]);
+  const migratedTime = trends?.estimated_completion_time;
+  const studyTimeDaily = useMemo(() => {
+    if (!isStudyTime || studyTime.view.status === "denied") return [];
+    return mergeStudyTimeDays(studyTime.view.status === "available" ? studyTime.view.daily : [],
+      migratedTime?.status === "available" ? migratedTime.daily : []);
+  }, [isStudyTime, migratedTime, studyTime.view]);
   const trend = isStudyTime ? undefined : trends?.[metric];
   const daily = isStudyTime ? studyTimeDaily : trend?.status === "available" ? trend.daily : [];
   const quality = isStudyTime ? "unknown" : trend?.quality;
@@ -357,7 +379,7 @@ export function CourseOverviewDashboard({ trends, studyTimeContext }: { trends?:
         <div className="admin-overview__group-heading course-trend__metric-heading">
           <h2><Icon size={17} aria-hidden="true" /> {label}</h2>
           <div className="course-stats__segments course-stats__segments--small" role="group" aria-label="Показатель графика">
-            {metricKeys.filter(key => key !== "estimated_completion_time" || trends?.estimated_completion_time).map(key => (
+            {metricKeys.map(key => (
               <button type="button" key={key} aria-pressed={metric === key} aria-controls={chartId}
                 onClick={() => setMetric(key)}>{trendMetrics[key].label}</button>
             ))}
@@ -377,7 +399,7 @@ export function CourseOverviewDashboard({ trends, studyTimeContext }: { trends?:
             </div>}
           </div>
           {daily.length > 0 ? (
-            <TrendChart key={`${metric}:${mode}`} daily={daily} title={title} mode={mode} emptyMessage={emptyMessage} quality={quality} isStudyTime={isStudyTime} isEstimated={metric === "estimated_completion_time"} />
+            <TrendChart key={`${metric}:${mode}`} daily={daily} title={title} mode={mode} emptyMessage={emptyMessage} quality={quality} isStudyTime={isStudyTime} />
           ) : timeStatus === "error" ? (
             <div className="form-error" role="alert">{studyTimeMessages.error} <button className="admin-back" type="button" onClick={studyTime.retry}>Повторить</button></div>
           ) : (

@@ -68,6 +68,19 @@ const blockData = {...data, courses: [{...chapter, blocks: [{id: "block", title:
 const blockHeader = html => html.match(/<button[^>]*class="course-progress__block-button"[\s\S]*?<\/button>/)?.[0] ?? "";
 const lessonRows = html => html.match(/<li class="course-progress__lesson"[\s\S]*?<\/li>/g) ?? [];
 
+test("chapter, block and lesson display combined time without granting it to unfinished lessons", () => {
+  const migrated = {lessonId: "lesson", activeMs: 7_200_000, theoryMs: 3_600_000, practiceMs: 3_600_000};
+  const html = render({data: blockData, lessons: blockLessons, completionTime: [migrated],
+    snapshot: {...snapshot, lessons: [{...migrated, activeMs: 7_320_000, theoryMs: 3_720_000}]},
+    chapterTime: {status: "ready", report: {status: "ok", chapters: [{chapter_id: "chapter", active_ms: 120_000}]}},
+  });
+  const chapterHeader = html.match(/<button[^>]*class="course-progress__chapter-button"[\s\S]*?<\/button>/)?.[0] ?? "";
+  assert.match(chapterHeader, /<strong>2 ч 2 мин<\/strong>/);
+  assert.match(blockHeader(html), /<strong>2 ч 2 мин<\/strong>/);
+  assert.match(lessonRows(html)[0], /<dt>Всего<\/dt><dd>2 ч 2 мин<\/dd>/);
+  assert.doesNotMatch(lessonRows(html)[1], /2 ч 2 мин/);
+});
+
 test("overview blocks count their own lessons without changing chapter progress", () => {
   const overview = {...lesson, blockTitle: "00 Обзор", title: "Карта обучения"};
   const overviewBlock = {id: "block", title: "00 Обзор", completed: 0, total: 0, lesson_ids: ["lesson"], lessons: [overview]};

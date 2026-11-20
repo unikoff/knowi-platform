@@ -120,7 +120,7 @@ export function flattenCourseLessons(chapters: readonly {id: string; title: stri
   return result;
 }
 
-/** Fixed completion credit is a separate series. The original completion day supplies its date. */
+/** The original completion day supplies the date for migrated study time. */
 export function completionCreditSnapshot(courseId: string, dates: string[], lessons: readonly ProgressLesson[]): CourseTimeSnapshot | null {
   const credited = new Map<string, string>();
   for (const lesson of lessons) {
@@ -140,4 +140,29 @@ export function completionCreditSnapshot(courseId: string, dates: string[], less
     days: dates.map(date => ({date, ...time(counts.get(date)!)})),
     lessons: [...credited.keys()].map(lessonId => ({lessonId, ...time(1)})),
   };
+}
+
+export function addStudyTime(base: CourseTimeValues, credit?: CourseTimeValues): CourseTimeValues {
+  const add = (metric: TimeMetric) => {
+    const extra = credit?.[metric] ?? 0;
+    return extra > 0 ? (base[metric] ?? 0) + extra : base[metric];
+  };
+  return {activeMs: add('activeMs'), theoryMs: add('theoryMs'), practiceMs: add('practiceMs')};
+}
+
+export function mergeStudyTime(base: CourseTimeSnapshot, credit: CourseTimeSnapshot | null): CourseTimeSnapshot {
+  if (!credit || base.courseId !== credit.courseId || base.from !== credit.from || base.to !== credit.to) return base;
+  const byDate = new Map(credit.days.map(day => [day.date, day]));
+  return {...base, totals: addStudyTime(base.totals, credit.totals),
+    days: base.days.map(day => ({date: day.date, ...addStudyTime(day, byDate.get(day.date))})),
+    lessons: mergeLessonStudyTime(base.lessons, credit.lessons)};
+}
+
+export function mergeLessonStudyTime(base: CourseLessonTime[], credit: CourseLessonTime[]): CourseLessonTime[] {
+  const merged = new Map(base.map(lesson => [lesson.lessonId, lesson]));
+  for (const lesson of credit) {
+    const current = merged.get(lesson.lessonId);
+    merged.set(lesson.lessonId, current ? {lessonId: lesson.lessonId, ...addStudyTime(current, lesson)} : lesson);
+  }
+  return [...merged.values()];
 }
