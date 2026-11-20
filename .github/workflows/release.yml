@@ -282,9 +282,9 @@ jobs:
           DOCKERFILE: ${{ matrix.dockerfile }}
           BUILD_TARGET: ${{ matrix.target }}
           # Change these tracked values in a new commit to change the Web image.
-          VITE_ANALYTICS_TRACKER_ENABLED: 'false'
-          VITE_ANALYTICS_REPORTS_ENABLED: 'false'
-          VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED: 'false'
+          VITE_ANALYTICS_TRACKER_ENABLED: 'true'
+          VITE_ANALYTICS_REPORTS_ENABLED: 'true'
+          VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED: 'true'
           PLAN: ${{ needs.plan.outputs.plan }}
         run: |
           set -euo pipefail

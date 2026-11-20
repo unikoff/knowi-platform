@@ -170,8 +170,31 @@
           },
           "spec": {
             "automountServiceAccountToken": false,
+            "volumes": [
+              {
+                "name": "analytics-core-wire",
+                "secret": {
+                  "secretName": "knowi-analytics-core-wire-s17",
+                  "defaultMode": 292
+                }
+              },
+              {
+                "name": "analytics-catalog-receipts",
+                "hostPath": {
+                  "path": "/var/lib/knowi-analytics-catalog-s17/receipts",
+                  "type": "Directory"
+                }
+              }
+            ],
             "containers": [
               {
+                "envFrom": [
+                  {
+                    "configMapRef": {
+                      "name": "knowi-analytics-core-env-s17"
+                    }
+                  }
+                ],
                 "env": [
                   {
                     "name": "PYMENTOR_REDIS_PREFIX",
@@ -299,6 +322,18 @@
                   {
                     "containerPort": 8001,
                     "protocol": "TCP"
+                  }
+                ],
+                "volumeMounts": [
+                  {
+                    "name": "analytics-core-wire",
+                    "mountPath": "/var/run/analytics-core",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "analytics-catalog-receipts",
+                    "mountPath": "/run/analytics-catalog",
+                    "readOnly": true
                   }
                 ],
                 "readinessProbe": {
