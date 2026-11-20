@@ -10,8 +10,8 @@ privacy authority and Core deletion source to all roles and the migration Job;
 collector, processor and query additionally receive the deletion status DB
 Secret, and privacy alone receives the relay Secret. The two mTLS Secrets are
 mounted at `/var/run/analytics-authority-tls` and `/var/run/core-deletion-tls`;
-the JSON configurations must use matching paths. Processor generic and bucket
-workers are disabled and `REAL_COLLECTION` remains false. This profile alone
+the JSON configurations must use matching paths. The prepared values turn off
+generic and bucket workers and leave `REAL_COLLECTION` false. This profile alone
 does not enable collection or constitute an accepted Core–Analytics cutover.
 Deletion source egress permits only the selected Core namespace and Pod labels;
 the configured port must be the actual destination Pod port.
@@ -71,15 +71,15 @@ port; its JSON URL hostname must match the server certificate SAN. TCP probes
 only establish listening sockets: test authenticated deletion snapshots and
 denied client certificates, paths and methods before enabling the cutover.
 
-The currently inspected `knowi01` has a single node and no confirmed complete
-current deletion journal outside its restore domain. Keep production activation
-closed under [CORP-524](https://platformpy.atlassian.net/browse/CORP-524). An
-additional database or PVC on the same disk still rolls back with the node.
-Once an approved existing independent store is available, provision and verify
-the anchor using
-`services/analytics/ops/privacy_authority/001_anchor.sql`; runtime authority
-must receive only the narrowly granted role described in that SQL. An operator
-able to restore or alter the whole anchor database can still roll it back.
+`knowi01` has a single node and no confirmed complete current deletion journal
+outside its restore domain. The owner approved a single-node launch conditional
+on keeping old restored history closed until deletion reconciliation. This
+preserves the opening requirement of
+[CORP-524](https://platformpy.atlassian.net/browse/CORP-524). Verify the
+conditional release gate before activation. Provision the separate anchor
+database and restricted runtime role using
+`services/analytics/ops/privacy_authority/001_anchor.sql`. If the anchor is on
+the same node, it can roll back with the journal.
 
 The candidate Core migrations Dockerfile packages
 `services/core-api/tools/analytics_transfer/production_migrate.py` and
@@ -117,6 +117,26 @@ live stream from the reconciled sequence. Leave the restored target closed if
 the journal is absent, stale, incomplete or damaged. Replaying two copies from
 the same snapshot cannot establish their freshness.
 
+For single-node rehearsal, set `runtime.hostBootRecoveryGate: true`. The chart
+bind-mounts the host directory `/run/knowi-analytics-recovery` read-only into
+Analytics runtimes and the authority. Confirm `/run` is tmpfs. Create the root
+owned directory without an `open` file. The `open` file, when issued manually,
+must be a root-owned regular file with read-only access for workload users and
+contain exactly the current kernel boot ID followed by a newline. Never issue
+this permit from a boot unit, a Kubernetes object or a restore script. Cold
+boots have no permit. Without one, Analytics denies operational reads and
+processing, and the authority denies new append requests. The authenticated
+journal read and purge path remains available for controlled reconciliation.
+
+For a logical restore on a running host, first remove the permit, stop and
+drain all runtimes and publishers, quarantine restored Core endpoints and revoke
+application access to the restore target. Restore into a fresh isolated database
+and keep the public route on the old live target or on maintenance. A supervised
+promotion after successful reconciliation is the only supported path to issue
+the permit for that target. Rehearse this on a separate cluster. The boot permit
+alone covers neither a hot VM memory rollback nor an in-place privileged restore
+that bypasses the procedure. An unverified restore stays quarantined.
+
 The current `knowi_backup` receiver and offsite pull cover Core CMS archives.
 Their verified copies preserve the state at each snapshot. They do not produce
 a complete record of deletions confirmed after the latest copied state. The
@@ -142,8 +162,14 @@ an unavailable client and a conflicting restored writer before using real data.
 
 ## Remaining production report gate
 
-The prepared Helm profile admits backend transfer over private mTLS. The
-browser activity input and its bucket workers are disabled in this profile.
+The prepared Helm profile admits backend transfer over private mTLS. A later
+explicit `browserCollection.enabled` requires a private Core Collector gateway,
+publisher acknowledgement, and the activity, day and course projections. The
+release build keeps `VITE_ANALYTICS_TRACKER_ENABLED` false. For production
+catalog publication use `python -m pymentor_core.app.analytics_catalog
+--production --course-id <course>` inside the approved publisher context. Core
+uses the separate production receipt directory with read-only credentials. Run
+the publisher only after verifying the active Analytics dataset and guard.
 Legacy activity dates cannot provide measured study time. Before production
 acceptance, demonstrate a protected collection and projection path using an
 authorized non-staff learner and a published catalog version for the intended

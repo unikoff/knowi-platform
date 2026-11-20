@@ -45,8 +45,9 @@ class RelayConfig:
 
 
 class CoreDeletionRelay:
-    def __init__(self, source, authority, config):
+    def __init__(self, source, authority, config, *, recovery_permit=None):
         self.source, self.authority, self.config = source, authority, config
+        self.recovery_permit = recovery_permit
         self._stop, self._task, self._cursor = asyncio.Event(), None, 0
         self._sent = {}
 
@@ -62,6 +63,8 @@ class CoreDeletionRelay:
             self._task = None
 
     async def tick(self):
+        if self.recovery_permit is not None and self.recovery_permit() is not True:
+            return
         controls = await self.source.snapshot()
         if not controls:
             self._cursor = 0
@@ -77,6 +80,8 @@ class CoreDeletionRelay:
             if previous is not None and previous[0] != digest:
                 raise ValueError("conflicting Core deletion identity")
             if previous is None or time.monotonic() - previous[1] >= 30:
+                if self.recovery_permit is not None and self.recovery_permit() is not True:
+                    return
                 # Unknown outcomes are retried later with identical identity and payload.
                 await self.authority.append(control, producer=self.config.producer,
                                             producer_token=self.config.token(), command_key=self.config.command_key)

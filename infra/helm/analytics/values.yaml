@@ -36,6 +36,8 @@ coreTransfer:
 catalog:
   enabled: false
   namespace: ""
+browserCollection:
+  enabled: false # Prepared only; enable after restore quarantine verification.
 activityProjection:
   enabled: false
   runId: "" # Stable per dataset generation, shared by Processor and Query.
@@ -144,6 +146,7 @@ authorityClientTLS:
 # Production profile only wires authenticated guards; collection remains off.
 runtime:
   mode: synthetic
+  hostBootRecoveryGate: false  # Operator-controlled volatile permit for a single-node installation.
 coreDeletion:
   sourceSecretName: "" # key CORE_DELETION_SOURCE_JSON
   statusSecretName: "" # key DATABASE_URL; dedicated transfer-status DB role

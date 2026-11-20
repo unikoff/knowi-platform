@@ -28,11 +28,14 @@ spec:
           image: {{ printf "%s@%s" .Values.image.repository .Values.image.digest | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["python", "-m", "pymentor_analytics.adapters.privacy_authority.production_server"]
-          args: ["serve", "--config", "/var/run/authority/config.json"]
+          args: ["serve", "--config", "/var/run/authority/config.json"{{ if .Values.runtime.hostBootRecoveryGate }}, "--host-boot-recovery-gate"{{ end }}]
           ports: [{name: https, containerPort: {{ $a.port }}}]
           volumeMounts:
             - {name: config, mountPath: /var/run/authority, readOnly: true}
             - {name: journal, mountPath: /var/lib/authority/journal}
+{{- if .Values.runtime.hostBootRecoveryGate }}
+            - {name: recovery-permit, mountPath: /var/run/analytics-recovery, readOnly: true}
+{{- end }}
           resources:
 {{ toYaml $a.resources | indent 12 }}
           securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
@@ -42,6 +45,10 @@ spec:
           secret: {secretName: {{ $a.configSecretName | quote }}, defaultMode: 0440}
         - name: journal
           persistentVolumeClaim: {claimName: {{ $a.journalClaimName | quote }}}
+{{- if .Values.runtime.hostBootRecoveryGate }}
+        - name: recovery-permit
+          hostPath: {path: /run/knowi-analytics-recovery, type: Directory}
+{{- end }}
 ---
 apiVersion: v1
 kind: Service

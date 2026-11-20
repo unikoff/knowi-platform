@@ -31,6 +31,9 @@ spec:
           envFrom:
             - configMapRef: {name: {{ $.Release.Name }}-analytics-config}
           env:
+{{- if $.Values.runtime.hostBootRecoveryGate }}
+            - {name: ANALYTICS_{{ upper $role }}_HOST_BOOT_RECOVERY_GATE, value: "true"}
+{{- end }}
 {{- if and $.Values.coreTransfer.enabled (has $role (list "collector" "processor" "query")) }}
             - {name: ANALYTICS_{{ upper $role }}_CORE_TRANSFER_ENABLED, value: "true"}
 {{- if $.Values.coreTransfer.proofEnabled }}
@@ -128,6 +131,9 @@ spec:
 {{- if eq $.Values.runtime.mode "production" }}
             - {name: core-deletion-tls, mountPath: /var/run/core-deletion-tls, readOnly: true}
 {{- end }}
+{{- if $.Values.runtime.hostBootRecoveryGate }}
+            - {name: recovery-permit, mountPath: /var/run/analytics-recovery, readOnly: true}
+{{- end }}
 {{- end }}
           resources:
 {{ toYaml $cfg.resources | indent 12 }}
@@ -157,6 +163,10 @@ spec:
 {{- if $.Values.authorityClientTLS.secretName }}
         - name: authority-client-tls
           secret: {secretName: {{ $.Values.authorityClientTLS.secretName | quote }}}
+{{- end }}
+{{- if $.Values.runtime.hostBootRecoveryGate }}
+        - name: recovery-permit
+          hostPath: {path: /run/knowi-analytics-recovery, type: Directory}
 {{- end }}
 {{- if eq $.Values.runtime.mode "production" }}
         - name: core-deletion-tls

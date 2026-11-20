@@ -80,12 +80,14 @@ def contents(connection):
 
 async def replay_restored_archive(restore_urls, client_cfg, control, query):
     readers = {}
+    opened = False
     writer = Database(Settings(database_url=restore_urls['privacy']))
     try:
         for role in ('collector', 'processor', 'query'):
             db = Database(Settings(database_url=restore_urls[role]))
-            runtime = PrivacyRuntime(AuthorityClient(client_cfg), db)
+            runtime = PrivacyRuntime(AuthorityClient(client_cfg), db, recovery_permit=lambda: opened)
             db.transaction_guard = runtime.check_in_transaction
+            db.transaction_exit_guard = runtime.check_in_transaction
             readers[role] = (db, runtime)
             await runtime.tick()
             assert not await runtime.is_ready()
@@ -98,18 +100,27 @@ async def replay_restored_archive(restore_urls, client_cfg, control, query):
             if await replay.is_ready():
                 break
         assert await replay.is_ready()
-        for db, runtime in readers.values():
-            await runtime.tick()
-            assert await runtime.is_ready()
-            async with db.transaction() as session:
-                assert (await session.execute(text('SELECT 1'))).scalar_one() == 1
         async with writer.sessions.begin() as session:
             assert (await session.execute(text('SELECT applied_through FROM analytics.privacy_state'))).scalar_one() == 2
             assert (await session.execute(text('SELECT count(*) FROM analytics.privacy_receipts WHERE phase=\'complete\''))).scalar_one() == 2
+        for db, runtime in readers.values():
+            await runtime.tick()
+            assert not await runtime.is_ready()
+            with pytest.raises(PrivacyUnavailable):
+                async with db.transaction():
+                    pytest.fail('replay alone opened the quarantine')
+        opened = True
         grant = VerifiedGrant(control, 'user', 'report:read', ('backend',), (), False, int(time.time()) + 120)
         report = await PostgresActivityReport(readers['query'][0], None).read_activity(grant, query)
         assert sum(row['active_ms'] for row in report['daily']) == 10_000
         assert sum(row['unique_visitors'] for row in report['daily']) == 1
+        for db, runtime in readers.values():
+            assert await runtime.is_ready()
+            with pytest.raises(PrivacyUnavailable):
+                async with db.transaction() as session:
+                    assert (await session.execute(text('SELECT 1'))).scalar_one() == 1
+                    opened = False
+            opened = True
     finally:
         for db, _ in readers.values():
             await db.close()
@@ -145,9 +156,10 @@ def test_protected_dual_delivery_mtls_without_database(owned_path, monkeypatch):
     signer, producer, command = (Ed25519PrivateKey.generate() for _ in range(3))
     secret = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b'=').decode()
     j = journal(owned_path)
+    opened = False
     authority_app = create_authority_app(j, issuer=j.authority_id, kid='a', signing_key=signer,
         producer_issuer='core', producer_public_keys={'p': pem(producer).encode()}, allowed_producers={'core'},
-        producer_command_public_keys={'core': pem(command).encode()}, reader_secret=secret)
+        producer_command_public_keys={'core': pem(command).encode()}, reader_secret=secret, recovery_permit=lambda: opened)
     target, instance, source_key = uuid4(), uuid4(), os.urandom(32)
     occurred = datetime.now(timezone.utc)
     stamp = local_collection._stamp(occurred)
@@ -165,12 +177,18 @@ def test_protected_dual_delivery_mtls_without_database(owned_path, monkeypatch):
             'instance_id': str(instance), 'secret': base64.urlsafe_b64encode(source_key).rstrip(b'=').decode(),
             'runtime_mode': 'production', 'tls_ca_file': str(ca), 'tls_cert_file': str(client_cert), 'tls_key_file': str(client_key)}))
         async def scenario():
+            nonlocal opened
             cfg = RelayConfig('core', 'core', 'p', producer, command)
             ctx = ssl.create_default_context(cafile=str(ca)); ctx.load_cert_chain(str(client_cert), str(client_key))
             core = core_privacy.AuthorityClient(endpoint=authority_url, authority_id=j.authority_id,
                 issuer=j.authority_id, public_keys={'a': pem(signer).encode()}, producer='core',
                 producer_token=cfg.token, command_key=command, verify=ctx)
             event = deletion(target, revision=1)
+            relay = CoreDeletionRelay(CoreDeletionClient(sc), AuthorityClient(ac), cfg, recovery_permit=lambda: opened)
+            assert await core.append(event, occurred, timeout_seconds=3) is None
+            await relay.tick()
+            assert j.snapshot(after=0)[0] == 0
+            opened = True
             original = core_privacy.request
             async def lost(*args, **kwargs):
                 response = await original(*args, **kwargs)
@@ -182,7 +200,7 @@ def test_protected_dual_delivery_mtls_without_database(owned_path, monkeypatch):
             assert await core.append(event, occurred, timeout_seconds=3) is None
             monkeypatch.setattr(core_privacy, 'request', original)
             assert await core.append(event, occurred, timeout_seconds=3) == 1
-            await CoreDeletionRelay(CoreDeletionClient(sc), AuthorityClient(ac), cfg).tick()
+            await relay.tick()
             high, entries = j.snapshot(after=0)
             assert high == 2 and len(entries) == 2
             assert len({str(entry.control.control_id) for entry in entries}) == 2

@@ -70,7 +70,7 @@ def _journal(cfg, *, initialize=False):
     factory = ProductionJournal.initialize if initialize else ProductionJournal
     return factory(Path(cfg["journal_path"]), Path(cfg["anchor_path"]), cfg["authority_id"])
 
-def load_application(cfg):
+def load_application(cfg, *, recovery_permit=None):
     tls_context(cfg)
     key = serialization.load_pem_private_key(_read(cfg["signing_key_file"], 8192), password=None)
     if not isinstance(key, Ed25519PrivateKey):
@@ -79,7 +79,8 @@ def load_application(cfg):
     journal = _journal(cfg)
     return create_authority_app(journal, issuer=cfg["issuer"], kid=cfg["kid"], signing_key=key,
         producer_issuer=cfg["producer_issuer"], producer_public_keys={k: v.encode("ascii") for k, v in cfg["producer_public_keys"].items()},
-        allowed_producers=set(cfg["allowed_producers"]), producer_command_public_keys={k: v.encode("ascii") for k, v in cfg["producer_command_public_keys"].items()}, reader_secret=secret)
+        allowed_producers=set(cfg["allowed_producers"]), producer_command_public_keys={k: v.encode("ascii") for k, v in cfg["producer_command_public_keys"].items()},
+        reader_secret=secret, recovery_permit=recovery_permit)
 
 
 def main():
@@ -87,6 +88,7 @@ def main():
     parser.add_argument("action", choices=("init", "serve"))
     parser.add_argument("--config", required=True)
     parser.add_argument("--allow-local-anchor-fixture", action="store_true", help="synthetic loopback fixture only")
+    parser.add_argument("--host-boot-recovery-gate", action="store_true")
     args = parser.parse_args()
     try:
         cfg = load_config(args.config)
@@ -96,7 +98,8 @@ def main():
             _journal(cfg, initialize=True)
             print("authority journal initialized")
             return
-        app = load_application(cfg)
+        from pymentor_analytics.app.recovery_permit import host_boot_permitted
+        app = load_application(cfg, recovery_permit=host_boot_permitted if args.host_boot_recovery_gate else None)
         import uvicorn
         uvicorn.run(app, host=cfg["bind_host"], port=cfg["port"], http=BoundedFixtureProtocol, ws="none",
             backlog=16, limit_concurrency=MAX_CONNECTIONS, timeout_keep_alive=2, h11_max_incomplete_event_size=8192,

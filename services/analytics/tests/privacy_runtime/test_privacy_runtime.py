@@ -86,6 +86,21 @@ def test_restored_cursor_cannot_open_new_process_without_fresh_attach_barrier():
     asyncio.run(run())
 
 
+def test_matching_rolled_back_authority_and_cursor_stay_closed_without_permit():
+    async def run():
+        opened = False
+        gate = Gate(Client(), recovery_permit=lambda: opened)
+        await gate.tick()
+        assert not await gate.is_ready()
+        with pytest.raises(PrivacyUnavailable):
+            await gate.check_in_transaction(None)
+        opened = True
+        assert await gate.is_ready()
+        opened = False
+        assert not await gate.is_ready()
+    asyncio.run(run())
+
+
 def test_deletion_during_attach_handoff_is_in_opening_barrier():
     async def run():
         client = Client()

@@ -1,4 +1,21 @@
 {{- define "analytics.guard" -}}
+{{- if not (kindIs "bool" .Values.runtime.hostBootRecoveryGate) -}}
+{{- fail "runtime.hostBootRecoveryGate must be boolean" -}}
+{{- end -}}
+{{- if and .Values.runtime.hostBootRecoveryGate (or (ne .Values.runtime.mode "production") (not .Values.authorityServer.enabled)) -}}
+{{- fail "Host-boot recovery gate requires the production runtime and its managed authority" -}}
+{{- end -}}
+{{- if not (kindIs "bool" .Values.browserCollection.enabled) -}}
+{{- fail "browserCollection.enabled must be boolean" -}}
+{{- end -}}
+{{- if .Values.browserCollection.enabled -}}
+{{- if or (ne .Values.runtime.mode "production") (not .Values.catalog.enabled) (not .Values.roles.privacy.enabled) .Values.network.coreIngress.cidr (not .Values.network.coreIngress.namespace) (not .Values.network.coreIngress.podLabels) -}}
+{{- fail "Browser collection requires production, catalog, privacy and a selected Core namespace and Pod" -}}
+{{- end -}}
+{{- if not (and .Values.activityProjection.enabled .Values.activityDay.enabled .Values.activityCourse.enabled) -}}
+{{- fail "Browser collection requires the activity, day and course projections" -}}
+{{- end -}}
+{{- end -}}
 {{- $benchmarkNamespace := and (eq .Values.syntheticBenchmark.enabled true) (regexMatch "^knowi-analytics-bench-[0-9a-f]{32}$" .Release.Namespace) -}}
 {{- if and (ne .Release.Namespace "knowi-analytics") (not $benchmarkNamespace) -}}
 {{- fail "Analytics must be installed in the separately bootstrapped knowi-analytics namespace" -}}
@@ -99,8 +116,11 @@
 {{- if .Values.authorityServer.enabled -}}
 {{- $a := .Values.authorityServer -}}
 {{- $anchorExact := or (regexMatch "^([0-9]{1,3}\\.){3}[0-9]{1,3}/32$" $a.anchorCIDR) (regexMatch "^[0-9A-Fa-f:]+/128$" $a.anchorCIDR) -}}
-{{- if or (ne .Values.runtime.mode "production") .Values.syntheticBenchmark.enabled .Values.fixtureCatalog.configMapName (not .Values.image.digest) (not $a.configSecretName) (not $a.journalClaimName) (ne $a.anchorBackend "postgres") (not $anchorExact) (eq $a.anchorCIDR .Values.network.databaseCIDR) (not $a.coreNamespace) (not $a.corePodLabels) (not .Values.authorityClientTLS.secretName) -}}
-{{- fail "Authority requires an immutable image, journal claim, separate exact PostgreSQL anchor, private config and client TLS Secrets and explicit Core selector" -}}
+{{- if or (ne .Values.runtime.mode "production") .Values.syntheticBenchmark.enabled .Values.fixtureCatalog.configMapName (not .Values.image.digest) (not $a.configSecretName) (not $a.journalClaimName) (ne $a.anchorBackend "postgres") (not $anchorExact) (not $a.coreNamespace) (not $a.corePodLabels) (not .Values.authorityClientTLS.secretName) -}}
+{{- fail "Authority requires an immutable image, journal claim, exact PostgreSQL anchor, private config and client TLS Secrets and explicit Core selector" -}}
+{{- end -}}
+{{- if and (eq $a.anchorCIDR .Values.network.databaseCIDR) (not .Values.runtime.hostBootRecoveryGate) -}}
+{{- fail "A shared database address requires the host-boot recovery gate" -}}
 {{- end -}}
 {{- end -}}
 {{- if not (has .Values.runtime.mode (list "synthetic" "production")) -}}

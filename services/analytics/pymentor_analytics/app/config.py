@@ -21,6 +21,7 @@ class Settings(BaseModel):
     shutdown_timeout_seconds: int = Field(default=10, ge=1, le=60)
     real_collection: bool = False
     issuer_mode: str = "synthetic"
+    host_boot_recovery_gate: bool = False
     grant_issuer: str | None = None
     grant_keys_json: SecretStr | None = None
     producer_issuer: str | None = None
@@ -103,7 +104,7 @@ class Settings(BaseModel):
 
     @model_validator(mode="after")
     def synthetic_only(self):
-        if self.real_collection:
+        if self.real_collection and self.issuer_mode != "production":
             parsed = urlsplit(self.database_url.get_secret_value())
             name = unquote(parsed.path.lstrip("/"))
             if (self.issuer_mode != "local" or parsed.hostname not in {"localhost", "127.0.0.1", "::1"}
@@ -129,6 +130,8 @@ class Settings(BaseModel):
                 from pymentor_analytics.adapters.core_privacy.client import SourceConfig
                 source = SourceConfig.from_json(self.core_deletion_source_json.get_secret_value())
                 if authority.runtime_mode != "production" or source.runtime_mode != "production":
+                    raise ValueError
+                if self.real_collection and not self.catalog_enabled:
                     raise ValueError
             except Exception:
                 raise ValueError("invalid production authority configuration") from None
@@ -241,6 +244,11 @@ def catalog_config(settings, role):
 
 
 def activity_projection_config(settings, role):
+    if role == "processor" and settings.issuer_mode == "production" and (
+        settings.processor_generic_worker_enabled
+        or (settings.processor_bucket_worker_enabled and not settings.activity_projection_enabled)
+    ):
+        raise ValueError("production may run only the configured activity projection worker")
     if settings.activity_boundary_credit_enabled and not (role == "processor" and settings.activity_course_worker_enabled):
         raise ValueError("boundary credit requires the processor course worker")
     if settings.activity_course_worker_enabled and not (role == "processor" and settings.activity_day_worker_enabled):
@@ -325,8 +333,12 @@ def load_settings(role: str, environ: Mapping[str, str] | None = None) -> Settin
     if "ANALYTICS_ACTIVITY_PROJECTION_RUN_ID" in env:
         fields["activity_projection_run_id"] = env["ANALYTICS_ACTIVITY_PROJECTION_RUN_ID"]
     settings=Settings.model_validate(fields)
-    if role == "processor" and settings.issuer_mode == "production" and (settings.processor_bucket_worker_enabled or settings.processor_generic_worker_enabled):
-        raise ValueError("production synthetic workers must be disabled")
+    if settings.host_boot_recovery_gate and (settings.issuer_mode != "production" or role == "migrate"):
+        raise ValueError("host-boot recovery gate belongs to the production runtime")
+    if settings.real_collection and settings.issuer_mode == "production" and role != "collector":
+        raise ValueError("production browser collection belongs to collector")
+    if role == "processor" and settings.issuer_mode == "production":
+        activity_projection_config(settings, role)
     parsed=urlsplit(settings.database_url.get_secret_value())
     if parsed.port in (62332,62333) and unquote(parsed.username or "") != unquote(parsed.path.lstrip("/"))+"_"+role:
         raise ValueError("invalid synthetic benchmark database role")

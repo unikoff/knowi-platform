@@ -53,6 +53,27 @@ def render(values=None, namespace="knowi-analytics", values_file=None):
 
 
 class RenderTests(unittest.TestCase):
+    def test_browser_collection_requires_guarded_production(self):
+        base = {**PRODUCTION, "migration.revision": "a014", "roles.privacy.enabled": "true",
+                "catalog.enabled": "true", "catalog.namespace": "core",
+                "coreTransfer.namespacesConfigMapName": "catalog-map",
+                "activityProjection.enabled": "true", "activityProjection.runId": UUID,
+                "activityDay.enabled": "true", "activityCourse.enabled": "true"}
+        off = render(base)
+        self.assertEqual(off.returncode, 0, off.stderr)
+        self.assertNotIn("location = /api/analytics/events/batch", off.stdout)
+        self.assertIn('ANALYTICS_PROCESSOR_BUCKET_WORKER_ENABLED: "true"', off.stdout)
+        on = render({**base, "browserCollection.enabled": "true"})
+        self.assertEqual(on.returncode, 0, on.stderr)
+        self.assertIn('ANALYTICS_COLLECTOR_REAL_COLLECTION: "true"', on.stdout)
+        self.assertIn("location = /api/analytics/events/batch", on.stdout)
+        self.assertIn('ANALYTICS_PROCESSOR_BUCKET_WORKER_ENABLED: "true"', on.stdout)
+        self.assertIn('ANALYTICS_PROCESSOR_GENERIC_WORKER_ENABLED: "false"', on.stdout)
+        for invalid in ({"catalog.enabled": "false"}, {"roles.privacy.enabled": "false"},
+                        {"network.coreIngress.namespace": ""}, {"runtime.mode": "synthetic"}):
+            with self.subTest(invalid=invalid):
+                self.assertNotEqual(render({**base, "browserCollection.enabled": "true", **invalid}).returncode, 0)
+
     def test_defaults_keep_features_off(self):
         result = render()
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -157,6 +178,15 @@ class RenderTests(unittest.TestCase):
         self.assertIn('cidr: "10.42.5.8/32"', result.stdout)
         self.assertIn("strategy: {type: Recreate}", result.stdout)
         self.assertNotIn("analytics-ingress\n", result.stdout)
+        self.assertNotIn("recovery-permit", result.stdout)
+        guarded = render({**values, "runtime.hostBootRecoveryGate": "true", "roles.privacy.enabled": "true"})
+        self.assertEqual(guarded.returncode, 0, guarded.stderr)
+        self.assertEqual(guarded.stdout.count("path: /run/knowi-analytics-recovery, type: Directory"), 5)
+        self.assertEqual(guarded.stdout.count("mountPath: /var/run/analytics-recovery, readOnly: true"), 5)
+        self.assertIn('"--host-boot-recovery-gate"', guarded.stdout)
+        self.assertNotEqual(render({**PRODUCTION, "runtime.hostBootRecoveryGate": "true"}).returncode, 0)
+        shared = render({**values, "runtime.hostBootRecoveryGate": "true", "network.databaseCIDR": "10.42.5.8/32"})
+        self.assertEqual(shared.returncode, 0, shared.stderr)
         for changes in ({"image.digest": ""}, {"authorityServer.configSecretName": ""},
                         {"authorityServer.coreNamespace": ""},
                         {"authorityServer.anchorCIDR": ""},

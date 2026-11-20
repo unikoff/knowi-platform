@@ -7,6 +7,7 @@ from sqlalchemy import text
 
 from .config import Settings, core_transfer_config, catalog_config, activity_projection_config, local_deletion_config
 from .probes import ReadinessPort, SingleflightReadiness
+from .recovery_permit import host_boot_permitted
 from .telemetry import Telemetry, IntakeTelemetryMiddleware
 from pymentor_analytics.adapters.postgres.database import Database, ClosedPrivacyReadiness
 from pymentor_analytics.adapters.auth.config import load_verifiers, load_manifest, validate_authority_key_separation
@@ -21,12 +22,13 @@ from pymentor_analytics.contracts.v2 import WireBatch
 def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = None, *, intake=None, catalog=None, fence=None, processor_store=None, diagnostics=None, activity_reports=None) -> FastAPI:
     if role not in {"collector", "processor", "query", "privacy"}:
         raise ValueError("unknown HTTP role")
-    if role == "processor" and settings.issuer_mode == "production" and (settings.processor_bucket_worker_enabled or settings.processor_generic_worker_enabled):
-        raise ValueError("production synthetic workers must be disabled")
     if role == "processor" and (settings.pool_size > 2 or settings.pool_overflow != 0):
         raise ValueError("processor pool exceeds configured bound")
+    if settings.real_collection and settings.issuer_mode == "production":
+        if role != "collector" or not settings.catalog_enabled or any(x is not None for x in (intake, catalog, fence, readiness)):
+            raise ValueError("production browser collection requires configured collector storage and guards")
     if settings.real_collection and role == "collector" and intake is not None:
-        raise ValueError("local collection requires its configured intake")
+        raise ValueError("real collection requires its configured intake")
     if diagnostics is not None and role != "processor":
         raise ValueError("diagnostics belong to processor")
     if activity_reports is not None and role != "query":
@@ -88,7 +90,8 @@ def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = 
                 if role == "privacy":
                     from pymentor_analytics.adapters.postgres.privacy import PostgresPrivacyStore
                     store = PostgresPrivacyStore(database)
-                privacy_runtime = PrivacyRuntime(AuthorityClient(config), database, store=store)
+                recovery_permit = host_boot_permitted if settings.host_boot_recovery_gate else None
+                privacy_runtime = PrivacyRuntime(AuthorityClient(config), database, store=store, recovery_permit=recovery_permit)
                 app.state.privacy_runtime = privacy_runtime
                 app.state.probe = privacy_runtime
                 if role != "privacy":
@@ -166,7 +169,8 @@ def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = 
                     signer = raw_key(relay_config.signing_key.public_key())
                     if command in authority_keys | grant_keys | producer_keys or signer in authority_keys:
                         raise ValueError("invalid local deletion key separation")
-                    deletion_relay = CoreDeletionRelay(source, AuthorityClient(config), relay_config)
+                    deletion_relay = CoreDeletionRelay(source, AuthorityClient(config), relay_config,
+                                                       recovery_permit=recovery_permit)
                     app.state.core_deletion_relay = deletion_relay
                     deletion_relay.start()
             if core_options is not None:
@@ -526,7 +530,7 @@ def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = 
     if role == "collector":
         app.add_middleware(IntakeLimitsMiddleware, concurrency=settings.concurrency, timeout_seconds=settings.db_timeout_seconds)
         app.add_middleware(IntakeTelemetryMiddleware, telemetry=telemetry)
-        if settings.issuer_mode != "production":
+        if settings.issuer_mode != "production" or settings.real_collection:
             app.include_router(collector_router)
         if core_options is not None:
             from pymentor_analytics.modules.analytics.core_transfer.api.router import create_router

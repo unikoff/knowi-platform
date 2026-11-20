@@ -7,6 +7,8 @@ RUN npm audit --audit-level=critical
 
 COPY apps/web/ ./
 COPY courses/ /app/courses/
+ARG VITE_ANALYTICS_TRACKER_ENABLED=false
+ARG VITE_ANALYTICS_REPORTS_ENABLED=false
 RUN node tools/course-registry.mjs \
     && npm exec -- tsc --noEmit -p config/tsconfig.json \
     && ./node_modules/.bin/vite build --config config/vite.config.ts --configLoader native --outDir /tmp/frontend-dist

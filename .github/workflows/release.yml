@@ -112,8 +112,20 @@ jobs:
       - name: Build and publish SHA-tagged images
         id: build
         shell: bash
+        env:
+          # Change this tracked value in a new commit to change the SHA-tagged image.
+          VITE_ANALYTICS_TRACKER_ENABLED: 'false'
+          VITE_ANALYTICS_REPORTS_ENABLED: 'false'
         run: |
           set -euo pipefail
+          case "$VITE_ANALYTICS_TRACKER_ENABLED" in
+            true|false) ;;
+            *) echo 'VITE_ANALYTICS_TRACKER_ENABLED must be true or false' >&2; exit 1 ;;
+          esac
+          case "$VITE_ANALYTICS_REPORTS_ENABLED" in
+            true|false) ;;
+            *) echo 'VITE_ANALYTICS_REPORTS_ENABLED must be true or false' >&2; exit 1 ;;
+          esac
           build_image() {
             local name="$1" context="$2" dockerfile="$3"
             shift 3
@@ -127,7 +139,9 @@ jobs:
           }
           build_image core . services/core-api/Dockerfile --target runtime
           build_image core-migrations . services/core-api/Dockerfile --target migrations
-          build_image frontend . apps/web/Dockerfile
+          build_image frontend . apps/web/Dockerfile \
+            --build-arg "VITE_ANALYTICS_TRACKER_ENABLED=$VITE_ANALYTICS_TRACKER_ENABLED" \
+            --build-arg "VITE_ANALYTICS_REPORTS_ENABLED=$VITE_ANALYTICS_REPORTS_ENABLED"
           build_image runner-pool services/runner-pool services/runner-pool/Dockerfile
           build_image analytics services/analytics services/analytics/Dockerfile
           echo "runner=$(python -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"] + "/runner-pool-metadata.json"))["containerimage.digest"])')" >> "$GITHUB_OUTPUT"
