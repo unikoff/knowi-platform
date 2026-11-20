@@ -33,3 +33,5 @@ export function VisualHeading({ kind, id, className = "", as: Tag = "div" }: {
     <span>{title}</span>
   </Tag>;
 }
+
+// Verify routing on the published Release workflow.
