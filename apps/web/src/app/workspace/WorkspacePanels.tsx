@@ -6,6 +6,7 @@ import { AdminScreen } from "../../features/admin";
 import { isLessonUnavailable, LearningPracticeView, LearningTheoryView, LessonNavigationProvider, LockedLessonView,
   useLearningCourse, OnlineInterpreter, type Lesson } from "../../features/learning";
 import type { UserProfile, CalendarMonth } from "../../shared/api/contracts";
+import { useBookingMode } from "../../shared/api/useBookingMode";
 import type { CourseId } from "../../course-runtime/course-registry";
 import type { ToolId } from "../../features/analytics-tracker/tracker";
 import { LessonExplorer } from "./LessonExplorer";
@@ -132,9 +133,23 @@ function AccountDockPanel({ api }: IDockviewPanelProps) {
 function AdminDockPanel({ api }: IDockviewPanelProps) {
   const { user, courseId } = useWorkspace();
   const opened = usePanelOpened(api);
-  const allowed = user?.capabilities?.includes("course.read") && (user.role === "admin" || (user.role === "leader" && user.course_id === courseId));
-  if (user?.role === undefined && user?.is_admin && opened) return <div className="dock-scroll"><p>Совместимость: общее администрирование платформы</p><AsyncBoundary><AdminScreen /></AsyncBoundary></div>;
-  return user && allowed && opened ? <div className="dock-scroll"><AsyncBoundary><CourseAdmin courseId={courseId} user={user} /></AsyncBoundary></div> : null;
+  const roleAllowed = user?.capabilities?.includes("course.read") &&
+    (user.role === "admin" || (user.role === "leader" && user.course_id === courseId));
+  const booking = useBookingMode(opened && roleAllowed ? user : null);
+  if (!opened || !user) return null;
+  if (user.role === undefined && user.is_admin && courseId === "backend") {
+    return <div className="dock-scroll"><AsyncBoundary><AdminScreen /></AsyncBoundary></div>;
+  }
+  if (!roleAllowed) return null;
+  if (booking.loading) return <p role="status">Загрузка админ-панели…</p>;
+  if (!booking.mode) return <p role="status">Не удалось загрузить админ-панель. Откройте вкладку снова.</p>;
+  if (booking.mode === "legacy") {
+    if (courseId !== "backend" || user.role !== "admin" || !user.is_admin) {
+      return <p role="status">Панель администрирования курса пока недоступна.</p>;
+    }
+    return <div className="dock-scroll"><AsyncBoundary><AdminScreen /></AsyncBoundary></div>;
+  }
+  return <div className="dock-scroll"><AsyncBoundary><CourseAdmin courseId={courseId} user={user} /></AsyncBoundary></div>;
 }
 function InterpreterDockPanel({ api }: IDockviewPanelProps) {
   const { user, ownerKey, courseId } = useWorkspace();

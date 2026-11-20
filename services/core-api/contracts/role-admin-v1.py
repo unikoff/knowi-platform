@@ -28,6 +28,10 @@ class DTO(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
 
 
+class BookingMode(DTO):
+    mode: Literal['legacy', 'scoped']
+
+
 class User(DTO):
     id: Id
     account_ref: UUID
@@ -550,7 +554,7 @@ class TransferResult(DTO):
     transferred_slot_ids: list[Id]
 
 
-MODELS = [Me, Error, Quota, SearchResult, Roster, Progress, StudentStatistics, StudentProfileDetails, CourseOverview, CourseStudyTime, Dashboard, ActivityToday,
+MODELS = [Me, BookingMode, Error, Quota, SearchResult, Roster, Progress, StudentStatistics, StudentProfileDetails, CourseOverview, CourseStudyTime, Dashboard, ActivityToday,
           QuotaGrant, SubscriptionExtend, SubscriptionQuotaGrant, SubscriptionReset, Subscription, SubscriptionQuotaResult, SlotCreate,
           Slot, StudentSlot, Booking, BookingContext, CalendarOwner, CalendarContext, Slots, StudentSlots, ReasonCommand,
           AdminRoleCommand, AdminRoleResult,

@@ -21,6 +21,13 @@ def _error(status, detail):
     raise HTTPException(status_code=status, detail=detail)
 
 
+def booking_mode(db):
+    enabled = db.execute(text('SELECT scoped_enabled FROM role_admin_cutover WHERE id=1')).scalar_one_or_none()
+    if enabled is None:
+        _error(503, 'Cutover state unavailable')
+    return {'mode': 'scoped' if enabled else 'legacy'}
+
+
 def _enabled(course):
     try:
         default_runtime().registry.require_enabled(course)

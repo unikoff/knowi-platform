@@ -350,6 +350,24 @@
       "title": "BookingEnvelope",
       "type": "object"
     },
+    "BookingMode": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "legacy",
+            "scoped"
+          ],
+          "title": "Mode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "title": "BookingMode",
+      "type": "object"
+    },
     "CalendarContext": {
       "additionalProperties": false,
       "properties": {

@@ -9,6 +9,7 @@ A = '/api/admin-platform'
 # method, path, operationId, query names, input DTO, output DTO, authority
 operations = [
     ('get', '/api/user/me', 'getMe', '', None, 'Me', 'authenticated'),
+    ('get', '/api/user/booking-mode', 'bookingMode', '', None, 'BookingMode', 'authenticated'),
     ('get', P+'/overview', 'courseOverview', 'year month', None, 'CourseOverview', 'course staff'),
     ('get', P+'/study-time', 'courseStudyTime', '', None, 'CourseStudyTime', 'course staff, matching actor lifecycle and authority revision'),
     ('get', P+'/roster', 'courseRoster', 'cursor limit search year? month?', None, 'Roster', 'course staff'),

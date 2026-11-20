@@ -107,13 +107,22 @@ async def exercise():
             base = '/api/admin/courses/backend'
             headers = lambda: {'Idempotency-Key': str(uuid4())}
             slot_payload = {'owner_id': 2, 'slot_date': '2099-11-15', 'start_time': '12:00', 'duration_minutes': 60}
+            mode = await request(3, 'GET', '/api/user/booking-mode', 200)
+            assert mode.json() == {'mode': 'legacy'} and mode.headers['cache-control'] == 'no-store'
             await request(2, 'POST', base+'/slots', 503, json=slot_payload, headers=headers())
             legacy = await request(1, 'POST', '/api/admin/slots', 200,
                 json={'slot_date': '2099-11-30', 'start_time': '10:00', 'duration_minutes': 60})
+            visible = (await request(3, 'GET', '/api/user/slots', 200, params={'year':2099,'month':11})).json()
+            assert legacy.json()['slot']['id'] in {item['id'] for item in visible['slots']}
+            current = (await request(3, 'GET', '/api/user/slots', 200, params={'year':day.year,'month':day.month})).json()
+            visible_ids = {item['id'] for item in current['slots']}
+            assert 40 in visible_ids and 41 not in visible_ids
             assert cli('--dry-run')['reason'] == 'unreconciled_active_data'
             await request(1, 'DELETE', '/api/admin/slots/' + str(legacy.json()['slot']['id']), 200)
             assert cli('--dry-run')['status'] == 'ready'
             assert cli('--apply', '--confirm-retire-legacy')['status'] == 'applied'
+            mode = await request(3, 'GET', '/api/user/booking-mode', 200)
+            assert mode.json() == {'mode': 'scoped'} and mode.headers['cache-control'] == 'no-store'
             await request(1, 'POST', '/api/admin/slots', 503,
                 json={'slot_date': '2099-11-30', 'start_time': '10:00', 'duration_minutes': 60})
             await request(1, 'PATCH', '/api/admin/users/7/subscription', 503, json={'days':3})

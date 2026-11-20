@@ -1,5 +1,5 @@
 import { apiRequest } from "../../shared/api/client";
-import type { ActivitySummaryResponse, ActivityVisitResponse, CalendarMonth, QuotaStatus } from "../../shared/api/contracts/account";
+import type { ActivitySummaryResponse, ActivityVisitResponse, CalendarMonth, QuotaStatus, StudentSlot } from "../../shared/api/contracts/account";
 
 export function recordActivityVisit(date?: string) {
   return apiRequest<ActivityVisitResponse>("/user/activity/visit", date === undefined ? {} : { activity_date: date });
@@ -36,4 +36,15 @@ export function bookStudentSlot(courseId: string, slotId: number, commandId: str
 }
 export function cancelStudentBooking(courseId: string, bookingId: number, commandId: string) {
   return apiRequest(`/courses/${encodeURIComponent(courseId)}/booking/bookings/${bookingId}/cancel`, undefined, "POST", { "Idempotency-Key": commandId });
+}
+
+// The legacy schedule is shared and is only valid for the backend course.
+export function getLegacyStudentSlots(month: CalendarMonth) {
+  return apiRequest<{ slots: StudentSlot[]; quota: QuotaStatus }>(`/user/slots?year=${month.year}&month=${month.month}`);
+}
+export function bookLegacyStudentSlot(slotId: number) {
+  return apiRequest(`/user/slots/${slotId}/book`, {});
+}
+export function cancelLegacyStudentBooking(slotId: number) {
+  return apiRequest(`/user/slots/${slotId}/cancel`, {});
 }
