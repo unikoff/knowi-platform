@@ -3,6 +3,7 @@ import argparse
 import json
 import re
 import subprocess
+from typing import NamedTuple
 
 IMAGES = ('core', 'core-migrations', 'frontend', 'runner-pool', 'analytics')
 DIGEST_FIELDS = dict(zip(IMAGES, ('core_digest', 'migration_digest', 'frontend_digest', 'runner_digest', 'analytics_digest')))
@@ -11,6 +12,21 @@ PUBLISHED_FILES = {'infra/gitops/preview/release.json', 'infra/gitops/preview/ap
                    'infra/gitops/preview/kustomization.yaml', 'infra/gitops/preview/runner.json'}
 SHA = re.compile(r'[0-9a-f]{40}\Z')
 DIGEST = re.compile(r'sha256:[0-9a-f]{64}\Z')
+SERVICE_CHECKS = ('core', 'web', 'analytics', 'runner')
+CORE_IMAGES = ('core', 'core-migrations')
+CORE_WEB = ('core', 'web')
+CORE_WEB_ANALYTICS = (*CORE_WEB, 'analytics')
+CORE_WEB_RUNNER = (*CORE_WEB, 'runner')
+WEB_PRESENTATION = ('.css', '.svg', '.png', '.webp', '.jpg', '.woff', '.woff2', '.md')
+
+
+class Scope(NamedTuple):
+    reason: str
+    checks: tuple[str, ...] = ()
+    images: tuple[str, ...] = ()
+    core_rehearsal: bool = False
+    analytics_rehearsal: bool = False
+    deploy: bool = False
 
 
 def git(*args):
@@ -32,8 +48,8 @@ def ancestor(older, newer):
 def full(head, why):
     return dict(build=list(IMAGES), reuse={}, image_sources={name: head for name in IMAGES},
                 core_checks=True, web_checks=True, analytics_checks=True,
-                core_rehearsal=True, analytics_rehearsal=True,
-                deploy=True, reasons=[why])
+                runner_checks=True, core_rehearsal=True, analytics_rehearsal=True,
+                deploy=True, reasons=[why], check_reasons=dict.fromkeys(SERVICE_CHECKS, why))
 
 
 def baseline(ref, head):
@@ -68,74 +84,96 @@ def baseline(ref, head):
     return source, digests, sources, last
 
 
+def web_scope(path):
+    images = ('frontend',)
+    if path.endswith(WEB_PRESENTATION) or path.startswith(('src/shared/ui/', 'src/shared/brand/')) or path in {
+        'src/app/StartupScreen.tsx', 'src/app/NotFoundPage.tsx',
+    }:
+        return Scope('Web presentation', ('web',), images)
+    if path == 'src/features/learning/api.ts':
+        return Scope('Web client of Core and Runner', CORE_WEB_RUNNER, images)
+    if path.startswith('src/shared/api/contracts/') or path in {
+        'src/features/auth/api.ts', 'src/features/admin/api.ts', 'src/features/admin/scopedApi.ts',
+    }:
+        return Scope('Web client of Core', CORE_WEB, images)
+    return Scope('Web integration or unclassified Web runtime', CORE_WEB_ANALYTICS, images)
+
+
+def core_scope(path):
+    if path.startswith('tests/') or path.endswith('.md'):
+        return Scope('Core tests or documentation', ('core',))
+    if path.startswith(('migrations/', 'alembic', 'requirements-migration.txt', 'tools/analytics_transfer/')):
+        return Scope('Core migration or Analytics transfer', ('core', 'analytics'), ('core-migrations',),
+                     core_rehearsal=True, analytics_rehearsal=True)
+    relative = path.removeprefix('pymentor_core/')
+    database = path.startswith(('requirements', 'Dockerfile')) or relative.startswith((
+        'adapters/postgres/', 'adapters/sql/', 'app/schema_policy.py', 'app/database',
+    ))
+    if database:
+        return Scope('Core database or runtime dependency', CORE_WEB_ANALYTICS, CORE_IMAGES,
+                     core_rehearsal=True, analytics_rehearsal=True)
+    if path.startswith('contracts/') or 'analytics' in relative:
+        return Scope('Core and Analytics integration', CORE_WEB_ANALYTICS, CORE_IMAGES)
+    if relative.startswith(('adapters/legacy_runner/', 'modules/practice/')):
+        return Scope('Core execution integration', CORE_WEB_RUNNER, CORE_IMAGES)
+    if relative == 'modules/learning/api/service.py':
+        return Scope('Core learning service and remote Runner client', SERVICE_CHECKS, CORE_IMAGES)
+    if relative.startswith('adapters/telegram/') or relative in {
+        'modules/notifications/policy.py', 'modules/notifications/review_policy.py',
+    }:
+        return Scope('Private Core notification implementation', ('core',), CORE_IMAGES)
+    if relative.startswith(('modules/identity/api/', 'modules/learning/api/', 'app/', 'shared/')):
+        return Scope('Core runtime shared with Web and Analytics', CORE_WEB_ANALYTICS, CORE_IMAGES)
+    return Scope('Core runtime consumed by Web', CORE_WEB, CORE_IMAGES)
+
+
+def analytics_scope(path):
+    if path.endswith('.md'):
+        return Scope('Analytics documentation', ('analytics',))
+    if path.startswith(('tests/', 'tools/', 'bench/')):
+        return Scope('Analytics tests, tooling or benchmark', ('analytics',), analytics_rehearsal=True)
+    images = ('analytics',)
+    if path.startswith(('migrations/', 'alembic', 'requirements', 'Dockerfile')):
+        return Scope('Analytics database or runtime dependency', ('analytics',), images, analytics_rehearsal=True)
+    relative = path.removeprefix('pymentor_analytics/')
+    if path.startswith('contracts/') or '/api/' in relative or relative.startswith((
+        'contracts/', 'adapters/auth/', 'adapters/core_privacy/', 'adapters/privacy_authority/',
+        'modules/analytics/core_transfer/', 'app/core_transfer_runtime.py', 'app/factory.py', 'app/config.py',
+    )):
+        return Scope('Analytics contract consumed by Core or Web', CORE_WEB_ANALYTICS, images,
+                     analytics_rehearsal=True)
+    if relative == 'app/telemetry.py':
+        return Scope('Private Analytics instrumentation', ('analytics',), images)
+    return Scope('Analytics runtime', ('analytics',), images, analytics_rehearsal=True)
+
+
 def classify(path):
-    """Only proven independent paths are selective; all other paths go full."""
+    """Select suites and images from repository ownership and contract boundaries."""
     if path.startswith('apps/web/'):
-        # Web runtime code and its build/configuration can change the analytics client.
-        presentation = path.endswith(('.css', '.svg', '.png', '.webp', '.jpg', '.woff', '.woff2', '.md'))
-        return {'frontend'}, not presentation, False, False, True
+        return web_scope(path.removeprefix('apps/web/'))
     if path.startswith('courses/') and '/frontend/' in path:
-        return {'core', 'core-migrations', 'frontend'}, False, False, False, True
+        return Scope('Course frontend copied by Core and Web', CORE_WEB, (*CORE_IMAGES, 'frontend'))
     if path.startswith('courses/'):
-        # Both Dockerfiles copy courses. Analytics' generated Core fixture copies
-        # the shared backend, so exercise its contracts on non-presentation changes.
         content_only = '/backend/plans/' in path and path.endswith('.md')
-        return {'core', 'core-migrations', 'frontend'}, not content_only, False, False, True
+        checks = CORE_WEB if content_only else CORE_WEB_ANALYTICS
+        return Scope('Shared course content and runtime', checks, (*CORE_IMAGES, 'frontend'))
     if path.startswith('services/runner-pool/'):
-        if path.startswith('services/runner-pool/tests/') or path.endswith('.md'):
-            return set(), False, False, False, False
-        return {'runner-pool'}, False, False, False, True
+        runner_path = path.removeprefix('services/runner-pool/')
+        if runner_path.startswith('tests/') or runner_path.endswith('.md'):
+            return Scope('Runner tests or documentation', ('runner',))
+        if runner_path == 'pool_manager.py':
+            return Scope('Private Runner pool manager', ('runner',), ('runner-pool',))
+        return Scope('Runner execution boundary', CORE_WEB_RUNNER, ('runner-pool',))
     if path.startswith('services/core-api/'):
-        relative = path.removeprefix('services/core-api/')
-        if relative.startswith('tests/') or relative.endswith('.md'):
-            return set(), True, False, False, False
-        if relative.startswith(('migrations/', 'alembic', 'requirements-migration.txt', 'tools/analytics_transfer/')):
-            return {'core-migrations'}, True, True, True, True
-        database = relative.startswith((
-            'requirements', 'Dockerfile', 'pymentor_core/adapters/postgres/', 'pymentor_core/adapters/sql/',
-            'pymentor_core/app/schema_policy.py', 'pymentor_core/app/database',
-        ))
-        analytics_runtime = database or 'analytics_delivery' in path or relative.startswith('contracts/')
-        # The cross-service fixture also starts Core, so keep its ordinary checks.
-        return {'core', 'core-migrations'}, True, database, analytics_runtime, True
+        return core_scope(path.removeprefix('services/core-api/'))
     if path.startswith('services/analytics/'):
-        relative = path.removeprefix('services/analytics/')
-        if relative.startswith(('tests/', 'tools/', 'bench/')) or relative.endswith('.md'):
-            return set(), True, False, not relative.endswith('.md'), False
-        return {'analytics'}, True, False, True, True
+        return analytics_scope(path.removeprefix('services/analytics/'))
     if path.startswith(('infra/gitops/analytics/', 'infra/analytics-local/', 'infra/helm/analytics/')):
-        return set(), True, False, True, True
+        return Scope('Analytics deployment configuration', ('analytics',), analytics_rehearsal=True, deploy=True)
     if path.startswith('docs/') and path.endswith('.md') and not path.startswith('docs/multicourse/'):
-        return set(), False, False, False, False
-    return set(IMAGES), True, True, True, True
-
-
-def check_scope(path):
-    """Select Core and Web gates; unrecognised paths require both.
-
-    The always-run workflow gate covers documentation-only changes. Keep this
-    independent of image selection: tests may need a gate without a rebuild.
-    """
-    if path.startswith('apps/web/'):
-        presentation = path.endswith(('.css', '.svg', '.png', '.webp', '.jpg', '.woff', '.woff2', '.md'))
-        return not presentation, True
-    if path.startswith('courses/'):
-        return True, True
-    if path.startswith('services/runner-pool/'):
-        return True, False
-    if path.startswith('services/core-api/'):
-        relative = path.removeprefix('services/core-api/')
-        # Runtime changes may affect public APIs consumed by Web. Tests and
-        # migration-only files still need Core, but do not change that API.
-        core_only = relative.startswith(('tests/', 'migrations/', 'alembic', 'requirements-migration.txt',
-                                         'tools/analytics_transfer/')) or relative.endswith('.md')
-        return True, not core_only
-    if path.startswith(('services/analytics/', 'infra/gitops/analytics/',
-                        'infra/analytics-local/', 'infra/helm/analytics/')):
-        return False, False
-    if path.startswith('docs/') and path.endswith('.md') and not path.startswith('docs/multicourse/'):
-        return False, False
-    return True, True
+        return Scope('Project documentation')
+    return Scope('Shared infrastructure or unknown ownership', SERVICE_CHECKS, IMAGES,
+                 core_rehearsal=True, analytics_rehearsal=True)
 
 
 def plan(mode, head_ref, baseline_ref=None, base_ref=None, force=False):
@@ -166,26 +204,29 @@ def plan(mode, head_ref, baseline_ref=None, base_ref=None, force=False):
             # Compare generated manifests against the bot commit, even if the
             # candidate overwrote a file back to the pre-publication version.
             paths = sorted((set(paths) - PUBLISHED_FILES) | (changed_since_publication & PUBLISHED_FILES))
-        builds, analytics, core_rehearsal, analytics_rehearsal, deploy = set(), False, False, False, False
-        core_checks, web_checks = False, False
+        builds, checks = set(), set()
+        core_rehearsal = analytics_rehearsal = deploy = False
+        reasons = [f'{len(paths)} changed paths from {source} to {head}']
+        selection = {}
         for path in paths:
-            images, a, c, ar, d = classify(path)
-            core, web = check_scope(path)
-            builds.update(images)
-            core_checks |= core
-            web_checks |= web
-            analytics |= a
-            core_rehearsal |= c
-            analytics_rehearsal |= ar
-            deploy |= d
+            scope = classify(path)
+            builds.update(scope.images)
+            checks.update(scope.checks)
+            core_rehearsal |= scope.core_rehearsal
+            analytics_rehearsal |= scope.analytics_rehearsal
+            deploy |= scope.deploy
+            for service in scope.checks:
+                selection.setdefault(service, f'{path}: {scope.reason}')
+            if len(reasons) <= 30:
+                reasons.append(f'{path}: {scope.reason}')
         reuse = {name: digests[name] for name in IMAGES if name not in builds} if mode == 'push' else {}
         image_sources = {name: (sources[name] if name in reuse else head) for name in IMAGES}
         return dict(build=[name for name in IMAGES if name in builds], reuse=reuse,
-                    image_sources=image_sources, core_checks=core_checks, web_checks=web_checks,
-                    analytics_checks=analytics,
+                    image_sources=image_sources,
+                    **{f'{service}_checks': service in checks for service in SERVICE_CHECKS},
                     core_rehearsal=core_rehearsal, analytics_rehearsal=analytics_rehearsal,
                     deploy=deploy or bool(builds),
-                    reasons=[f'{len(paths)} changed paths from {source} to {head}', *paths[:30]])
+                    reasons=reasons, check_reasons=selection)
     except (ValueError, KeyError, TypeError, UnicodeError, json.JSONDecodeError, subprocess.SubprocessError, OSError) as exc:
         return full(head_ref, f'conservative fallback: {exc}')
 

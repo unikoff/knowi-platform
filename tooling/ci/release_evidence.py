@@ -20,13 +20,14 @@ def plan_from_env():
 
 
 def check_gates(plan):
-    flags = ('core_checks', 'core_rehearsal', 'web_checks', 'analytics_checks', 'analytics_rehearsal')
+    flags = ('core_checks', 'core_rehearsal', 'web_checks', 'runner_checks', 'analytics_checks', 'analytics_rehearsal')
     for flag in flags:
         if type(plan.get(flag)) is not bool:
             raise ValueError(f'PLAN {flag} must be a boolean')
     gates = (
         ('CORE_RESULT', plan['core_checks'] or plan['core_rehearsal']),
         ('WEB_RESULT', plan['web_checks']),
+        ('RUNNER_RESULT', plan['runner_checks']),
         ('ANALYTICS_RESULT', plan['analytics_checks']),
         ('ANALYTICS_REHEARSAL_RESULT', plan['analytics_rehearsal']),
     )
