@@ -1,4 +1,12 @@
 {{- define "analytics.guard" -}}
+{{- if not (kindIs "bool" .Values.analyticsDatabaseTLS.enabled) -}}
+{{- fail "analyticsDatabaseTLS.enabled must be boolean" -}}
+{{- end -}}
+{{- if .Values.analyticsDatabaseTLS.enabled -}}
+{{- if or (ne .Values.runtime.mode "production") (not (regexMatch "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$" .Values.analyticsDatabaseTLS.caSecretName)) -}}
+{{- fail "Analytics database TLS requires production mode and a CA Secret name" -}}
+{{- end -}}
+{{- end -}}
 {{- if .Values.knowi01Staged.enabled -}}
 {{- if or (ne .Release.Namespace "knowi-analytics") (ne .Values.runtime.mode "production") (not .Values.runtime.hostBootRecoveryGate) (not .Values.authorityServer.enabled) (not .Values.privateCoreSource.enabled) (not .Values.roles.privacy.enabled) (not .Values.image.repository) (not .Values.network.databaseCIDR) -}}
 {{- fail "knowi01 staged profile requires production guards, authority, private source, privacy, image repository and exact Analytics DB address" -}}

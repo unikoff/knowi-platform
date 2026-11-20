@@ -8,6 +8,9 @@ image:
 runtime:
   mode: production
   hostBootRecoveryGate: true
+analyticsDatabaseTLS:
+  enabled: true
+  caSecretName: analytics-db-ca
 migration:
   enabled: false
   revision: a014

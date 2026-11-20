@@ -8,6 +8,11 @@ image:
 knowi01Staged:
   enabled: false
 
+# Optional production Analytics PostgreSQL server verification.
+analyticsDatabaseTLS:
+  enabled: false
+  caSecretName: "" # Secret key: ca.crt
+
 # Opt-in only for a fresh, synthetic benchmark namespace.
 syntheticBenchmark:
   enabled: false

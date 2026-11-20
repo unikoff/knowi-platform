@@ -31,6 +31,11 @@ spec:
           envFrom:
             - configMapRef: {name: {{ $.Release.Name }}-analytics-config}
           env:
+{{- if $.Values.analyticsDatabaseTLS.enabled }}
+            - {name: PGSSLMODE, value: "verify-full"}
+            - {name: PGSSLROOTCERT, value: "/var/run/analytics-db-ca/ca.crt"}
+            - {name: PGGSSENCMODE, value: "disable"}
+{{- end }}
 {{- if $.Values.runtime.hostBootRecoveryGate }}
             - {name: ANALYTICS_{{ upper $role }}_HOST_BOOT_RECOVERY_GATE, value: "true"}
 {{- end }}
@@ -123,8 +128,11 @@ spec:
               valueFrom:
                 secretKeyRef: {name: {{ $cfg.secretName }}, key: DATABASE_URL}
             - {name: FORWARDED_ALLOW_IPS, value: ""}
-{{- if or $.Values.authorityClientTLS.secretName (eq $.Values.runtime.mode "production") }}
+{{- if or $.Values.authorityClientTLS.secretName (eq $.Values.runtime.mode "production") $.Values.analyticsDatabaseTLS.enabled }}
           volumeMounts:
+{{- if $.Values.analyticsDatabaseTLS.enabled }}
+            - {name: analytics-db-ca, mountPath: /var/run/analytics-db-ca, readOnly: true}
+{{- end }}
 {{- if $.Values.authorityClientTLS.secretName }}
             - {name: authority-client-tls, mountPath: /var/run/analytics-authority-tls, readOnly: true}
 {{- end }}
@@ -158,8 +166,12 @@ spec:
           livenessProbe: {httpGet: {path: /live, port: http}, periodSeconds: 10, timeoutSeconds: 3}
           readinessProbe: {httpGet: {path: /ready, port: http}, periodSeconds: 5, timeoutSeconds: 6}
 {{- end }}
-{{- if or $.Values.authorityClientTLS.secretName (eq $.Values.runtime.mode "production") }}
+{{- if or $.Values.authorityClientTLS.secretName (eq $.Values.runtime.mode "production") $.Values.analyticsDatabaseTLS.enabled }}
       volumes:
+{{- if $.Values.analyticsDatabaseTLS.enabled }}
+        - name: analytics-db-ca
+          secret: {secretName: {{ $.Values.analyticsDatabaseTLS.caSecretName | quote }}, items: [{key: ca.crt, path: ca.crt}]}
+{{- end }}
 {{- if $.Values.authorityClientTLS.secretName }}
         - name: authority-client-tls
           secret: {secretName: {{ $.Values.authorityClientTLS.secretName | quote }}}

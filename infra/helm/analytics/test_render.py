@@ -53,6 +53,28 @@ def render(values=None, namespace="knowi-analytics", values_file=None):
 
 
 class RenderTests(unittest.TestCase):
+    def test_analytics_database_tls_is_opt_in_and_wired_to_all_db_roles(self):
+        base = {**PRODUCTION, "roles.privacy.enabled": "true", "migration.enabled": "true",
+                "migration.revision": "a014"}
+        off = render(base)
+        self.assertEqual(off.returncode, 0, off.stderr)
+        self.assertNotIn("PGSSLROOTCERT", off.stdout)
+        on = render({**base, "analyticsDatabaseTLS.enabled": "true",
+                     "analyticsDatabaseTLS.caSecretName": "analytics-db-ca"})
+        self.assertEqual(on.returncode, 0, on.stderr)
+        self.assertEqual(on.stdout.count('name: PGSSLMODE, value: "verify-full"'), 5)
+        self.assertEqual(on.stdout.count('name: PGSSLROOTCERT, value: "/var/run/analytics-db-ca/ca.crt"'), 5)
+        self.assertEqual(on.stdout.count('name: PGGSSENCMODE, value: "disable"'), 5)
+        self.assertEqual(on.stdout.count("mountPath: /var/run/analytics-db-ca, readOnly: true"), 5)
+        self.assertEqual(on.stdout.count('secretName: "analytics-db-ca", items: [{key: ca.crt, path: ca.crt}]'), 5)
+        for overrides in ({"analyticsDatabaseTLS.caSecretName": ""},
+                          {"analyticsDatabaseTLS.caSecretName": "bad/name"},
+                          {"runtime.mode": "synthetic"}):
+            with self.subTest(overrides=overrides):
+                self.assertNotEqual(render({**base, "analyticsDatabaseTLS.enabled": "true",
+                                            "analyticsDatabaseTLS.caSecretName": "analytics-db-ca",
+                                            **overrides}).returncode, 0)
+
     def test_knowi01_staged_profile_fails_closed_and_renders_with_inputs(self):
         profile = CHART / "values-knowi01-staged.yaml"
         self.assertNotEqual(render(values_file=profile).returncode, 0)
