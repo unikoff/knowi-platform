@@ -11,7 +11,7 @@ from pymentor_core.modules.analytics_delivery.relay import Receipt
 
 
 class TransferHttp:
-    def __init__(self, endpoint: str, producer_token, *, transport=None):
+    def __init__(self, endpoint: str, producer_token, *, transport=None, verify=True):
         url = urlsplit(endpoint)
         if (url.scheme not in {"http", "https"} or not url.hostname or url.username or url.password
                 or url.query or url.fragment or (url.scheme == "http" and url.hostname not in {"127.0.0.1", "localhost", "::1"})):
@@ -19,6 +19,7 @@ class TransferHttp:
         self._endpoint = endpoint.rstrip("/")
         self._producer_token = producer_token
         self._transport = transport
+        self._verify = verify
 
     async def _request(self, path, *, deadline_seconds, body=None):
         if deadline_seconds <= 0:
@@ -30,7 +31,7 @@ class TransferHttp:
             return Receipt.UNKNOWN
         result = await request("POST" if body is not None else "GET", self._endpoint + path,
             headers={"Authorization": "Bearer " + token, "Accept": "application/json", "Content-Type": "application/json"},
-            body=body, deadline_seconds=remaining, max_bytes=4096, transport=self._transport)
+            body=body, deadline_seconds=remaining, max_bytes=4096, transport=self._transport, verify=self._verify)
         if result is None:
             return Receipt.UNKNOWN
         try:

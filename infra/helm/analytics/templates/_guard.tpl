@@ -96,4 +96,38 @@
 {{- if and .Values.activityBoundaryCredit.enabled (or (not (has .Values.migration.revision (list "a013" "a014"))) (not .Values.activityCourse.enabled)) -}}
 {{- fail "Boundary credit requires a013 or a014 and course projection" -}}
 {{- end -}}
+{{- if .Values.authorityServer.enabled -}}
+{{- $a := .Values.authorityServer -}}
+{{- $anchorExact := or (regexMatch "^([0-9]{1,3}\\.){3}[0-9]{1,3}/32$" $a.anchorCIDR) (regexMatch "^[0-9A-Fa-f:]+/128$" $a.anchorCIDR) -}}
+{{- if or (ne .Values.runtime.mode "production") .Values.syntheticBenchmark.enabled .Values.fixtureCatalog.configMapName (not .Values.image.digest) (not $a.configSecretName) (not $a.journalClaimName) (ne $a.anchorBackend "postgres") (not $anchorExact) (eq $a.anchorCIDR .Values.network.databaseCIDR) (not $a.coreNamespace) (not $a.corePodLabels) (not .Values.authorityClientTLS.secretName) -}}
+{{- fail "Authority requires an immutable image, journal claim, separate exact PostgreSQL anchor, private config and client TLS Secrets and explicit Core selector" -}}
+{{- end -}}
+{{- end -}}
+{{- if not (has .Values.runtime.mode (list "synthetic" "production")) -}}
+{{- fail "runtime.mode must be synthetic or production" -}}
+{{- end -}}
+{{- if .Values.privateCoreSource.enabled -}}
+{{- $s := .Values.privateCoreSource -}}
+{{- $dbExact := or (regexMatch "^([0-9]{1,3}\\.){3}[0-9]{1,3}/32$" $s.databaseCIDR) (regexMatch "^[0-9A-Fa-f:]+/128$" $s.databaseCIDR) -}}
+{{- if or (ne .Values.runtime.mode "production") (not $s.imageRepository) (not (regexMatch "^sha256:[0-9a-f]{64}$" $s.imageDigest)) (not $s.databaseSecretName) (not $s.hmacSecretName) (not $s.databaseCASecretName) (not $s.serverTLSSecretName) (not $s.expectedHost) (not $s.expectedDatabase) (not $s.expectedUser) (not (regexMatch "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" $s.instanceId)) (not $dbExact) -}}
+{{- fail "Private Core source requires production, immutable Core image, separate Secrets, DB identity, instance UUID and exact DB address" -}}
+{{- end -}}
+{{- if ne (len (uniq (list $s.databaseSecretName $s.hmacSecretName $s.databaseCASecretName $s.serverTLSSecretName))) 4 -}}
+{{- fail "Private Core source DB, HMAC, DB CA and TLS Secrets must be distinct" -}}
+{{- end -}}
+{{- if or (ne .Values.coreDeletion.namespace .Release.Namespace) (ne (len .Values.coreDeletion.podLabels) 2) (ne (get .Values.coreDeletion.podLabels "app.kubernetes.io/name") "analytics-core-source") (ne (get .Values.coreDeletion.podLabels "app.kubernetes.io/instance") .Release.Name) (ne (int .Values.coreDeletion.port) (int .Values.internalTLS.port)) -}}
+{{- fail "Private Core source requires Core deletion egress to select this release source Pod and HTTPS port" -}}
+{{- end -}}
+{{- end -}}
+{{- if eq .Values.runtime.mode "production" -}}
+{{- $d := .Values.coreDeletion -}}
+{{- $tls := .Values.internalTLS -}}
+{{- if or .Values.syntheticBenchmark.enabled .Values.fixtureCatalog.configMapName .Values.ingress.enabled (not .Values.network.coreIngress.enabled) (not $tls.enabled) (not $tls.proxyImageRepository) (not (regexMatch "^sha256:[0-9a-f]{64}$" $tls.proxyImageDigest)) (not $tls.collectorSecretName) (not $tls.querySecretName) (eq $tls.collectorSecretName $tls.querySecretName) (not .Values.image.digest) (not .Values.trustManifest.configMapName) (not .Values.privacyAuthority.secretName) (not .Values.authorityClientTLS.secretName) (not $d.sourceSecretName) (not $d.statusSecretName) (not $d.relaySecretName) (not $d.tlsSecretName) (not $d.namespace) (not $d.podLabels) -}}
+{{- fail "Production requires immutable image, trust, authority, deletion source/status/relay and TLS Secrets and explicit Core selector; fixtures are forbidden" -}}
+{{- end -}}
+{{- $private := concat $secrets (list .Values.privacyAuthority.secretName $d.sourceSecretName $d.statusSecretName $d.relaySecretName) -}}
+{{- if ne (len (uniq $private)) (len $private) -}}
+{{- fail "Database, authority, deletion source, status and relay Secrets must be distinct" -}}
+{{- end -}}
+{{- end -}}
 {{- end -}}

@@ -34,7 +34,7 @@ def _unique(pairs):
 
 
 class AuthorityClient:
-    def __init__(self, *, endpoint, authority_id, issuer, public_keys, producer, producer_token, command_key, transport=None):
+    def __init__(self, *, endpoint, authority_id, issuer, public_keys, producer, producer_token, command_key, transport=None, verify=True):
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
         from cryptography.hazmat.primitives.serialization import load_pem_public_key
         url = urlsplit(endpoint)
@@ -49,6 +49,7 @@ class AuthorityClient:
         self._endpoint, self._authority_id, self._issuer = endpoint.rstrip("/"), authority_id, issuer
         self._producer, self._token, self._command_key = producer, producer_token, command_key
         self._transport = transport
+        self._verify = verify
 
     async def append(self, event: dict, created_at, *, timeout_seconds: float) -> int | None:
         """Returns verified sequence on append; None means unknown outcome.
@@ -72,7 +73,7 @@ class AuthorityClient:
             return None
         result = await request("POST", self._endpoint + "/v1/append", body=body,
             headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
-            deadline_seconds=remaining, max_bytes=131072, transport=self._transport)
+            deadline_seconds=remaining, max_bytes=131072, transport=self._transport, verify=self._verify)
         if result is None:
             return None
         status, raw = result

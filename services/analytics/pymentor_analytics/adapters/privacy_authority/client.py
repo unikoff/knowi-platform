@@ -1,4 +1,4 @@
-"""Pinned signed authority responses over fixture or explicit loopback HTTP."""
+"""Pinned signed authority responses over isolated HTTP or mutually authenticated TLS."""
 from __future__ import annotations
 
 import asyncio
@@ -7,6 +7,7 @@ from collections import deque
 import ipaddress
 import json
 import re
+import ssl
 import time
 from types import MappingProxyType
 from typing import Literal
@@ -42,11 +43,15 @@ def _address(url: str, *, runtime_mode: str = "synthetic"):
         raise ValueError("invalid fixture URL")
     parsed = urlsplit(url)
     host = parsed.hostname
-    if parsed.scheme != "http" or not host or parsed.username is not None or parsed.password is not None or parsed.path not in ("", "/") or parsed.query or parsed.fragment or parsed.port is None:
+    if parsed.scheme != ("https" if runtime_mode == "production" else "http") or not host or parsed.username is not None or parsed.password is not None or parsed.path not in ("", "/") or parsed.query or parsed.fragment or parsed.port is None:
         raise ValueError("invalid fixture URL")
     host = host.lower()
-    if runtime_mode not in {"synthetic", "local"}:
+    if runtime_mode not in {"synthetic", "local", "production"}:
         raise ValueError("invalid authority mode")
+    if runtime_mode == "production":
+        if not host.isascii() or "%" in host or not 1 <= parsed.port <= 65535:
+            raise ValueError("invalid authority URL")
+        return host, parsed.port
     try:
         address = ipaddress.ip_address(host)
         local = address.is_loopback and (runtime_mode == "synthetic" or "%" not in host)
@@ -65,7 +70,10 @@ class AuthorityConfig(Contract):
     public_keys: dict[str, str] = Field(min_length=1, max_length=32, repr=False)
     reader_secret: SecretStr
     fixture_mode: bool
-    runtime_mode: Literal["synthetic", "local"] = "synthetic"
+    runtime_mode: Literal["synthetic", "local", "production"] = "synthetic"
+    tls_ca_file: str | None = None
+    tls_cert_file: str | None = None
+    tls_key_file: str | None = None
 
     @field_validator("fixture_mode", mode="before")
     @classmethod
@@ -79,6 +87,12 @@ class AuthorityConfig(Contract):
         if (self.runtime_mode == "synthetic") != self.fixture_mode:
             raise ValueError("authority mode and fixture mode differ")
         _address(self.url, runtime_mode=self.runtime_mode)
+        tls_files = (self.tls_ca_file, self.tls_cert_file, self.tls_key_file)
+        if self.runtime_mode == "production":
+            if any(not isinstance(path, str) or not path.strip() or "\x00" in path for path in tls_files):
+                raise ValueError("complete authority TLS configuration required")
+        elif any(path is not None for path in tls_files):
+            raise ValueError("TLS configuration requires production mode")
         if len(_unb64(self.reader_secret.get_secret_value())) != 32:
             raise ValueError("invalid reader credential")
         for kid, pem in self.public_keys.items():
@@ -111,6 +125,16 @@ class AuthorityClient:
     def __init__(self, config: AuthorityConfig):
         self.config = config
         self.host, self.port = _address(config.url, runtime_mode=config.runtime_mode)
+        self._tls = None
+        if config.runtime_mode == "production":
+            try:
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                context.minimum_version = ssl.TLSVersion.TLSv1_2
+                context.load_verify_locations(cafile=config.tls_ca_file)
+                context.load_cert_chain(certfile=config.tls_cert_file, keyfile=config.tls_key_file)
+                self._tls = context
+            except (OSError, ssl.SSLError, ValueError):
+                raise ValueError("invalid authority TLS configuration") from None
         self._keys = MappingProxyType({kid: serialization.load_pem_public_key(pem.encode("ascii")) for kid, pem in config.public_keys.items()})
         self._sessions: dict[UUID, int] = {}
         self._hwm = 0
@@ -138,9 +162,11 @@ class AuthorityClient:
         writer = None
         try:
             async with asyncio.timeout(FRAME_TTL_SECONDS):
-                reader, writer = await asyncio.open_connection(self.host, self.port, limit=16 * 1024)
+                options = {"ssl": self._tls, "server_hostname": self.host} if self._tls is not None else {}
+                reader, writer = await asyncio.open_connection(self.host, self.port, limit=16 * 1024, **options)
                 credential = self.config.reader_secret.get_secret_value() if credential is None else credential
-                headers = (f"POST {path} HTTP/1.1\r\nHost: fixture\r\nAuthorization: Bearer {credential}\r\n"
+                host_header = self.host if self.config.runtime_mode == "production" else "fixture"
+                headers = (f"POST {path} HTTP/1.1\r\nHost: {host_header}\r\nAuthorization: Bearer {credential}\r\n"
                            f"Content-Type: application/json\r\nContent-Length: {len(body)}\r\nConnection: close\r\n\r\n").encode("ascii")
                 writer.write(headers + body)
                 await writer.drain()
@@ -176,7 +202,7 @@ class AuthorityClient:
                 writer.close()
                 try:
                     await asyncio.wait_for(writer.wait_closed(), timeout=0.2)
-                except (OSError, TimeoutError):
+                except (OSError, TimeoutError, ssl.SSLError):
                     pass
 
     async def _request(self, kind: str, *, session: UUID | None, after: int, through: int | None = None, limit: int = MAX_ENTRIES) -> VerifiedFrame:

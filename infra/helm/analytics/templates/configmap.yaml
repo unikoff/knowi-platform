@@ -9,11 +9,15 @@ data:
   ANALYTICS_{{ upper $role }}_POOL_SIZE: {{ $cfg.poolSize | quote }}
   ANALYTICS_{{ upper $role }}_POOL_OVERFLOW: {{ $cfg.poolOverflow | quote }}
   ANALYTICS_{{ upper $role }}_CONCURRENCY: {{ $cfg.concurrency | quote }}
-  ANALYTICS_{{ upper $role }}_ISSUER_MODE: "synthetic"
+  ANALYTICS_{{ upper $role }}_ISSUER_MODE: {{ $.Values.runtime.mode | quote }}
   ANALYTICS_{{ upper $role }}_REAL_COLLECTION: "false"
 {{- end }}
 {{- end }}
+{{- if eq .Values.runtime.mode "production" }}
+  ANALYTICS_PROCESSOR_BUCKET_WORKER_ENABLED: "false"
+  ANALYTICS_PROCESSOR_GENERIC_WORKER_ENABLED: "false"
+{{- end }}
   ANALYTICS_MIGRATE_POOL_SIZE: {{ .Values.migration.poolSize | quote }}
   ANALYTICS_MIGRATE_POOL_OVERFLOW: {{ .Values.migration.poolOverflow | quote }}
-  ANALYTICS_MIGRATE_ISSUER_MODE: "synthetic"
+  ANALYTICS_MIGRATE_ISSUER_MODE: {{ .Values.runtime.mode | quote }}
   ANALYTICS_MIGRATE_REAL_COLLECTION: "false"

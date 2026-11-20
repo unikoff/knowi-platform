@@ -11,7 +11,7 @@ _DIGEST = re.compile(r"[a-f0-9]{64}")
 
 
 class _CourseCohortClient:
-    def __init__(self, endpoint, *, transport=None):
+    def __init__(self, endpoint, *, transport=None, verify=True):
         url = urlsplit(endpoint)
         if (url.scheme not in {"http", "https"} or not url.hostname
                 or url.username or url.password or url.query or url.fragment
@@ -19,10 +19,11 @@ class _CourseCohortClient:
             raise ValueError("invalid Analytics query endpoint")
         self._url = endpoint.rstrip("/") + self._path
         self._transport = transport
+        self._verify = verify
 
     async def _request(self, *, body, grant, max_bytes):
         result = await request("POST", self._url, body=body, deadline_seconds=3, max_bytes=max_bytes,
-                               transport=self._transport, headers={"Authorization": "Bearer " + grant,
+                               transport=self._transport, verify=self._verify, headers={"Authorization": "Bearer " + grant,
                                    "Content-Type": "application/json", "Accept": "application/json"})
         if result is None or result[0] != 200:
             raise ValueError("course analytics report unavailable")

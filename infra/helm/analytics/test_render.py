@@ -21,6 +21,26 @@ BASE = {
     "trustManifest.configMapName": "analytics-trust",
     "privacyAuthority.secretName": "analytics-authority",
 }
+PRODUCTION = {
+    "runtime.mode": "production", "image.digest": DIGEST,
+    "trustManifest.configMapName": "analytics-trust",
+    "privacyAuthority.secretName": "analytics-authority-reader",
+    "authorityClientTLS.secretName": "authority-client-tls",
+    "coreDeletion.sourceSecretName": "core-deletion-source",
+    "coreDeletion.statusSecretName": "core-deletion-status",
+    "coreDeletion.relaySecretName": "core-deletion-relay",
+    "coreDeletion.tlsSecretName": "core-deletion-tls",
+    "coreDeletion.namespace": "knowi-core",
+    "coreDeletion.podLabels.app": "core-proxy",
+    "internalTLS.enabled": "true",
+    "internalTLS.proxyImageRepository": "example/frontend",
+    "internalTLS.proxyImageDigest": DIGEST,
+    "internalTLS.collectorSecretName": "collector-tls",
+    "internalTLS.querySecretName": "query-tls",
+    "network.coreIngress.enabled": "true",
+    "network.coreIngress.namespace": "knowi-core",
+    "network.coreIngress.podLabels.app": "core",
+}
 
 
 def render(values=None, namespace="knowi-analytics", values_file=None):
@@ -118,6 +138,84 @@ class RenderTests(unittest.TestCase):
         self.assertEqual(result.stdout.count(f'"knowi-analytics@{DIGEST}"'), 5)
         benchmark = {**values, "syntheticBenchmark.enabled": "true", "image.digest": ""}
         self.assertNotEqual(render(benchmark, "knowi-analytics-bench-" + "1" * 32).returncode, 0)
+
+    def test_authority_is_opt_in_and_requires_complete_isolated_configuration(self):
+        self.assertNotIn("analytics-authority\n", render().stdout)
+        values = {
+            **PRODUCTION, "authorityServer.enabled": "true",
+            "authorityServer.configSecretName": "authority-private",
+            "authorityServer.journalClaimName": "authority-journal",
+            "authorityServer.anchorCIDR": "10.42.5.8/32",
+            "authorityServer.coreNamespace": "knowi-core",
+            "authorityServer.corePodLabels.app": "core",
+            "authorityClientTLS.secretName": "authority-client-tls",
+        }
+        result = render(values)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("type: ClusterIP", result.stdout)
+        self.assertIn('claimName: "authority-journal"', result.stdout)
+        self.assertIn('cidr: "10.42.5.8/32"', result.stdout)
+        self.assertIn("strategy: {type: Recreate}", result.stdout)
+        self.assertNotIn("analytics-ingress\n", result.stdout)
+        for changes in ({"image.digest": ""}, {"authorityServer.configSecretName": ""},
+                        {"authorityServer.coreNamespace": ""},
+                        {"authorityServer.anchorCIDR": ""},
+                        {"authorityServer.anchorBackend": "sqlite"},
+                        {"authorityServer.anchorCIDR": "10.42.5.8/32", "network.databaseCIDR": "10.42.5.8/32"},
+                        {"authorityClientTLS.secretName": ""},
+                        {"fixtureCatalog.configMapName": "synthetic"}, {"ingress.enabled": "true"},
+                        {"internalTLS.proxyImageDigest": ""}, {"internalTLS.querySecretName": "collector-tls"}):
+            with self.subTest(changes=changes):
+                self.assertNotEqual(render({**values, **changes}).returncode, 0)
+
+    def test_traefik_access_requires_explicit_ingress(self):
+        self.assertNotIn("name: analytics-analytics-ingress", render().stdout)
+        result = render({"ingress.enabled": "true"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("name: analytics-analytics-ingress", result.stdout)
+
+    def test_production_profile_wires_guards_and_migration(self):
+        values = {**PRODUCTION, "roles.privacy.enabled": "true", "migration.enabled": "true", "migration.revision": "a014"}
+        result = render(values)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.count('ISSUER_MODE: "production"'), 5)
+        self.assertIn('ANALYTICS_PROCESSOR_BUCKET_WORKER_ENABLED: "false"', result.stdout)
+        self.assertIn('ANALYTICS_PROCESSOR_GENERIC_WORKER_ENABLED: "false"', result.stdout)
+        self.assertEqual(result.stdout.count("name: ANALYTICS_CORE_DELETION_SOURCE_JSON"), 5)
+        self.assertEqual(result.stdout.count("_CORE_DELETION_STATUS_DATABASE_URL"), 3)
+        self.assertEqual(result.stdout.count("name: ANALYTICS_PRIVACY_CORE_DELETION_RELAY_JSON"), 1)
+        self.assertIn('args: ["migrate", "--revision", "a014"]', result.stdout)
+        self.assertEqual(result.stdout.count('"--host", "127.0.0.1"'), 2)
+        self.assertEqual(result.stdout.count("ssl_verify_client on;"), 2)
+        self.assertEqual(result.stdout.count("name: internal-tls\n"), 2)
+        self.assertIn("ports: [{name: https, port: 8443, targetPort: https}]", result.stdout)
+        self.assertIn("ports: [{protocol: TCP, port: 8443}]", result.stdout)
+        for changes in ({"coreDeletion.statusSecretName": ""}, {"coreDeletion.sourceSecretName": "analytics-query-db"},
+                        {"coreDeletion.namespace": ""}, {"runtime.mode": "local"},
+                        {"fixtureCatalog.configMapName": "synthetic"}):
+            with self.subTest(changes=changes):
+                self.assertNotEqual(render({**values, **changes}).returncode, 0)
+
+    def test_private_core_source_is_closed_by_default_and_scoped(self):
+        self.assertNotIn("name: analytics-private-core-source", render().stdout)
+        values = {**{k: v for k, v in PRODUCTION.items() if k != "coreDeletion.podLabels.app"}, "privateCoreSource.enabled": "true",
+                  "privateCoreSource.imageRepository": "example/core", "privateCoreSource.imageDigest": DIGEST,
+                  "privateCoreSource.databaseSecretName": "source-db", "privateCoreSource.hmacSecretName": "source-hmac",
+                  "privateCoreSource.databaseCASecretName": "source-db-ca", "privateCoreSource.serverTLSSecretName": "source-tls",
+                  "privateCoreSource.expectedHost": "core-db.local", "privateCoreSource.expectedDatabase": "core",
+                  "privateCoreSource.expectedUser": "read_only", "privateCoreSource.instanceId": UUID,
+                  "privateCoreSource.databaseCIDR": "10.42.5.9/32", "coreDeletion.namespace": "knowi-analytics",
+                  "coreDeletion.podLabels.app\\.kubernetes\\.io/name": "analytics-core-source",
+                  "coreDeletion.podLabels.app\\.kubernetes\\.io/instance": "analytics", "coreDeletion.port": "8443"}
+        result = render(values)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('"pymentor_core.modules.analytics_delivery.production_collection:create_app"', result.stdout)
+        self.assertIn("location = /api/internal/analytics/deletions", result.stdout)
+        self.assertIn('cidr: "10.42.5.9/32"', result.stdout)
+        for changes in ({"privateCoreSource.hmacSecretName": "source-db"}, {"privateCoreSource.databaseCIDR": "0.0.0.0/0"},
+                        {"privateCoreSource.imageDigest": ""}, {"coreDeletion.namespace": "another"}):
+            with self.subTest(changes=changes):
+                self.assertNotEqual(render({**values, **changes}).returncode, 0)
 
 
 if __name__ == "__main__":

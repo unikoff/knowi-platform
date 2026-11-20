@@ -21,6 +21,8 @@ from pymentor_analytics.contracts.v2 import WireBatch
 def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = None, *, intake=None, catalog=None, fence=None, processor_store=None, diagnostics=None, activity_reports=None) -> FastAPI:
     if role not in {"collector", "processor", "query", "privacy"}:
         raise ValueError("unknown HTTP role")
+    if role == "processor" and settings.issuer_mode == "production" and (settings.processor_bucket_worker_enabled or settings.processor_generic_worker_enabled):
+        raise ValueError("production synthetic workers must be disabled")
     if role == "processor" and (settings.pool_size > 2 or settings.pool_overflow != 0):
         raise ValueError("processor pool exceeds configured bound")
     if settings.real_collection and role == "collector" and intake is not None:
@@ -132,7 +134,7 @@ def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = 
                 source = CoreDeletionClient(local_source)
                 if privacy_runtime is None:
                     raise ValueError("local collection requires privacy authority")
-                if role in {"collector", "query"}:
+                if role in ({"collector", "processor", "query"} if settings.issuer_mode == "production" else {"collector", "query"}):
                     from pymentor_analytics.adapters.core_privacy.guard import CoreDeletionGuard
                     status_settings = settings.model_copy(update={"database_url": settings.core_deletion_status_database_url,
                         "pool_size": 1, "pool_overflow": 0, "db_timeout_seconds": min(settings.db_timeout_seconds, 5)})
@@ -426,7 +428,7 @@ def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = 
                 processor_runtime = ProcessorRuntime(store, app.state.probe, settings)
                 app.state.processor_runtime = processor_runtime
                 processor_runtime.start()
-            if local_source is not None and role in {"collector", "query"}:
+            if local_source is not None and role in ({"collector", "processor", "query"} if settings.issuer_mode == "production" else {"collector", "query"}):
                 previous_local_probe = app.state.probe
                 class LocalDeletionReadiness:
                     async def is_ready(self):
@@ -524,7 +526,8 @@ def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = 
     if role == "collector":
         app.add_middleware(IntakeLimitsMiddleware, concurrency=settings.concurrency, timeout_seconds=settings.db_timeout_seconds)
         app.add_middleware(IntakeTelemetryMiddleware, telemetry=telemetry)
-        app.include_router(collector_router)
+        if settings.issuer_mode != "production":
+            app.include_router(collector_router)
         if core_options is not None:
             from pymentor_analytics.modules.analytics.core_transfer.api.router import create_router
             app.include_router(create_router(service=StateProxy("core_transfer_service"),

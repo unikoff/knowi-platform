@@ -240,7 +240,9 @@ def create_app(profile=None, *, laboratory=False):
             raise RuntimeError("Learner Analytics reads require grant signing")
         from pymentor_core.adapters.analytics_http.learner_read import LearnerAnalyticsClient
         try:
-            app.state.analytics_learner_client = LearnerAnalyticsClient(os.environ["PYMENTOR_ANALYTICS_QUERY_URL"])
+            from pymentor_core.adapters.analytics_http.http import client_tls
+            endpoint = os.environ["PYMENTOR_ANALYTICS_QUERY_URL"]
+            app.state.analytics_learner_client = LearnerAnalyticsClient(endpoint, verify=client_tls(os.environ, "PYMENTOR_ANALYTICS_QUERY", endpoint))
         except (KeyError, ValueError):
             raise RuntimeError("Learner Analytics query endpoint is not configured") from None
     if legacy_read_mode != "off":
@@ -248,7 +250,9 @@ def create_app(profile=None, *, laboratory=False):
             raise RuntimeError("Analytics legacy reads require grant signing")
         from pymentor_core.adapters.analytics_http.legacy_read import LegacyReadClient
         try:
-            app.state.analytics_legacy_client = LegacyReadClient(os.environ["PYMENTOR_ANALYTICS_QUERY_URL"])
+            from pymentor_core.adapters.analytics_http.http import client_tls
+            endpoint = os.environ["PYMENTOR_ANALYTICS_QUERY_URL"]
+            app.state.analytics_legacy_client = LegacyReadClient(endpoint, verify=client_tls(os.environ, "PYMENTOR_ANALYTICS_QUERY", endpoint))
         except (KeyError, ValueError):
             raise RuntimeError("Analytics legacy query endpoint is not configured") from None
         app.state.analytics_legacy_shadow = {}

@@ -182,9 +182,11 @@ def scoped_booking():
 
 
 def course_analytics_client(endpoint, *, study_time=False):
+    import os
     from pymentor_core.adapters.analytics_http.course_visitors import CourseStudyTimeClient, CourseVisitorsClient
+    from pymentor_core.adapters.analytics_http.http import client_tls
     client_type = CourseStudyTimeClient if study_time else CourseVisitorsClient
-    return client_type(endpoint)
+    return client_type(endpoint, verify=client_tls(os.environ, "PYMENTOR_ANALYTICS_QUERY", endpoint))
 
 
 def ensure_notification_schema(engine):

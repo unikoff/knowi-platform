@@ -119,6 +119,19 @@ class Settings(BaseModel):
                 SourceConfig.from_json(self.core_deletion_source_json.get_secret_value())
             except Exception:
                 raise ValueError("invalid local real collection configuration") from None
+        elif self.issuer_mode == "production":
+            try:
+                if (self.trust_manifest_json is None or self.privacy_authority_json is None
+                        or self.fixture_catalog_json is not None or self.core_deletion_source_json is None):
+                    raise ValueError
+                from pymentor_analytics.adapters.privacy_authority.client import AuthorityConfig
+                authority = AuthorityConfig.from_json(self.privacy_authority_json.get_secret_value())
+                from pymentor_analytics.adapters.core_privacy.client import SourceConfig
+                source = SourceConfig.from_json(self.core_deletion_source_json.get_secret_value())
+                if authority.runtime_mode != "production" or source.runtime_mode != "production":
+                    raise ValueError
+            except Exception:
+                raise ValueError("invalid production authority configuration") from None
         elif (unquote(urlsplit(self.database_url.get_secret_value()).path.lstrip("/")).startswith("analytics_live_")
               or self.issuer_mode != "synthetic" or self.core_deletion_source_json is not None
               or self.core_deletion_status_database_url is not None or self.core_deletion_relay_json is not None):
@@ -249,11 +262,11 @@ def activity_projection_config(settings, role):
 
 
 def local_deletion_config(settings, role):
-    if not settings.real_collection:
+    if not settings.real_collection and settings.issuer_mode != "production":
         return None
     if role not in {"collector", "processor", "query", "privacy"}:
         raise ValueError("invalid local deletion configuration")
-    if role in {"collector", "query"}:
+    if role in ({"collector", "processor", "query"} if settings.issuer_mode == "production" else {"collector", "query"}):
         if settings.core_deletion_status_database_url is None or settings.core_deletion_relay_json is not None:
             raise ValueError("invalid local deletion configuration")
         source = urlsplit(settings.database_url.get_secret_value())
@@ -262,7 +275,7 @@ def local_deletion_config(settings, role):
         if (source.hostname != status.hostname or source.port != status.port or source.path != status.path
                 or unquote(status.username or "") != name + "_transfer_status"):
             raise ValueError("invalid local deletion configuration")
-        if role == "query" and not (settings.activity_projection_enabled and settings.activity_day_query_enabled):
+        if settings.issuer_mode == "local" and role == "query" and not (settings.activity_projection_enabled and settings.activity_day_query_enabled):
             raise ValueError("local query requires day projection")
     elif role == "privacy":
         if settings.core_deletion_status_database_url is not None or settings.core_deletion_relay_json is None:
@@ -312,6 +325,8 @@ def load_settings(role: str, environ: Mapping[str, str] | None = None) -> Settin
     if "ANALYTICS_ACTIVITY_PROJECTION_RUN_ID" in env:
         fields["activity_projection_run_id"] = env["ANALYTICS_ACTIVITY_PROJECTION_RUN_ID"]
     settings=Settings.model_validate(fields)
+    if role == "processor" and settings.issuer_mode == "production" and (settings.processor_bucket_worker_enabled or settings.processor_generic_worker_enabled):
+        raise ValueError("production synthetic workers must be disabled")
     parsed=urlsplit(settings.database_url.get_secret_value())
     if parsed.port in (62332,62333) and unquote(parsed.username or "") != unquote(parsed.path.lstrip("/"))+"_"+role:
         raise ValueError("invalid synthetic benchmark database role")

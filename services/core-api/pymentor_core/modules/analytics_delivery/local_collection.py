@@ -47,6 +47,7 @@ class LocalCollection:
     database_url: str = field(repr=False)
     key: bytes = field(repr=False)
     catalog_binding: object = field(default=None, repr=False)
+    expected_user: str | None = None
 
 
 def configure(env, database_url):
@@ -126,6 +127,22 @@ def _schema_ok(connection):
     return enabled in {"O", "A"} and kind == 11 and digest(trigger_body) == _TRIGGER_HASH and digest(capture_body) == _BODY_HASH
 
 
+def _private_reader_ok(connection):
+    """Require the dedicated production identity to be a narrow event reader."""
+    row = connection.execute(text("""SELECT
+        NOT r.rolsuper AND NOT r.rolbypassrls AND NOT r.rolcreaterole AND NOT r.rolcreatedb,
+        NOT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m WHERE m.member=r.oid),
+        NOT pg_has_role(current_user, c.relowner, 'MEMBER'),
+        has_column_privilege('public.account_deletion_events', 'lifecycle_id', 'SELECT'),
+        has_column_privilege('public.account_deletion_events', 'deleted_at', 'SELECT'),
+        NOT has_column_privilege('public.account_deletion_events', 'user_id', 'SELECT'),
+        NOT has_table_privilege('public.account_deletion_events', 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'),
+        NOT has_any_column_privilege('public.account_deletion_events', 'INSERT,UPDATE,REFERENCES')
+        FROM pg_catalog.pg_roles r JOIN pg_catalog.pg_class c ON c.oid='public.account_deletion_events'::regclass
+        WHERE r.rolname=current_user""")).one()
+    return all(row)
+
+
 def read_snapshot(config):
     engine = create_engine(config.database_url, poolclass=NullPool,
         connect_args={"connect_timeout": 3, "options": "-c statement_timeout=3000 -c lock_timeout=1000"})
@@ -133,8 +150,12 @@ def read_snapshot(config):
         with engine.connect().execution_options(isolation_level="READ COMMITTED") as connection:
             with connection.begin():
                 connection.execute(text("SET TRANSACTION READ ONLY"))
-                identity = lambda: connection.execute(text("SELECT current_database(),pg_is_in_recovery()" )).one()
-                if tuple(identity()) != (config.database, False) or not _schema_ok(connection):
+                identity = lambda: connection.execute(text("SELECT current_database(),pg_is_in_recovery(),current_user" )).one()
+                def identity_ok():
+                    database, recovery, user = identity()
+                    return database == config.database and not recovery and (config.expected_user is None or user == config.expected_user)
+                if (not identity_ok() or not _schema_ok(connection)
+                        or (config.expected_user is not None and not _private_reader_ok(connection))):
                     raise ValueError("source unavailable")
                 # The timestamp precedes the READ COMMITTED statement snapshot;
                 # it must never claim observations later than that snapshot.
@@ -144,7 +165,7 @@ def read_snapshot(config):
                 if len(rows) > 1024:
                     raise ValueError("source overflow")
                 events = [{"subject_ref": _uuid(row[0]), "deleted_at": _stamp(row[1])} for row in rows]
-                if tuple(identity()) != (config.database, False):
+                if not identity_ok():
                     raise ValueError("source changed")
                 return as_of, events
     finally:

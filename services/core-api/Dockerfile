@@ -32,6 +32,7 @@ FROM runtime-base AS migrations
 COPY --from=migration-dependencies /opt/venv /opt/venv
 COPY --chown=app:app services/core-api/migrations /app/services/core-api/migrations
 COPY --chown=app:app services/core-api/alembic-runtime.ini /app/services/core-api/alembic-runtime.ini
+COPY --chown=app:app services/core-api/tools/analytics_transfer/001_additive.sql services/core-api/tools/analytics_transfer/002_snapshot_proof.sql services/core-api/tools/analytics_transfer/production_migrate.py services/core-api/tools/analytics_transfer/production_backfill.py /app/services/core-api/tools/analytics_transfer/
 ENTRYPOINT ["python", "-m", "alembic", "-c", "/app/services/core-api/alembic-runtime.ini"]
 CMD ["upgrade", "head"]
 

@@ -12,7 +12,7 @@ class LearnerAnalyticsClient:
         "measured": "/api/analytics/reports/measured-calendar",
     }
 
-    def __init__(self, endpoint, *, transport=None):
+    def __init__(self, endpoint, *, transport=None, verify=True):
         url = urlsplit(endpoint)
         if (url.scheme not in {"http", "https"} or not url.hostname or url.username or url.password
                 or url.query or url.fragment or url.path not in {"", "/"}
@@ -20,11 +20,12 @@ class LearnerAnalyticsClient:
             raise ValueError("invalid Analytics query endpoint")
         self.endpoint = endpoint.rstrip("/")
         self.transport = transport
+        self.verify = verify
 
     async def read(self, kind, grant, params):
         body = await request("GET", self.endpoint + self._paths[kind] + "?" + urlencode(params),
             headers={"Authorization": "Bearer " + grant, "Accept": "application/json"}, body=None,
-            deadline_seconds=4, max_bytes=16384, transport=self.transport)
+            deadline_seconds=4, max_bytes=16384, transport=self.transport, verify=self.verify)
         if body is None or body[0] != 200:
             raise LearnerReadUnavailable()
 

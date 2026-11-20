@@ -100,6 +100,7 @@
     "analytics_delivery/test_delete_flow.py",
     "analytics_delivery/test_http_deadline.py",
     "analytics_delivery/test_integration.py",
+    "analytics_delivery/test_production_collection.py",
     "analytics_delivery/test_publisher.py",
     "analytics_delivery/test_snapshot_export.py",
     "analytics_delivery/test_snapshot_relay.py",

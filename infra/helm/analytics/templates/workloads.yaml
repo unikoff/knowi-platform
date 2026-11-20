@@ -21,12 +21,12 @@ spec:
     spec:
       serviceAccountName: {{ $.Release.Name }}-analytics-{{ $role }}
       automountServiceAccountToken: false
-      securityContext: {runAsNonRoot: true, runAsUser: 10001, seccompProfile: {type: RuntimeDefault}}
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, fsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
       containers:
         - name: {{ $role }}
           image: {{ if $.Values.image.digest }}{{ printf "%s@%s" $.Values.image.repository $.Values.image.digest | quote }}{{ else }}{{ printf "%s:%s" $.Values.image.repository (default $.Values.image.tag $cfg.imageTag) | quote }}{{ end }}
           imagePullPolicy: {{ $.Values.image.pullPolicy }}
-          args: [{{ $role | quote }}, "--host", "0.0.0.0", "--port", "8000"]
+          args: [{{ $role | quote }}, "--host", {{ if and (eq $.Values.runtime.mode "production") (has $role (list "collector" "query")) }}"127.0.0.1"{{ else }}"0.0.0.0"{{ end }}, "--port", "8000"]
           ports: [{name: http, containerPort: 8000}]
           envFrom:
             - configMapRef: {name: {{ $.Release.Name }}-analytics-config}
@@ -102,15 +102,75 @@ spec:
                   name: {{ $.Values.privacyAuthority.secretName | quote }}
                   key: {{ $.Values.privacyAuthority.key | quote }}
 {{- end }}
+{{- if eq $.Values.runtime.mode "production" }}
+            - name: ANALYTICS_CORE_DELETION_SOURCE_JSON
+              valueFrom:
+                secretKeyRef: {name: {{ $.Values.coreDeletion.sourceSecretName | quote }}, key: CORE_DELETION_SOURCE_JSON}
+{{- if eq $role "privacy" }}
+            - name: ANALYTICS_PRIVACY_CORE_DELETION_RELAY_JSON
+              valueFrom:
+                secretKeyRef: {name: {{ $.Values.coreDeletion.relaySecretName | quote }}, key: CORE_DELETION_RELAY_JSON}
+{{- else }}
+            - name: ANALYTICS_{{ upper $role }}_CORE_DELETION_STATUS_DATABASE_URL
+              valueFrom:
+                secretKeyRef: {name: {{ $.Values.coreDeletion.statusSecretName | quote }}, key: DATABASE_URL}
+{{- end }}
+{{- end }}
             - name: ANALYTICS_{{ upper $role }}_DATABASE_URL
               valueFrom:
                 secretKeyRef: {name: {{ $cfg.secretName }}, key: DATABASE_URL}
             - {name: FORWARDED_ALLOW_IPS, value: ""}
+{{- if or $.Values.authorityClientTLS.secretName (eq $.Values.runtime.mode "production") }}
+          volumeMounts:
+{{- if $.Values.authorityClientTLS.secretName }}
+            - {name: authority-client-tls, mountPath: /var/run/analytics-authority-tls, readOnly: true}
+{{- end }}
+{{- if eq $.Values.runtime.mode "production" }}
+            - {name: core-deletion-tls, mountPath: /var/run/core-deletion-tls, readOnly: true}
+{{- end }}
+{{- end }}
           resources:
 {{ toYaml $cfg.resources | indent 12 }}
           securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+{{- if and (eq $.Values.runtime.mode "production") (has $role (list "collector" "query")) }}
+          livenessProbe: {exec: {command: ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/live', timeout=2).read()"]}, periodSeconds: 10, timeoutSeconds: 3}
+          readinessProbe: {exec: {command: ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5).read()"]}, periodSeconds: 5, timeoutSeconds: 6}
+        - name: internal-tls
+          image: {{ printf "%s@%s" $.Values.internalTLS.proxyImageRepository $.Values.internalTLS.proxyImageDigest | quote }}
+          command: ["nginx", "-c", {{ printf "/etc/analytics-tls/%s.conf" $role | quote }}, "-g", "daemon off;"]
+          ports: [{name: https, containerPort: {{ $.Values.internalTLS.port }}}]
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          readinessProbe: {tcpSocket: {port: https}, periodSeconds: 5, timeoutSeconds: 3}
+          resources:
+            requests: {cpu: 25m, memory: 32Mi}
+            limits: {cpu: 250m, memory: 128Mi}
+          volumeMounts:
+            - {name: internal-tls-config, mountPath: /etc/analytics-tls, readOnly: true}
+            - {name: internal-tls-server, mountPath: /var/run/server-tls, readOnly: true}
+            - {name: internal-tls-tmp, mountPath: /tmp}
+{{- else }}
           livenessProbe: {httpGet: {path: /live, port: http}, periodSeconds: 10, timeoutSeconds: 3}
           readinessProbe: {httpGet: {path: /ready, port: http}, periodSeconds: 5, timeoutSeconds: 6}
+{{- end }}
+{{- if or $.Values.authorityClientTLS.secretName (eq $.Values.runtime.mode "production") }}
+      volumes:
+{{- if $.Values.authorityClientTLS.secretName }}
+        - name: authority-client-tls
+          secret: {secretName: {{ $.Values.authorityClientTLS.secretName | quote }}}
+{{- end }}
+{{- if eq $.Values.runtime.mode "production" }}
+        - name: core-deletion-tls
+          secret: {secretName: {{ $.Values.coreDeletion.tlsSecretName | quote }}}
+{{- if has $role (list "collector" "query") }}
+        - name: internal-tls-config
+          configMap: {name: {{ $.Release.Name }}-analytics-internal-tls}
+        - name: internal-tls-server
+          secret: {secretName: {{ if eq $role "collector" }}{{ $.Values.internalTLS.collectorSecretName | quote }}{{ else }}{{ $.Values.internalTLS.querySecretName | quote }}{{ end }}, defaultMode: 0440}
+        - name: internal-tls-tmp
+          emptyDir: {sizeLimit: 16Mi}
+{{- end }}
+{{- end }}
+{{- end }}
 {{- if or (eq $role "collector") (eq $role "query") }}
 ---
 apiVersion: v1
@@ -119,7 +179,11 @@ metadata:
   name: {{ $.Release.Name }}-analytics-{{ $role }}
 spec:
   selector: {app.kubernetes.io/name: analytics, app.kubernetes.io/instance: {{ $.Release.Name }}, app.kubernetes.io/component: {{ $role }}}
+{{- if eq $.Values.runtime.mode "production" }}
+  ports: [{name: https, port: {{ $.Values.internalTLS.port }}, targetPort: https}]
+{{- else }}
   ports: [{name: http, port: 8000, targetPort: http}]
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

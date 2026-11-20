@@ -9,7 +9,7 @@ def snapshot(target, subject, *, proof=False, privacy_history=False, catalog_his
     import psycopg
     from psycopg import sql
     result = {}
-    if day_revision not in {"a011", "a012"} or (day_revision == "a012" and not day_projection):
+    if day_revision not in {"a011", "a012", "a014"} or (day_revision in {"a012", "a014"} and not day_projection):
         raise ValueError("unsupported day snapshot revision")
     if day_projection and not browser:
         raise ValueError("day snapshot requires bucket snapshot")
@@ -73,11 +73,13 @@ def verify_day_trigger(conn, target):
 
 def verify_fresh_a011_target(conn, target, *, revision="a011"):
     """Refuse partial, nonempty, wrong-version or weakened day restore targets."""
-    if revision not in {"a011", "a012"} or conn.execute("SELECT version_num FROM alembic_version").fetchall() != [(revision,)]:
+    if revision not in {"a011", "a012", "a014"} or conn.execute("SELECT version_num FROM alembic_version").fetchall() != [(revision,)]:
         raise ValueError("restore target requires the exact declared revision")
     tables = ("activity_projection_day_sources", "activity_projection_days")
-    if revision == "a012":
+    if revision in {"a012", "a014"}:
         tables += ("activity_course_buckets", "activity_course_days")
+    if revision == "a014":
+        tables += ("activity_credit_windows", "activity_credit_days")
     for table in tables:
         from psycopg import sql
         if conn.execute(sql.SQL("SELECT count(*) FROM analytics.{}").format(sql.Identifier(table))).fetchone()[0] != 0:
@@ -111,7 +113,7 @@ def transplant_fresh(target, snapshot_data, *, day_projection=False, old_run_id=
     import psycopg
     from psycopg import sql
     browser_tables = ("processing_results", "processing_leases", "processing_replays", "admission_subject_windows", "activity_projection_buckets") if "activity_projection_buckets" in snapshot_data else ()
-    if day_revision not in {"a011", "a012"} or (day_revision == "a012" and not day_projection):
+    if day_revision not in {"a011", "a012", "a014"} or (day_revision in {"a012", "a014"} and not day_projection):
         raise ValueError("unsupported day restore revision")
     if day_projection and not browser_tables:
         raise ValueError("day restore requires bucket snapshot")
@@ -155,7 +157,7 @@ def transplant_fresh(target, snapshot_data, *, day_projection=False, old_run_id=
         for table in (*tables, "privacy_state", *privacy_tables, *catalog_tables):
             columns = [row[0] for row in conn.execute("""SELECT column_name FROM information_schema.columns
                 WHERE table_schema='analytics' AND table_name=%s AND is_generated='NEVER' ORDER BY ordinal_position""", (table,))]
-            if table == "activity_projection_buckets" and day_revision == "a012":
+            if table == "activity_projection_buckets" and day_revision in {"a012", "a014"}:
                 # A freshly restored dataset regenerates its course sidecars.
                 columns = [name for name in columns if name not in {"course_projection_generation", "course_projection_run_id"}]
             if not columns:
