@@ -10,6 +10,11 @@ on:
       - 'infra/gitops/analytics/**'
   workflow_dispatch:
   workflow_call:
+    inputs:
+      verify_image:
+        description: Build and verify a local image when this run has no published candidate
+        type: boolean
+        default: true
 
 permissions: {}
 
@@ -50,8 +55,10 @@ jobs:
         # they deliberately remain skipped when its explicit opt-in is absent.
         run: python -B -m pytest services/analytics/tests -q -p no:cacheprovider
       - name: Build isolated application image
+        if: github.event_name != 'push' || inputs.verify_image
         run: docker build -t knowi-analytics:ci services/analytics
       - name: Check all image entrypoints without network access
+        if: github.event_name != 'push' || inputs.verify_image
         run: python -B services/analytics/tools/check_image.py knowi-analytics:ci
       - name: Validate separate Helm release
         shell: bash

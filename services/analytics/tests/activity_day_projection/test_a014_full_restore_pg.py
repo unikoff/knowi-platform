@@ -1,6 +1,7 @@
 """Actual custom-format restore into a separate sentinel-guarded synthetic database."""
 import asyncio
 import os
+import re
 import subprocess
 import time
 from datetime import datetime, time as midnight, timedelta, timezone
@@ -34,7 +35,10 @@ def _docker_pg(tool, database, username, password, options, *, content=None):
     # Password is passed via the inherited environment, never as a command argument.
     env = os.environ.copy()
     env["PGPASSWORD"] = password
-    return subprocess.run(["docker", "exec", "-i", "--env", "PGPASSWORD", CONTAINER, tool,
+    container = env.get("ANALYTICS_SYNTHETIC_PG_CONTAINER_ID", CONTAINER)
+    if container != CONTAINER and not re.fullmatch(r"[0-9a-f]{64}", container):
+        raise ValueError("expected exact synthetic PostgreSQL container ID")
+    return subprocess.run(["docker", "exec", "-i", "--env", "PGPASSWORD", container, tool,
                            "--host", "127.0.0.1", "--username", username,
                            "--dbname", database, *options], input=content, stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE, check=True, env=env, timeout=120).stdout

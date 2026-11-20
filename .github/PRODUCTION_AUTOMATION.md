@@ -1,8 +1,76 @@
 # Deployment
 
-The active path is `Release` -> [release.yml](workflows/release.yml) -> GitOps on
-AlphaVPS. Runtime uses PostgreSQL and Redis. See the [Core runbook](../services/core-api/README.md).
+`Release` запускает [Release CI/CD](workflows/release.yml). Argo CD на AlphaVPS
+следит за `Release:infra/gitops/preview`. Несмотря на название `preview`, этот
+контур обслуживает `knowi.ru`. Core использует PostgreSQL и Redis.
 
-Shared-hosting, Passenger, SQLite backup/import and file-based cron deployment
-instructions have been retired. Their history is available in Git. Existing
-private backups are not deployment inputs for this cleanup.
+### Что проверяет CI
+
+- `plan` сравнивает исходники кандидата с `source_sha` последней публикации,
+  включая накопленные изменения после упавших запусков. Список сборок и
+  обязательных проверок виден в summary. Для неизвестных путей или ненадёжной
+  базы сравнения CI выбирает полный маршрут. GitOps правки сверяйте отдельно:
+  Argo читает манифесты прямо из `Release` и может применить их раньше окончания CI.
+- Core, Web и Analytics запускаются по отдельности. Например, правка стилей
+  выполняет проверки Web, а правка только Analytics обходит полный прогон Core
+  и Web. Общие контракты включают все затронутые проверки. `checks` собирает
+  результаты и требует успеха от каждой выбранной задачи.
+- Core выполняет unit, runtime и две группы HTTP параллельно. Раннеры групп
+  с интеграционными тестами получают свои PostgreSQL и Redis. HTTP-файлы
+  по-прежнему запускаются в отдельных процессах. В summary видны время групп,
+  подготовки БД и каждого HTTP-файла. Репетиции `c503 → c504` и `c504 → c528`
+  выполняются при затронутой схеме, миграционном коде, зависимостях БД или
+  изменении самого процесса выпуска.
+- `images` собирает каждый затронутый компонент один раз и берёт остальные digest из
+  опубликованного `release.json`. Core, его мигратор и Web копируют материалы
+  `courses/`, поэтому изменение урока может затронуть все три образа. При каждой
+  публикации Anchore перепроверяет **все пять** итоговых digest параллельно,
+  включая повторно используемые. Недоступный digest или Critical останавливает
+  публикацию. Проверка ассетов Web, запуск Analytics и Compose smoke Core
+  используют digest кандидата. Для PR остаются локальные проверки сборок.
+- `verify-images` собирает пять записей из текущего запуска CI и сверяет SHA,
+  digest и происхождение каждого образа с планом. `publish` получает digest
+  только после этой сверки и smoke Core, когда изменился Core или мигратор.
+- `publish` пишет `source_sha` кандидата и `image_sources` для каждого образа.
+  SHA GitOps-коммита бота публикуется в summary. Сохранение digest и SHA образа
+  сохраняет версию его Pod template, если остальная конфигурация не менялась.
+  Если ветка продвинулась во время сборки, старый кандидат не публикуется.
+
+### Репетиции и приёмка
+
+[Release regression rehearsal](workflows/release-regression.yml) выполняется
+еженедельно на ветке по умолчанию и вручную. Он проверяет исторические переходы
+Core, восстановление Analytics на тестовой PostgreSQL и прогон проекций `a010`
+на 50 синтетических учениках за 31 день. При затронутых миграциях и восстановлении
+обязательные репетиции выполняются на том же коммите в текущем CI. В summary
+есть SHA и исход каждого этапа, у Analytics также есть JUnit и лог прогона.
+Для приёмки производительности по полному HTTP-профилю используйте отдельный
+[benchmark на изолированном Windows-стенде](../docs/analytics/benchmark-runbook.md)
+после изменений профиля, проекций, запросов или ресурсов. Сверьте результат с
+изменяемой версией и конфигурацией до её включения на рабочих данных.
+
+После обычной публикации GitHub Actions автоматически сверяет внешний SHA Core
+и Web, страницу, статический ресурс, каталог, readiness и анонимный доступ.
+Для проверки завершения rollout запустите из разрешённого контекста команду
+ниже. `release.json` возьмите из указанного GitOps-коммита бота.
+
+```bash
+release_file=$(mktemp)
+git show "$GITOPS_SHA:infra/gitops/preview/release.json" > "$release_file"
+python3 infra/gitops/operations/release_status.py \
+  --release-file "$release_file" --gitops-sha "$GITOPS_SHA" \
+  --k3s --context default --namespace pymentor --base-url https://knowi.ru
+```
+
+В выводе сверяются ревизия Argo, оба Rollout, веса трафика, рабочие endpoints,
+образы Core/Web/Runner, конфигурация уведомлений и публичные HTTP-сценарии.
+При наличии локально настроенного PostgreSQL service можно дополнительно
+проверить Alembic head через `--pg-service NAME --expected-schema REVISION`.
+Для проверки давности и результатов существующего бэкапа добавьте
+`--backup-index /var/backups/knowi --max-backup-age-hours N` с порогом для
+конкретной операции. Команда проверяет метаданные восстановления и внешней
+копии. Для несовместимого перехода по-прежнему нужен свежий проверенный снимок
+после остановки записи, как в [инструкции перехода](../infra/gitops/operations/c528-cutover.md).
+После управляемой миграции запускайте полную проверку после открытия трафика.
+Запись на занятие, новые отчёты Analytics и другие сценарии с авторизацией или
+изменением данных проверяются отдельно при их затрагивании.
