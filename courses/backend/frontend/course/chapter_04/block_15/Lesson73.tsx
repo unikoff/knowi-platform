@@ -1,6 +1,5 @@
-import { BarChart3, Database, Filter } from "lucide-react";
+import { useState } from "react";
 import {
-  Callout,
   CodeBlock,
   Diagram,
   DiagramArrow,
@@ -8,263 +7,563 @@ import {
   DiagramNode,
   Lead,
   LinkedNotes,
-  ContentList,
-  QuizCard,
   RichHero,
   RichLesson,
   Section,
-  StepThrough,
 } from "../../shared";
 
 const BLOCK_TITLE = "Этап 4 · Блок 15 · Полный SQL-путь и единое переключение";
+
+const TICKET_EXAMPLE = String.raw`from sqlalchemy import create_engine, select
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class TicketRow(Base):
+    __tablename__ = "tickets"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    closed: Mapped[bool]
+
+
+engine = create_engine("sqlite://")
+try:
+    Base.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add_all([
+            TicketRow(id=4, closed=False),
+            TicketRow(id=1, closed=True),
+            TicketRow(id=2, closed=False),
+        ])
+        session.commit()
+
+        tickets = select(TicketRow)
+        opened = tickets.where(TicketRow.closed == False)
+        ascending = opened.order_by(TicketRow.id.asc())
+        descending = opened.order_by(TicketRow.id.desc())
+
+        examples = [
+            ("Открытые, ASC, 1", ascending.limit(1)),
+            ("Открытые, DESC, 1", descending.limit(1)),
+            ("Все, ASC, 1", tickets.order_by(TicketRow.id.asc()).limit(1)),
+            ("Открытые, ASC, без лимита", ascending),
+            ("Билет 99", tickets.where(TicketRow.id == 99)),
+        ]
+        for label, statement in examples:
+            rows = session.scalars(statement).all()
+            print(f"{label}: {[row.id for row in rows]}")
+finally:
+    engine.dispose()`;
+
+const SELECTION_CHECK = String.raw`import re
+
+import pytest
+from fastapi import Depends, FastAPI
+from fastapi.testclient import TestClient
+from sqlalchemy import event
+from sqlalchemy.engine import URL
+
+from app.DBase.models import Base
+from app.DBase.repositories import SqlTaskRepository
+from app.DBase.session import create_session_factory
+from app.cli import execute_command, format_task
+from app.core.dependencies import get_db, get_planner
+from app.core.engine import make_engine
+from app.main import build_service, sql_service_context
+from app.models import Task
+from app.routers.tasks.router import router
+from app.storage import JsonStorage
+
+
+@pytest.fixture
+def sql_database(tmp_path):
+    url = URL.create("sqlite", database=(tmp_path / "selection.sqlite3").as_posix())
+    engine = make_engine(url.render_as_string(hide_password=False))
+    try:
+        Base.metadata.create_all(engine)
+        yield engine, create_session_factory(engine)
+    finally:
+        engine.dispose()
+
+
+def seed_selection(factory):
+    with sql_service_context(factory) as planner:
+        a = planner.add_task("Закрыть счёт", 3, tags=["архив"])
+        b = planner.add_task("Забрать заказ", 5, tags=["город"])
+        c = planner.add_task("Выбрать обложку", 1, tags=["макет"])
+        planner.mark_done(a.id)
+    return (
+        Task(a.id, a.title, priority=3, is_done=True, tags=["архив"]),
+        Task(b.id, b.title, priority=5, tags=["город"]),
+        Task(c.id, c.title, priority=1, tags=["макет"]),
+    )
+
+
+def public_task(task):
+    return {
+        "id": task.id,
+        "title": task.title,
+        "priority": task.priority,
+        "is_done": task.is_done,
+    }
+
+
+@pytest.fixture
+def sql_client(sql_database, tmp_path):
+    _, factory = sql_database
+    app = FastAPI()
+    app.include_router(router)
+    original_planner = build_service(JsonStorage(tmp_path / "default.json"))
+    app.state.planner = original_planner
+
+    def sql_planner(db=Depends(get_db)):
+        return build_service(repository=SqlTaskRepository(db))
+
+    app.state.session_factory = factory
+    app.dependency_overrides[get_planner] = sql_planner
+    with TestClient(app) as client:
+        try:
+            yield client
+        finally:
+            app.dependency_overrides.pop(get_planner)
+            del app.state.session_factory
+            assert app.state.planner is original_planner
+            assert client.get("/tasks").json() == []
+
+
+def test_input_sql_selection(sql_database):
+    _, factory = sql_database
+    expected = seed_selection(factory)
+    with sql_service_context(factory) as planner:
+        rows = planner.list_tasks()
+        first = planner.get_task(expected[0].id)
+    print("Исходные строки (id, is_done, tags):")
+    for row in rows:
+        print(row.id, row.is_done, row.tags)
+    assert rows == list(expected)
+    assert first == expected[0]
+    assert rows[0].id < rows[1].id < rows[2].id
+
+
+def test_selection_service(sql_database):
+    _, factory = sql_database
+    with sql_service_context(factory) as planner:
+        assert planner.select_tasks(is_done=False) == []
+
+    a, b, c = seed_selection(factory)
+    with sql_service_context(factory) as planner:
+        opened = planner.select_tasks(is_done=False, limit=None)
+        done = planner.select_tasks(is_done=True)
+        all_rows = planner.select_tasks()
+        desc = planner.select_tasks(is_done=False, sort_desc=True, limit=1)
+        first = planner.select_tasks(limit=1)
+
+    assert opened == [b, c]
+    assert done == [a]
+    assert all_rows == [a, b, c]
+    assert desc == [c]
+    assert first == [a]
+    print("Открытые без лимита:", [task.id for task in opened])
+    print("Завершённые:", [task.id for task in done])
+    print("Все:", [task.id for task in all_rows])
+    print("Открытые по убыванию, лимит 1:", [task.id for task in desc])
+
+
+def test_selection_stays_in_sql(sql_database):
+    engine, factory = sql_database
+    a, b, c = seed_selection(factory)
+    statements = []
+
+    def capture(_conn, _cursor, statement, _parameters, _context, _executemany):
+        statements.append(statement)
+
+    def read_one_statement(order_label, **options):
+        statements.clear()
+        event.listen(engine, "before_cursor_execute", capture)
+        try:
+            with sql_service_context(factory) as planner:
+                result = planner.select_tasks(**options)
+        finally:
+            event.remove(engine, "before_cursor_execute", capture)
+
+        print(order_label, [task.id for task in result])
+        for statement in statements:
+            print(statement)
+        assert len(statements) == 1, "Ожидается одно обращение к SQLite"
+        sql = " ".join(statements[0].upper().split())
+        assert sql.startswith("SELECT ")
+        assert re.search(r"\bORDER BY\b.*\bID\b", sql)
+        return result, sql
+
+    result, sql = read_one_statement("Открытые, ASC, 1:", is_done=False, limit=1)
+    assert result == [b]
+    assert re.search(r"\bWHERE\b.*\bIS_DONE\b.*\bORDER BY\b", sql)
+    assert re.search(r"\bLIMIT\b", sql)
+
+    result, sql = read_one_statement("Все, ASC, без лимита:", is_done=None, limit=None)
+    assert result == [a, b, c]
+    assert not re.search(r"\b(WHERE|LIMIT)\b", sql)
+
+
+def test_selection_http_mixed(sql_database, sql_client):
+    _, factory = sql_database
+    _, b, _ = seed_selection(factory)
+    response = sql_client.get("/tasks?is_done=false&sort_desc=false&limit=1")
+    assert response.status_code == 200
+    assert response.json() == [public_task(b)]
+    print("GET открытых с лимитом 1:", [row["id"] for row in response.json()])
+
+
+def test_selection_http_and_cli_limits(sql_database, sql_client):
+    _, factory = sql_database
+    with sql_service_context(factory) as planner:
+        expected = [planner.add_task(f"Задача {index}", 2) for index in range(1, 13)]
+
+    for params, expected_rows in [({}, expected[:10]), ({"limit": 1}, expected[:1]),
+                                  ({"limit": 50}, expected)]:
+        response = sql_client.get("/tasks", params=params)
+        assert response.status_code == 200
+        assert response.json() == [public_task(task) for task in expected_rows]
+        print("HTTP limit:", params.get("limit", "по умолчанию"), "строк:", len(expected_rows))
+
+    for limit in (0, 51):
+        response = sql_client.get("/tasks", params={"limit": limit})
+        assert response.status_code == 422
+        print("HTTP limit:", limit, "статус:", response.status_code)
+
+    with sql_service_context(factory) as planner:
+        without_limit = planner.select_tasks(limit=None)
+        lines = []
+        execute_command(planner, "list", write=lines.append)
+    assert without_limit == expected
+    assert lines == [format_task(task) for task in expected]
+    print("Строк через сервис без лимита:", len(without_limit))
+    print("Строк CLI:", len(lines))`;
+
+const tickets = [
+  { id: 4, closed: false },
+  { id: 1, closed: true },
+  { id: 2, closed: false },
+];
+
+type Ticket = (typeof tickets)[number];
+type Selection = {
+  status: "open" | "closed" | "all";
+  direction: "asc" | "desc";
+  size: "one" | "all";
+  earlyLimit: boolean;
+};
+
+const initialSelection: Selection = {
+  status: "open",
+  direction: "asc",
+  size: "one",
+  earlyLimit: false,
+};
+
+const controlStyle = {
+  minHeight: 44,
+  maxWidth: "100%",
+  font: "inherit",
+  colorScheme: "light dark",
+} as const;
+
+function ticketList(rows: Ticket[]) {
+  return rows.length
+    ? rows.map(({ id, closed }) => `${id} (${closed ? "закрыт" : "открыт"})`).join(", ")
+    : "Нет строк";
+}
+
+function TicketSelection() {
+  const [selection, setSelection] = useState(initialSelection);
+  const [revealed, setRevealed] = useState(false);
+
+  function change(patch: Partial<Selection>) {
+    setSelection((current) => ({ ...current, ...patch }));
+    setRevealed(false);
+  }
+
+  function filter(rows: Ticket[]) {
+    return rows.filter(
+      (ticket) => selection.status === "all" || ticket.closed === (selection.status === "closed"),
+    );
+  }
+
+  function sort(rows: Ticket[]) {
+    return [...rows].sort((a, b) => selection.direction === "asc" ? a.id - b.id : b.id - a.id);
+  }
+
+  function limit(rows: Ticket[]) {
+    return selection.size === "one" ? rows.slice(0, 1) : rows;
+  }
+
+  const first = selection.earlyLimit ? sort(tickets) : filter(tickets);
+  const second = selection.earlyLimit ? limit(first) : sort(first);
+  const result = selection.earlyLimit ? filter(second) : limit(second);
+  const stages = selection.earlyLimit
+    ? ["После сортировки", "После лимита", "После отбора"]
+    : ["После отбора", "После сортировки", "После лимита"];
+
+  function explainResult() {
+    if (selection.size === "all") {
+      return "Без лимита ни одна строка не теряется при обрезке. Проверьте, что обычный порядок и режим раннего лимита дают те же id.";
+    }
+    if (selection.status === "all") {
+      return "Подходят все билеты. Первый id определяется только направлением сортировки.";
+    }
+    if (!result.length) {
+      return `Лимит оставил только билет ${second[0].id}. Он не прошёл фильтр, а подходящие билеты уже отброшены.`;
+    }
+    if (selection.earlyLimit) {
+      return `На этом входе билет ${result[0].id} прошёл фильтр случайно: он оказался первым среди всех. Смените фильтр и проверьте снова.`;
+    }
+    return `Билет ${result[0].id} стоит первым среди подходящих. Только после отбора и сортировки лимит оставляет этот билет.`;
+  }
+
+  return (
+    <div style={{ border: "1px solid var(--border)", borderRadius: 12, padding: "1rem", minWidth: 0 }}>
+      <h3>Какие билеты вернутся?</h3>
+      <p>Билеты: {ticketList(tickets)}. Выберите параметры, назовите ожидаемые id и откройте шаги. Это схема выборки на примере, её можно переключать без запуска базы.</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 11rem), 1fr))", gap: "0.75rem" }}>
+        <label style={{ display: "grid", gap: "0.25rem" }}>
+          Статус
+          <select
+            value={selection.status}
+            onChange={(event) => change({ status: event.target.value as Selection["status"] })}
+            style={controlStyle}
+          >
+            <option value="all">Все</option>
+            <option value="open">Открытые</option>
+            <option value="closed">Закрытые</option>
+          </select>
+        </label>
+        <label style={{ display: "grid", gap: "0.25rem" }}>
+          Порядок по id
+          <select
+            value={selection.direction}
+            onChange={(event) => change({ direction: event.target.value as Selection["direction"] })}
+            style={controlStyle}
+          >
+            <option value="asc">По возрастанию</option>
+            <option value="desc">По убыванию</option>
+          </select>
+        </label>
+        <label style={{ display: "grid", gap: "0.25rem" }}>
+          Лимит
+          <select
+            value={selection.size}
+            onChange={(event) => change({ size: event.target.value as Selection["size"] })}
+            style={controlStyle}
+          >
+            <option value="one">Одна строка</option>
+            <option value="all">Без лимита</option>
+          </select>
+        </label>
+      </div>
+
+      <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", minHeight: 44 }}>
+        <input
+          type="checkbox"
+          checked={selection.earlyLimit}
+          onChange={(event) => change({ earlyLimit: event.target.checked })}
+        />
+        Ограничить раньше фильтра
+      </label>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+        <button type="button" aria-expanded={revealed} onClick={() => setRevealed(!revealed)} style={controlStyle}>
+          {revealed ? "Скрыть шаги" : "Показать шаги"}
+        </button>
+        <button type="button" onClick={() => change(initialSelection)} style={controlStyle}>Сбросить</button>
+      </div>
+      <div aria-live="polite" aria-atomic="true">
+        {revealed && (
+          <>
+            <dl>
+              {stages.map((stage, index) => (
+                <div key={stage}>
+                  <dt><strong>{stage}</strong></dt>
+                  <dd>{ticketList([first, second, result][index])}</dd>
+                </div>
+              ))}
+            </dl>
+            <p><strong>Результат: [{result.map((ticket) => ticket.id).join(", ")}].</strong> {explainResult()}</p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function Lesson73({ module }: { module?: string }) {
   return (
     <RichLesson>
       <RichHero
         chip={module ?? BLOCK_TITLE}
-        title="SQL-фильтр и сводка"
-        intro="Перенесём прежние фильтр, порядок и подсчёты Planner в SQL-репозиторий, сохранив ответы API и JSON как штатное хранилище."
-        tags={[
-          { icon: <Filter size={14} />, label: "WHERE · ORDER BY · LIMIT" },
-          { icon: <BarChart3 size={14} />, label: "SQL-агрегат" },
-          { icon: <Database size={14} />, label: "SQLite" },
-        ]}
+        title="Фильтруем, сортируем и ограничиваем список в SQL"
+        intro="Попросим SQLite вернуть только нужные задачи и проверим, что старые команды Planner получают ожидаемый список."
       />
 
-      <Section number="00" title="Тот же результат, полученный иначе">
+      <Section number="00" title="Вступление">
         <Lead>
-          В предыдущем блоке мы выделили операции чтения в репозиторий и подготовили SQL-чтение списка и одной задачи. В этом блоке SQL-путь постепенно дополняет тот же Planner, а переключение штатного хранилища отложено до общего шага.
+          Допустим, Planner должен показать одну открытую задачу. Первая задача по id уже завершена.
+          Какую строку нужно вернуть?
         </Lead>
+        <LinkedNotes items={[
+          { title: "Точка старта", description: "SQLite уже хранит задачи Planner. Прежняя выборка умеет отбирать задачи по статусу, упорядочивать их и ограничивать размер ответа." },
+          { title: "Новый вопрос", description: "Как попросить базу вернуть одну открытую задачу, если первая по id уже завершена?" },
+          { title: "Результат", description: "При лимите в одну строку запрос вернёт первую подходящую задачу в заданном порядке." },
+        ]} />
+        <p>Проследим, какие строки проходят условие, какая из них становится первой и на каком шаге берём нужное количество.</p>
+      </Section>
+
+      <Section number="01" title="Прежняя выборка как договор">
+        <Lead>У выборки три настройки. Первая задаёт состав списка, вторая задаёт порядок, третья задаёт длину ответа.</Lead>
+        <dl>
+          <dt><code>is_done</code></dt>
+          <dd><code>None</code> оставляет оба статуса, <code>False</code> выбирает открытые задачи, <code>True</code> выбирает завершённые.</dd>
+          <dt><code>sort_desc</code></dt>
+          <dd><code>False</code> ставит меньшие id первыми, <code>True</code> ставит большие id первыми.</dd>
+          <dt><code>limit</code></dt>
+          <dd>Число задаёт, сколько строк взять с начала списка. Вызов сервиса с <code>None</code> снимает ограничение.</dd>
+        </dl>
         <p>
-          Теперь посмотрим на две уже знакомые возможности: выбрать задачи по статусу и посчитать статистику. JSON-версия задаёт точное поведение, которое нужно сохранить. Новый вопрос в том, как получить тот же результат прямо из таблицы, не превращая endpoint в место с SQL и не загружая каждую строку в Python.
+          Возьмём билеты: первый закрыт, второй и четвёртый открыты. При запросе «все» подходят id 1, 2 и 4.
+          Для запроса «только открытые» подходят 2 и 4. Для запроса «только закрытые» подходит 1.
+          Если написать <code>if status</code>, ветка пропустит значение <code>False</code> и запрос открытых билетов потеряет фильтр.
         </p>
-        <LinkedNotes
-          items={[
-            {
-              title: "Точка старта",
-              description: "Мы уже читали Task из SQL-строк и знаем прежние правила выборки и статистики Planner.",
-            },
-            {
-              title: "Новый вопрос",
-              description: "Как перенести фильтр, порядок, limit и подсчёт в запросы, сохранив смысл результата?",
-            },
-            {
-              title: "Результат",
-              description: "Существующие GET /tasks и /stats читают через SQL-репозиторий на проверочной базе, а JSON остаётся штатным путём.",
-            },
-          ]}
-        />
         <p>
-          Сначала восстановим договор старой выборки. Затем разберём SQL-фильтр, порядок строк, ограничение результата и агрегат. После этого изменим методы репозитория и проверим их через прежний сервис и GET-маршруты. Создание, обновление, завершение и удаление задач уже должны приходить из предшествующих шагов блока, поэтому здесь мы сосредоточимся на чтении.
+          В Planner запрос <code>GET /tasks</code> передаёт настройки через <code>get_selected_tasks</code> в <code>PlannerService.select_tasks</code>.
+          Сервис вызывает <code>repository.select</code>. В репозитории и будет строиться запрос к SQLite.
         </p>
       </Section>
 
-      <Section number="01" title="Сначала восстановим договор Planner">
-        <Lead>
-          Слой хранения можно заменить, но правила операции принадлежат Planner. Перед SQL-кодом зафиксируем входы и ожидаемые результаты.
-        </Lead>
-        <ContentList
-          items={[
-            { title: <code>is_done=None</code>, description: "Статус не ограничивает выборку, поэтому подходят открытые и завершённые задачи." },
-            { title: <code>is_done=False</code>, description: "Остаются только открытые задачи. False является значением фильтра, а не отсутствием фильтра." },
-            { title: <code>sort_desc</code>, description: "Идентификаторы задают устойчивый порядок по возрастанию или убыванию." },
-            { title: <code>limit</code>, description: "Сервис может попросить весь результат через None; HTTP сохраняет отдельный default 10 и диапазон от 1 до 50." },
-          ]}
-        />
+      <Section number="02" title="Собираем запрос до выполнения">
+        <Lead>Сначала составляем описание выборки. База получит его, когда мы попросим Session выполнить запрос.</Lead>
         <p>
-          Это прежний предметный договор. Сервисный вызов `select_tasks` передаёт репозиторию `is_done`, `sort_desc` и `limit`, а `None` у `limit` означает, что верхнюю границу не добавляем. HTTP-маршрут использует знакомую зависимость выбора: `get_selection` проверяет query-параметры, а `get_selected_tasks` вызывает сервис. Поэтому прямой вызов сервиса и запрос браузера имеют общее поведение выборки, но HTTP-значение по умолчанию не становится новым лимитом для всех callers. Зависимость принимает объявленные ключи: неизвестный параметр не меняет выборку, а нераспознаваемое значение `is_done` FastAPI отклоняет ответом 422.
+          <code>select(TicketRow)</code> описывает чтение строк таблицы билетов. <code>WHERE</code> задаёт условие отбора.
+          В SQLAlchemy метод <code>where()</code> добавляет условие к выражению.
+          Запись <code>TicketRow.closed == status</code> сравнивает колонку каждой строки с переданным значением.
+          SQLAlchemy сам передаёт значение базе в подходящей форме.
         </p>
-        <p>
-          У `/stats` тоже есть договор. Репозиторий возвращает числа `all`, `open` и `done`; endpoint представляет общий счётчик внешним именем `total`. Ответ уже знаком потребителю, поэтому внутренний SQL-словарь не меняет публичную схему. Такое разделение позволяет заменить способ подсчёта, не заставляя клиент обновляться.
-        </p>
-        <QuizCard
-          question="Какой результат означает is_done=False?"
-          options={["Фильтр отсутствует", "Выбраны только открытые задачи", "Параметр нужно заменить на None"]}
-          correctIndex={1}
-          explanation="False является переданным значением и оставляет только строки с is_done=False. Без фильтра приходит None."
-        />
-      </Section>
-
-      <Section number="02" title="WHERE отбирает строки до их возврата">
-        <Lead>
-          `WHERE` описывает, какие записи нужны запросу. Если статус не задан, условие не добавляется; если передан True или False, сравниваем колонку с этим значением.
-        </Lead>
-        <p>
-          SQLAlchemy собирает выражение `select(TaskRow)` и дополняет его вызовом `.where(...)`. В выражении указываем колонку модели и значение-фильтр. Значение передаётся драйверу как параметр, а не склеивается с SQL-текстом. Это сохраняет границу между формой запроса и его данными, а типы и преобразования остаются ответственностью SQLAlchemy и драйвера.
-        </p>
+        <p>Пусть <code>statement</code> уже хранит <code>select(TicketRow)</code>, а <code>status</code> задаёт фильтр.</p>
         <CodeBlock
-          code={`statement = select(TaskRow)\nif is_done is not None:\n    statement = statement.where(TaskRow.is_done == is_done)`}
+          caption="Фрагмент для билетов"
+          code={"if status is not None:\n    statement = statement.where(TicketRow.closed == status)"}
         />
         <p>
-          Здесь важна именно проверка `is_done is not None`. Если написать `if is_done`, то значение False не войдёт в ветку и открытые задачи перестанут фильтроваться. Если же всегда сравнивать колонку с `None`, получится условие «статус равен NULL», хотя в модели статус хранится как обязательный bool. Необязательность фильтра описываем в Python условием, а внутри него передаём настоящий bool.
-        </p>
-        <p>
-          Представим библиотеку с карточками книг. Сотрудник сначала отбирает только книги нужной категории, и только затем сортирует их для посетителя. Здесь строки таблицы играют роль карточек, `is_done` задаёт категорию, а `WHERE` выполняет отбор. Аналогия показывает роль фильтра, но не обещает, что SQL физически обрабатывает данные ровно таким бытовым способом.
-        </p>
-        <StepThrough
-          code={`if is_done is not None:\n    statement = statement.where(TaskRow.is_done == is_done)`}
-          steps={[
-            { line: 0, note: "Сначала спрашиваем, передано ли значение. None означает отсутствие условия, а не False.", vars: { is_done: "False" } },
-            { line: 1, note: "False не пропускается мимо проверки. Для него строится отдельное выражение фильтра." },
-            { line: 1, note: "В WHERE передаётся сравнение колонки со значением bool. Открытые строки останутся в наборе." },
-          ]}
-        />
-        <p>
-          Проследим вариант с `None`, затем с `False` и `True`. Для `None` запрос сохраняет все статусы. Для `False` остаются открытые записи, для `True` завершённые. Такое сравнение полезно не только для проверки ответа, оно выявляет ошибку, если код проверяет значение по truthiness, то есть принимает False за «значение не передано».
+          Методы сборки возвращают новое выражение. Переприсваивание <code>statement</code> сохраняет версию с условием для следующего шага.
+          При <code>status=False</code> ветка выполняется и подходят билеты 2 и 4.
+          При <code>status=None</code> ветка пропускается и билет 1 тоже подходит.
+          Какой из открытых билетов взять первым, определим отдельно.
         </p>
       </Section>
 
-      <Section number="03" title="Порядок и LIMIT должны оставаться частью запроса">
-        <Lead>
-          После фильтрации Planner упорядочивает задачи по id, а затем применяет границу результата. Мы должны сохранить этот смысл как для восходящего, так и для обратного порядка.
-        </Lead>
+      <Section number="03" title="Определяем порядок и только затем берём первые строки">
+        <Lead>Чтобы взять «первый» билет, сначала определим, среди каких строк и по какому порядку его ищем.</Lead>
         <p>
-          Таблица не обещает порядок строк сама по себе. В запросе явно вызываем `.order_by(TaskRow.id.asc())` или `.order_by(TaskRow.id.desc())`: `asc()` ставит меньшие id раньше, `desc()` ставит большие раньше. Направление зависит от `sort_desc`, а не от порядка вставки в SQLite. Это важно для повторяемого интерфейса и тестов: одинаковый набор данных при одинаковых параметрах даёт одинаковую последовательность.
+          В запросе <code>ORDER BY</code> задаёт порядок выдачи. У <code>order_by()</code> указываем колонку и направление:
+          <code> TicketRow.id.asc()</code> ставит меньшие id первыми, <code>TicketRow.id.desc()</code> ставит большие первыми.
+          <code> LIMIT</code> оставляет первые строки из упорядоченного результата. В SQLAlchemy <code>limit(1)</code> берёт до одной строки.
+          Когда ограничение отсутствует, шаг <code>limit()</code> пропускаем.
         </p>
-        <p>
-          Затем, если `limit` не равен None, добавляем `.limit(limit)`. Условие проверяем через `is not None`, потому что None обозначает отсутствие ограничения, а нулевое значение всё ещё является явно переданным пределом. В HTTP ноль раньше будет отвергнут проверкой Query, но метод сервиса не должен сам получать HTTP-ограничение от 1 до 50. Сервис может вызывать выборку с `limit=None`, например для интерфейса, которому нужен полный список.
-        </p>
-        <CodeBlock
-          code={`statement = statement.order_by(\n    TaskRow.id.desc() if sort_desc else TaskRow.id.asc()\n)\nif limit is not None:\n    statement = statement.limit(limit)`}
-        />
-        <p>
-          Для выборки из четырёх строк с разными статусами смысл такой: сначала отбрасываем неподходящие статусы, затем сортируем совпадения по id, затем берём первые N. Если обрезать весь набор до фильтра, ранние неподходящие строки могут дать пустой или слишком короткий результат. SQL-выражение описывает общий результат операции; не требуется представлять внутренний план оптимизатора как буквальное исполнение каждого шага.
-        </p>
-        <Diagram caption="Смысл SQL-выборки Planner" orientation="horizontal">
-          <DiagramFlow label="Путь от таблицы к выбранным задачам" orientation="horizontal">
-            <DiagramNode title="Строки tasks" shape="database">
-              <p>состояние таблицы</p>
-            </DiagramNode>
-            <DiagramArrow label="WHERE · статус" />
-            <DiagramNode title="Совпадения" shape="process">
-              <p>подходящие строки</p>
-            </DiagramNode>
-            <DiagramArrow label="ORDER BY · id" />
-            <DiagramNode title="Порядок" shape="process">
-              <p>asc или desc</p>
-            </DiagramNode>
-            <DiagramArrow label="LIMIT · если задан" />
-            <DiagramNode title="Выбранные строки" shape="process">
-              <p>обычные Task после mapping</p>
-            </DiagramNode>
+
+        <Diagram caption="Открытые билеты, меньшие id первыми, одна строка">
+          <DiagramFlow label="Как получается результат">
+            <DiagramNode title="Данные">4 открыт, 1 закрыт, 2 открыт</DiagramNode>
+            <DiagramArrow label="WHERE" />
+            <DiagramNode title="Отбор">4 и 2</DiagramNode>
+            <DiagramArrow label="ORDER BY" />
+            <DiagramNode title="Порядок">2, затем 4</DiagramNode>
+            <DiagramArrow label="LIMIT" />
+            <DiagramNode title="Лимит">Только 2</DiagramNode>
           </DiagramFlow>
         </Diagram>
+
         <p>
-          Стрелки читаются слева направо: исходная таблица, условие отбора, явный порядок, ограничение и готовые предметные объекты. Без `ORDER BY` limit мог бы выбирать разные строки в любом порядке, который база не обещает. При узком экране компоненты перестраиваются согласно смысловой последовательности, поэтому стрелка по-прежнему связывает свою пару узлов.
+          Если сначала отсортировать все билеты и оставить только первый, останется закрытый билет 1.
+          После фильтра получим пустой список. В SQL этот порядок «отбор, сортировка, лимит» описывает результат запроса.
+          Внутренние шаги SQLite может выполнять по-разному.
         </p>
-        <QuizCard orientation="vertical"
-          description={<CodeBlock code={`statement = select(TaskRow)\nif is_done:\n    statement = statement.where(TaskRow.is_done == is_done)`} />}
-          question="Какой вызов теряет фильтр и почему?"
-          options={["is_done=True, потому что True не является SQL-значением", "is_done=False, потому что условие пропускает False", "is_done=None, потому что None должно выбирать открытые задачи"]}
-          correctIndex={1}
-          explanation="Условие if is_done выполняется для True, но не для False. Для None фильтр и правда нужно пропустить, поэтому проверяем is not None."
-          answer={<CodeBlock caption="Исправленный вариант" code={`if is_done is not None:\n    statement = statement.where(TaskRow.is_done == is_done)`} />}
-        />
+
+        <h3>Пример с билетами</h3>
         <p>
-          Сначала предскажем ответы для отсутствующего фильтра, обоих статусов, обоих направлений и малого `limit`. Затем сверим с набором, где первые по id строки намеренно не подходят фильтру. Такой набор показывает порядок операций лучше, чем случайные данные, в которых ошибка не заметна.
+          При открытом фильтре и лимите 1 направление решает, вернётся билет 2 или 4. Ниже можно проверить оба результата в SQLite.
+          Готовая часть файла создаёт таблицу в памяти, добавляет три билета и закрывает ресурсы.
+          Запросы начинаются со строки <code>tickets = select(TicketRow)</code>.
         </p>
+        <p>
+          Чтобы повторить пример, скопируйте весь блок в <code>planner_tickets_select_demo.py</code> в корне Planner.
+          Запустите <code>python planner_tickets_select_demo.py</code> тем же Python, которым запускаете проект.
+          Если имя уже занято, сохраните пример под свободным именем и укажите этот файл в команде.
+        </p>
+        <CodeBlock caption="planner_tickets_select_demo.py" code={TICKET_EXAMPLE} />
+        <CodeBlock caption="Ожидаемый вывод" language="text" code={"Открытые, ASC, 1: [2]\nОткрытые, DESC, 1: [4]\nВсе, ASC, 1: [1]\nОткрытые, ASC, без лимита: [2, 4]\nБилет 99: []"} />
+        <p>
+          Вызов <code>session.scalars(statement).all()</code> выполняет подготовленное выражение и возвращает ORM-объекты,
+          то есть строки в виде экземпляров <code>TicketRow</code>. Из их полей <code>id</code> получаем списки в выводе.
+          При снятии фильтра снова подходит билет 1. Если совпадений нет, как у id 99, список пуст.
+        </p>
+
+        <p>Попробуйте предсказать результат для открытых билетов с лимитом 1 по убыванию. Затем включите ранний лимит и сравните запрос открытых билетов по возрастанию.</p>
+        <TicketSelection />
       </Section>
 
-      <Section number="04" title="Выбранная строка становится Task до выхода из Session">
-        <Lead>
-          Запрос читает строки базы, а сервис продолжает возвращать обычные предметные `Task`. Граница между SQLAlchemy и приложением уже знакома нам по `list/get`.
-        </Lead>
+      <Section number="04" title="Возвращаем задачи и проверяем прежние интерфейсы">
+        <Lead>Запрос определяет, какие строки придут из SQLite. Репозиторий переводит эти строки в привычные для Planner задачи.</Lead>
         <p>
-          `Session.scalars(statement).all()` выполняет ORM-запрос и отдаёт подходящие `TaskRow`. Репозиторий преобразует каждую строку существующей функцией `task_from_row`, чтобы наружу вышли обычные `Task`, а не объекты, чьи свойства зависят от открытой Session. Этот mapping сохраняет прежние id, заголовок, приоритет, статус и независимые копии tags.
+          В существующем <code>SqlTaskRepository.list</code> чтение <code>select(TaskRow)</code> даёт объекты <code>TaskRow</code>.
+          <code> task_from_row(row)</code> превращает каждую полученную строку в <code>Task</code> с id, названием, приоритетом,
+          статусом и тегами. Преобразование идёт внутри открытой Session, поэтому наружу можно вернуть готовый список задач.
+          Session закрывает её владелец. Для чтения <code>commit</code> не нужен.
         </p>
         <p>
-          Репозиторий не закрывает Session и не вызывает commit. Её получил владелец ресурса, например `get_db` на время HTTP-запроса. Метод выборки только читает данные. После окончания зависимости обычные `Task` остаются пригодны для сериализации, а HTTP-ответ продолжает содержать прежние публичные поля без внутренних tags и SQL-атрибутов.
+          Если в базе 12 задач, <code>GET /tasks</code> без параметров покажет первые 10 по id.
+          HTTP задаёт этот размер по умолчанию и принимает явный <code>limit</code> от 1 до 50.
+          Значение за границей диапазона даёт ответ 422. Прямой <code>select_tasks(limit=None)</code> вернёт все 12,
+          а команда CLI <code>list</code> по-прежнему получает полный список через <code>list_tasks</code>.
         </p>
-        <Callout tone="success">
-          Если привычный путь возвращает список `Task`, SQL-репозиторий должен сохранить и тип результата. Возвращать наружу `TaskRow` ради удобства запроса означало бы связать сервис и HTTP с внутренней схемой.
-        </Callout>
+
+        <details>
+          <summary><strong>Готовая проверка выборки</strong></summary>
+          <p>
+            Скопируйте весь блок в <code>tests/test_lesson_sql_selection.py</code> своего Planner.
+            Если имя занято, выберите свободное имя вида <code>test_*.py</code> в той же папке и подставьте его в обе команды.
+            Код использует зависимости для тестов из <code>requirements-dev.txt</code> этого проекта.
+          </p>
+          <p>
+            Из корня Planner запустите входную проверку. <code>-q</code> сокращает служебный вывод, <code>-s</code> показывает напечатанные строки,
+            а <code>-k</code> оставляет тест с указанным именем.
+          </p>
+          <CodeBlock language="text" code={"python -m pytest -q -s tests/test_lesson_sql_selection.py -k test_input_sql_selection"} />
+          <p>
+            Тест создаёт отдельную временную SQLite, заполняет её через существующий сервис и показывает id, статус и теги в новом чтении.
+            Он работает до добавления <code>select</code>. После реализации запустите тот же файл без <code>-k</code>.
+          </p>
+          <CodeBlock language="text" code={"python -m pytest -q -s tests/test_lesson_sql_selection.py"} />
+          <p>
+            Итоговая проверка временно подключает SQL-сервис к существующему GET и выводит id. Для различающего вызова печатается
+            один <code>SELECT</code>: после <code>WHERE</code> ищите условие статуса, после <code>ORDER BY</code> порядок по id,
+            после <code>LIMIT</code> ограничение. Знаки <code>?</code> обозначают места параметров.
+            SQLAlchemy также может показать <code>OFFSET ?</code> с нулевым смещением. В самой выборке достаточно задать лимит.
+          </p>
+          <CodeBlock caption="tests/test_lesson_sql_selection.py" code={SELECTION_CHECK} />
+        </details>
       </Section>
 
-      <Section number="05" title="Статистика возвращает числа, а не список задач">
-        <Lead>
-          Для ответа `/stats` не нужны title, tags или готовые объекты `Task`. Нужны три числа, поэтому запрос может вернуть скалярные агрегаты.
-        </Lead>
+      <Section number="05" title="Что мы будем делать в практике">
+        <Lead>Продолжим свой Planner с рабочим SQL CRUD и реализуем одну операцию в существующем репозитории.</Lead>
+        <LinkedNotes items={[
+          { title: "Сверим исходные задачи", description: "Входная проверка покажет одну завершённую и две открытые задачи. У завершённой самый маленький id." },
+          { title: "Запросим нужные строки", description: "Самостоятельно напишем выборку. Запрос одной открытой задачи вернёт первую подходящую, а в выводе будет виден один SELECT." },
+          { title: "Сверим прежние интерфейсы", description: "Проверим id и поля HTTP-ответа, граничные значения limit и полный список CLI." },
+        ]} />
         <p>
-          `COUNT` считает строки, не отправляя каждую строку приложению. Чтобы одним запросом получить общий счётчик и числа по статусам, можно применить `CASE`: выражение возвращает id, когда строка подходит условию, и NULL в другом случае. `COUNT` не учитывает NULL, поэтому та же операция считает только строки нужной группы. Первичный ключ `id` не бывает NULL, а пустая таблица даёт три нулевых счётчика.
-        </p>
-        <CodeBlock
-          code={`statement = select(\n    func.count(TaskRow.id),\n    func.count(case((TaskRow.is_done.is_(False), TaskRow.id))),\n    func.count(case((TaskRow.is_done.is_(True), TaskRow.id))),\n)\ntotal, opened, done = session.execute(statement).one()`}
-        />
-        <p>
-          Здесь `case` задаёт условный результат выражения, а `func.count` строит SQL-агрегат. Вызов `execute(...).one()` возвращает одну строку с тремя значениями, даже когда таблица пуста. Из неё формируем прежний словарь: `all` получает общее число, `open` число строк с False, а `done` число строк с True. Типы значений остаются целыми.
-        </p>
-        <p>
-          Счётчик похож на турникет с отдельными регистрами: он увеличивает общий итог и нужный регистр статуса при проходе человека. Мы получаем числа, не заводя карточку каждого посетителя в отдельной комнате. Так же агрегат вычисляется на стороне базы и возвращает короткую строку результата, вместо списка ORM-объектов. Аналогия объясняет разницу между итогом и списком, но не заменяет знание выражения `CASE`.
-        </p>
-        <QuizCard
-          question="Какой вариант сохраняет роль SQL-агрегата?"
-          options={[{ title: "Считать в Python", code: `tasks = repository.list()\nreturn {\n    "all": len(tasks),\n    "open": sum(not task.is_done for task in tasks),\n    "done": sum(task.is_done for task in tasks),\n}`, description: "Результат численно верный, но список всех Task сначала передаётся в Python." }, { title: "Считать запросом", code: `select(\n    func.count(TaskRow.id),\n    func.count(case((TaskRow.is_done.is_(False), TaskRow.id))),\n    func.count(case((TaskRow.is_done.is_(True), TaskRow.id))),\n)`, description: "База возвращает только три числа и не создаёт Task для всех строк." }]}
-          
-          correctIndex={1}
-          explanation="Здесь мы переносим сам подсчёт в SQL. Вариант с list может дать тот же итог на малом наборе, но он возвращает все предметные объекты только затем, чтобы удалить их и сохранить числа."
-        />
-        <p>
-          После проверки пустой базы и смешанного состояния сравним `open + done` с `all`. Это проверка согласованности словаря, а не доказательство корректного SQL сама по себе. Проследим также изменение статистики после существующих add, done и delete сценариев, чтобы новый агрегат отражал тот же Planner.
-        </p>
-      </Section>
-
-      <Section number="06" title="Репозиторий меняется, маршруты сохраняются">
-        <Lead>
-          Новый запрос принадлежит `SqlTaskRepository`. `PlannerService` и FastAPI сохраняют уже подготовленные точки входа и договор ответа.
-        </Lead>
-        <p>
-          Добавим `select` и `statistics` в `app/DBase/repositories.py`, рядом с готовыми `list/get`. Метод `select` собирает SQLAlchemy-выражение, выполняет его текущей Session и преобразует строки в Task. Метод `statistics` выполняет агрегат и собирает словарь. Обе операции остаются чтением: ни одна не меняет строку и не подтверждает транзакцию.
-        </p>
-        <p>
-          В `PlannerService.select_tasks` и `get_statistics` делегирование репозиторию уже является контрактом. Поэтому не добавляем SQL в `get_selected_tasks`, HTTP-маршрут или `/stats`. Для проверки API временно подменим `get_planner` SQL-provider, который получает отдельную Session через `get_db`, строит сервис с SQL-репозиторием и восстанавливает `dependency_overrides` после теста. Следующий HTTP-запрос снова идёт штатным JSON-путём.
-        </p>
-        <p>
-          Штатную сборку в этом занятии не переключаем. Все SQL-проверки обращаются к файлу SQLite под `tmp_path`, а данные для фильтрации создаются готовыми операциями Planner из предыдущих занятий. Это проверка одного читательского пути, не второй рабочий продукт. Так мы можем проверить HTTP-параметры и сериализацию, сохраняя прежнюю систему до общей приёмки блока.
-        </p>
-        <QuizCard
-          question="Метод SqlTaskRepository.statistics закрывает Session, чтобы результат пережил HTTP-ответ."
-          options={["Правда", "Ложь"]} correctIndex={1}
-          explanation="Session принадлежит get_db или тестовой resource-области. Репозиторий лишь выполняет чтение; его результатом служат целые числа."
-        />
-        <p>
-          Во время проверки проследим путь от query-параметров к `SelectionParams`, затем к `select_tasks`, репозиторию и обычным Task. Для `/stats` проследим отдельный короткий путь от метода сервиса к словарю `total/open/done`. Если SQL-фильтр или агрегат случайно разместить в endpoint, эта граница размоется и одинаковая операция окажется в двух местах.
-        </p>
-      </Section>
-
-      <Section number="07" title="Что мы будем делать в практике">
-        <Lead>
-          Мы начнём с изолированной файловой SQLite и закончим чтением через существующие GET-маршруты. Каждое действие опирается на SQLAlchemy, mapping, сервис и CRUD-сценарии, разобранные раньше.
-        </Lead>
-        <LinkedNotes
-          items={[
-            {
-              title: "Подготовим набор",
-              description: "Создадим открытые и завершённые задачи прежним SQL-сервисом, чтобы ожидаемый порядок и счётчики были известны.",
-            },
-            {
-              title: "Добавим выборку",
-              description: "Репозиторий применит необязательный WHERE, явный порядок id и limit, вернув прежние Task.",
-            },
-            {
-              title: "Сверим GET /tasks",
-              description: "Прямой сервисный вызов и SQL-provider подтвердят параметры и прежнюю HTTP-валидацию.",
-            },
-            {
-              title: "Добавим статистику",
-              description: "Агрегат вернёт all/open/done, включая нули для пустой базы, без загрузки Task.",
-            },
-            {
-              title: "Проверим прежнее поведение",
-              description: "Существующие add, done и delete обновят SQL-итоги, а JSON останется default до общего переключения.",
-            },
-          ]}
-        />
-        <p>
-          Так мы соединяем новый SQL-механизм с готовой предметной логикой, не переписывая её. Набор данных специально обнаружит попытку применить limit раньше фильтра. Отдельно проверим `None`, `False`, порядок id, default и границы HTTP limit, пустые и смешанные счётчики. Неизвестный query-ключ не меняет ответ, а некорректный `is_done` отклоняется с 422.
-        </p>
-        <p>
-          В конце посмотрим, что SQL-репозиторий не загружает полный список ради выборки или статистики, а старый GET продолжает отдавать те же поля и статусы. Успешная временная проверка не переключает основной API или CLI. После этого следующий шаг добавит поиск к уже готовой выборке, не меняя его прежний смысл.
+          Откройте «Готовую проверку выборки», чтобы получить тестовый файл. Если результат отличается от прогноза,
+          вернитесь к шагам с билетами и сравните фильтр, порядок и лимит.
         </p>
       </Section>
     </RichLesson>

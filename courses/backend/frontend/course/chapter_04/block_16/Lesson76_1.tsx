@@ -1,5 +1,6 @@
+import { useState } from "react";
 import {
-  QuizCard, CodeBlock,
+  CodeBlock,
   Diagram,
   DiagramArrow,
   DiagramFlow,
@@ -7,234 +8,435 @@ import {
   DiagramNote,
   Lead,
   LinkedNotes,
-  MatchPairs,
-  PredictOutput,
+  QuizCard,
   RichHero,
   RichLesson,
   Section,
-  StepThrough,
 } from "../../shared";
 
 const BLOCK_TITLE = "Этап 4 · Блок 16 · Надёжность, запросы и передача";
+
+const contactDemo = `from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from sqlalchemy import String, create_engine, select
+from sqlalchemy.engine import URL
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class Contact(Base):
+    __tablename__ = "contacts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String)
+
+
+class LearningError(Exception):
+    pass
+
+
+class TrackedSession(Session):
+    closed = False
+
+    def close(self):
+        super().close()
+        self.closed = True
+
+
+def contacts(session):
+    statement = select(Contact.id, Contact.name).order_by(Contact.id)
+    return [tuple(row) for row in session.execute(statement)]
+
+
+def observe(sessions):
+    with sessions() as reader:
+        return contacts(reader)
+
+
+def demonstrate(fail_after_commit):
+    with TemporaryDirectory() as folder:
+        url = URL.create("sqlite", database=str(Path(folder) / "contacts.sqlite3"))
+        engine = create_engine(url)
+        sessions = sessionmaker(bind=engine, class_=TrackedSession)
+
+        try:
+            Base.metadata.create_all(engine)
+            with sessions() as seed:
+                with seed.begin():
+                    seed.add(Contact(id=1, name="Склад"))
+
+            print("До:", observe(sessions))
+            try:
+                with sessions() as writer:
+                    with writer.begin():
+                        writer.add(Contact(id=2, name="Пункт выдачи"))
+                        writer.flush()
+                        with writer.no_autoflush:
+                            name = writer.scalar(
+                                select(Contact.name).where(Contact.id == 2)
+                            )
+                        print("В транзакции:", name)
+                        if not fail_after_commit:
+                            raise LearningError("до commit")
+                    raise LearningError("после commit")
+            except LearningError as error:
+                print("Учебная ошибка:", error)
+
+            print("Session закрылась:", writer.closed)
+            print("После ошибки:", observe(sessions))
+
+            if not fail_after_commit:
+                with sessions() as recovery:
+                    with recovery.begin():
+                        recovery.add(Contact(id=3, name="Мастерская"))
+                print("После следующей записи:", observe(sessions))
+        finally:
+            engine.dispose()
+
+
+if __name__ == "__main__":
+    demonstrate(fail_after_commit=False)
+    print()
+    demonstrate(fail_after_commit=True)`;
+
+const practiceStarter = `from contextlib import contextmanager
+
+import pytest
+from sqlalchemy import select
+from sqlalchemy.engine import URL
+from sqlalchemy.orm import Session, sessionmaker
+
+from app.DBase.models import Base, TaskRow
+from app.DBase.repositories import SqlTaskRepository
+from app.core.engine import make_engine
+from app.main import build_service
+
+
+class ControlledWriteError(Exception):
+    pass
+
+
+class ObservedSession(Session):
+    flushed_id = None
+    closed = False
+
+    def close(self):
+        super().close()
+        self.closed = True
+
+
+@pytest.fixture
+def rollback_sessions(tmp_path):
+    url = URL.create("sqlite", database=str(tmp_path / "write-recovery.sqlite3"))
+    engine = make_engine(url.render_as_string(hide_password=False))
+    sessions = sessionmaker(bind=engine, class_=ObservedSession)
+    try:
+        Base.metadata.create_all(engine)
+        with sessions() as seed:
+            with seed.begin():
+                seed.add_all([
+                    TaskRow(
+                        id=120, title="Сверить смету", priority=2, is_done=True,
+                        tags=["учёт", "архив"], title_normalized="сверить смету",
+                    ),
+                    TaskRow(
+                        id=121, title="Закрыть заявку", priority=1, is_done=False,
+                        tags=["входящие"], title_normalized="закрыть заявку",
+                    ),
+                ])
+        yield sessions
+    finally:
+        engine.dispose()
+
+
+def read_rows(session):
+    return {
+        row.id: (
+            row.title, row.priority, row.is_done, tuple(row.tags),
+            row.title_normalized,
+        )
+        for row in session.scalars(select(TaskRow).order_by(TaskRow.id))
+    }
+
+
+def stop_before_commit(session, title):
+    @contextmanager
+    def write_scope():
+        with session.begin():
+            yield
+            # Проверяем SQL внутри текущей транзакции без запуска нового flush.
+            with session.no_autoflush:
+                statement = select(TaskRow.id).where(TaskRow.title == title)
+                flushed_id = session.execute(statement).scalar_one_or_none()
+            if flushed_id is None:
+                raise AssertionError("Ожидалась уже выполненная вставка")
+            session.flushed_id = flushed_id
+            raise ControlledWriteError("до commit")
+
+    return write_scope
+
+
+def test_post_commit_keeps_row(rollback_sessions):
+    with rollback_sessions() as reader:
+        before = read_rows(reader)
+
+    with rollback_sessions() as writer:
+        @contextmanager
+        def stop_after_commit():
+            with writer.begin():
+                yield
+            raise ControlledWriteError("после commit")
+
+        planner = build_service(
+            repository=SqlTaskRepository(writer), write_scope=stop_after_commit,
+        )
+        with pytest.raises(ControlledWriteError, match="после commit"):
+            planner.add_task("Сохранено до ошибки", 3, tags=["пример"])
+
+    assert writer.closed
+    with rollback_sessions() as reader:
+        after = read_rows(reader)
+
+    assert {task_id: after[task_id] for task_id in before} == before
+    added = [fields for task_id, fields in after.items() if task_id not in before]
+    assert added == [
+        ("Сохранено до ошибки", 3, False, ("пример",), "сохранено до ошибки"),
+    ]`;
+
+const contactOutput = `До: [(1, 'Склад')]
+В транзакции: Пункт выдачи
+Учебная ошибка: до commit
+Session закрылась: True
+После ошибки: [(1, 'Склад')]
+После следующей записи: [(1, 'Склад'), (3, 'Мастерская')]
+
+До: [(1, 'Склад')]
+В транзакции: Пункт выдачи
+Учебная ошибка: после commit
+Session закрылась: True
+После ошибки: [(1, 'Склад'), (2, 'Пункт выдачи')]`;
+
+const moments = {
+  beforeFlush: {
+    label: "До flush",
+    sent: false,
+    saved: false,
+    reason: "Ошибка возникла до INSERT. По отсутствию нового контакта нельзя доказать, что база отменила выполненную вставку.",
+  },
+  beforeCommit: {
+    label: "После flush, до commit",
+    sent: true,
+    saved: false,
+    reason: "Первая Session видела отправленную строку. Исключение вышло из блока транзакции, и rollback отменил INSERT.",
+  },
+  afterCommit: {
+    label: "После commit",
+    sent: true,
+    saved: true,
+    reason: "Транзакция уже подтвердилась. Ошибка прервала получение результата, а новая Session прочитала сохранённый контакт.",
+  },
+} as const;
+
+type FailureMoment = keyof typeof moments;
+
+function ContactRollbackLab() {
+  const [moment, setMoment] = useState<FailureMoment>("beforeCommit");
+  const [prediction, setPrediction] = useState("");
+  const [revealed, setRevealed] = useState(false);
+  const [recovered, setRecovered] = useState(false);
+  const result = moments[moment];
+
+  function clearResult() {
+    setRevealed(false);
+    setRecovered(false);
+  }
+
+  function reset() {
+    setMoment("beforeCommit");
+    setPrediction("");
+    clearResult();
+  }
+
+  return (
+    <figure className="lesson-infographic lesson-diagram">
+      <figcaption className="lesson-diagram-caption">Когда ошибка меняет результат?</figcaption>
+      <p>Учебная модель. В базе уже есть «Склад». Мы пытаемся добавить «Пункт выдачи». Выберем момент ошибки и предскажем, что прочитает новая Session.</p>
+      <form onSubmit={(event) => { event.preventDefault(); setRevealed(true); }}>
+        <div style={{ display: "grid", gap: "0.65rem", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 15rem), 1fr))" }}>
+          <label style={{ display: "grid", gap: "0.25rem", minWidth: 0 }}>
+            Момент ошибки
+            <select
+              value={moment}
+              style={{ width: "100%", minHeight: "2.5rem" }}
+              onChange={(event) => {
+                setMoment(event.target.value as FailureMoment);
+                setPrediction("");
+                clearResult();
+              }}
+            >
+              <option value="beforeFlush">До flush</option>
+              <option value="beforeCommit">После flush, до commit</option>
+              <option value="afterCommit">После commit</option>
+            </select>
+          </label>
+          <label style={{ display: "grid", gap: "0.25rem", minWidth: 0 }}>
+            Наш прогноз
+            <select
+              value={prediction}
+              style={{ width: "100%", minHeight: "2.5rem" }}
+              onChange={(event) => { setPrediction(event.target.value); clearResult(); }}
+              required
+            >
+              <option value="">Выбрать результат</option>
+              <option value="only-original">Только Склад</option>
+              <option value="both">Склад и Пункт выдачи</option>
+            </select>
+          </label>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBlockStart: "0.75rem" }}>
+          <button type="submit" style={{ minHeight: "2.5rem" }}>Прочитать новой Session</button>
+          <button type="button" style={{ minHeight: "2.5rem" }} onClick={reset}>Сбросить</button>
+        </div>
+      </form>
+      <div aria-live="polite">
+        {revealed && (
+          <>
+            <p><strong>{(prediction === "both") === result.saved ? "Прогноз совпал." : "Результат отличается от прогноза."}</strong></p>
+            <p>INSERT выполнен: {result.sent ? "да" : "нет"}. Новая Session: {result.saved ? "Склад, Пункт выдачи." : "Склад."}</p>
+            <p>{result.reason}</p>
+            {moment === "beforeCommit" && (
+              <button type="button" style={{ minHeight: "2.5rem" }} onClick={() => setRecovered(true)}>Следующая запись</button>
+            )}
+            {recovered && <p>Новая операция сохранила «Мастерскую». После неё ещё одна Session прочитала «Склад» и «Мастерскую».</p>}
+          </>
+        )}
+      </div>
+    </figure>
+  );
+}
+
+function CopyablePython({ code, filename }: { code: string; filename: string }) {
+  const [notice, setNotice] = useState("");
+
+  async function copyCode() {
+    try {
+      await navigator.clipboard.writeText(code + "\n");
+      setNotice("Код скопирован.");
+    } catch {
+      setNotice("Можно раскрыть код ниже и скопировать его вручную.");
+    }
+  }
+
+  return (
+    <div>
+      <button type="button" style={{ minHeight: "2.5rem" }} onClick={copyCode}>Скопировать {filename}</button>
+      <span role="status" style={{ marginInlineStart: "0.5rem" }}>{notice}</span>
+      <details>
+        <summary>Показать содержимое {filename}</summary>
+        <CodeBlock code={code} caption={filename} />
+      </details>
+    </div>
+  );
+}
 
 export function Lesson76_1({ module }: { module?: string }) {
   return (
     <RichLesson>
       <RichHero
         chip={module ?? BLOCK_TITLE}
-        title={"Rollback и повтор"}
-        intro={"Проверим не только текст ошибки, но и сохранённое состояние Planner после сбоя на разных этапах записи."}
+        title="Проверяем отмену записи до commit"
+        intro="Остановим запись в учебной базе после INSERT и проверим, что увидит следующая Session."
       />
 
-      <Section number="00" title={"Вступление"}>
-        <Lead>
-          {"В предыдущих шагах мы уже отменяли незавершённую транзакцию и освобождали Session после ошибки. Теперь проследим всю границу изменения: когда SQL уже выполнился, что ещё может отменить rollback и что сохранится, если сбой произойдёт позже."}
-        </Lead>
-        <LinkedNotes
-          items={[
-            {
-              title: "Точка старта",
-              description: "Мы знаем Session.begin, flush, commit и rollback, а состояние можем проверить отдельным чтением.",
-            },
-            {
-              title: "Новый вопрос",
-              description: "Мы выясним, что осталось в таблице после отказа до commit и после него.",
-            },
-            {
-              title: "Результат",
-              description: "Свежая Session подтвердит целостность задачи, соседа и следующей успешной операции.",
-            },
-          ]}
-        />
-        <p>
-          {"В этом занятии мы дополним доказательства на уровне сервиса. Не будем повторно писать CRUD, менять схему или придумывать новый ответ API. Сначала найдём точку отказа, потом проверим строку и соседние данные из нового ресурса. Так мы отделим состояние базы от сообщения, которое успел получить вызывающий код."}
-        </p>
+      <Section number="00" title="Вступление">
+        <Lead>Мы умеем безопасно воспроизвести недоступность хранилища на учебном адресе. Теперь SQLite доступна и Planner успевает отправить запись, прежде чем происходит ошибка.</Lead>
+        <LinkedNotes items={[
+          { title: "Точка старта", description: "Planner сохраняет задачи в SQLite. Отказы можно проверять на отдельной временной базе." },
+          { title: "Новый вопрос", description: "Как доказать, что вставка уже дошла до базы, а после ошибки в таблице остались ровно прежние строки?" },
+          { title: "Результат", description: "Свежая Session покажет прежние задачи, а следующий вызов записи сохранит новую задачу." },
+        ]} />
+        <p>У попытки записи и у сохранённых данных разные признаки. Сначала проследим место ошибки, затем прочитаем таблицу после завершения транзакции.</p>
       </Section>
 
-      <Section number="01" title={"Положение ошибки определяет результат"}>
-        <Lead>
-          {"Одна запись проходит через несколько границ. Сначала сервис проверяет значения, затем репозиторий читает или меняет ORM-строку, после этого SQLAlchemy отправляет SQL, а транзакция подтверждается при успешном выходе из Session.begin."}
-        </Lead>
-        <p>
-          {"Вызов flush отправляет накопленные изменения базе внутри открытой транзакции. Он нужен, например, чтобы выполнить UPDATE и получить ошибку ограничения до окончания блока. Но flush не равен commit: успешный SQL ещё можно отменить, пока транзакция не завершилась. Если исключение выходит из Session.begin, его контекст отменяет весь незавершённый результат, включая предыдущие изменения этой же операции."}
-        </p>
-        <p>
-          {"Commit происходит при нормальном выходе из транзакционного контекста. После него база уже приняла результат. Подготовка Python-ответа и его доставка вызывающему коду идут отдельно, поэтому сбой на этом пути не перематывает базу назад. Статус, traceback или сообщение CLI описывают канал ответа; сами по себе они не доказывают, какие значения видит новое чтение."}
-        </p>
-
-        <Diagram caption="Где проходит граница отмены" orientation="vertical">
-          <DiagramFlow label="Путь записи от входа до результата" orientation="vertical">
-            <DiagramNode title="Проверка и сервис">
-              <p>Выбирают допустимое действие</p>
+      <Section number="01" title="Где остановить незавершённую запись">
+        <Lead>В справочнике уже есть контакт «Склад». Попробуем добавить «Пункт выдачи» и прервём работу в выбранный момент.</Lead>
+        <p>Внешний блок <code>with sessions() as writer</code> выделяет отдельную Session и закрывает её при выходе. Внутренний блок <code>with writer.begin()</code> ограничивает транзакцию. <code>flush()</code> выполняет SQL внутри этой транзакции. Обычный выход из <code>begin()</code> вызывает commit, а учебное исключение, вышедшее из блока до commit, приводит к rollback.</p>
+        <p>Если остановиться раньше, до <code>flush()</code>, INSERT ещё не выполнен. Если поднять исключение после успешного выхода из <code>begin()</code>, строка уже подтверждена. Закрытие Session освобождает ресурсы в обеих ветках.</p>
+        <Diagram caption="Два исхода попытки добавить контакт" orientation="vertical">
+          <DiagramFlow label="От записи в транзакции до независимой проверки" orientation="vertical">
+            <DiagramNode title="Первая Session открывает транзакцию">
+              <p>В отдельном блоке begin() появляется новая строка.</p>
             </DiagramNode>
-            <DiagramArrow label="начинается write_scope" />
-            <DiagramNode title="SQL и flush">
-              <p>Изменение отправлено, транзакция ещё открыта</p>
+            <DiagramArrow label="flush отправляет INSERT" />
+            <DiagramNode title="«Пункт выдачи» виден внутри транзакции">
+              <p>Контакт пока можно отменить.</p>
             </DiagramNode>
-            <DiagramArrow label="нормальный выход из Session.begin" />
-            <DiagramNode title="Commit">
-              <p>Транзакция подтверждена</p>
-            </DiagramNode>
-            <DiagramArrow label="сервис возвращает результат" />
-            <DiagramNode title="Ответ вызывающему коду">
-              <p>Может не дойти после commit</p>
+            <DiagramArrow label="граница commit определяет исход" />
+            <DiagramNode title="Следующая Session читает результат" shape="database">
+              <p>После ошибки между flush и commit в таблице только «Склад».</p>
+              <p>После ошибки за границей commit в таблице «Склад» и «Пункт выдачи».</p>
             </DiagramNode>
           </DiagramFlow>
-          <DiagramNote title="Две разные точки отказа">
-            <p>До commit исключение внутри области отменяет её изменения</p>
-            <p>После commit поздняя ошибка не удаляет уже сохранённую строку</p>
+          <DiagramNote title="Что проверяем по отдельности">
+            <p>Успешный flush показывает состоявшийся INSERT. Независимое чтение показывает, какие строки сохранились.</p>
           </DiagramNote>
         </Diagram>
-        <p>
-          {"Читаем схему сверху вниз: между flush и commit ещё действует транзакционная отмена, а после commit начинается другой участок пути. Поэтому мы проверяем два исхода независимо, вместо общего утверждения «если появилась ошибка, записи нет»."}
-        </p>
-
-        <p>{"Проследим один отказ до commit по шагам. Здесь write_scope открывает Session.begin, а replace отправляет UPDATE через flush."}</p>
-        <StepThrough
-          code={'try:\n    with write_scope():\n        repository.replace(task_id, updated)  # внутри выполняется flush\n        raise RuntimeError("сбой до commit")\nexcept RuntimeError as error:\n    print(error)\n# Новая Session перечитывает задачу'}
-          steps={[
-            { line: 1, note: "Мы входим в область записи. Session.begin начинает транзакцию.", vars: { "транзакция": "открыта" } },
-            { line: 2, note: "Сервис передаёт изменение репозиторию. Его flush выполняет SQL, но commit ещё не произошёл.", vars: { "SQL UPDATE": "выполнен" } },
-            { line: 3, note: "Управляемое исключение покидает область до её нормального завершения.", vars: { "commit": "не выполнен" } },
-            { line: 4, note: "Контекст Session.begin видит исключение и откатывает незавершённую работу.", vars: { "транзакция": "отменена" } },
-            { line: 6, note: "После обработки ожидаемого отказа новая Session читает состояние базы независимо от первой.", vars: { "целевая задача": "прежняя версия" } },
-          ]}
-        />
-        <p>
-          {"Это трассировка границы, а не реальный запуск сервиса. В тесте мы обернём знакомую write_scope так, чтобы ошибка возникла после возвращения операции репозитория, но до выхода Session.begin. Тогда SQL успеет пройти flush, а транзакционный контекст получит исключение и выполнит rollback."}
-        </p>
       </Section>
 
-      <Section number="02" title={"Реальное ограничение и состояние Session"}>
-        <Lead>
-          {"База сохраняет ограничения даже тогда, когда тест или внутренний код обошёл привычную проверку сервиса. Это полезно, чтобы проверить последний рубеж целостности, но не повод ослаблять проверку входа в публичном приложении."}
-        </Lead>
-        <p>
-          {"В таблице tasks приоритет ограничен диапазоном от 1 до 5. Обычный PlannerService проверяет его до SQL, поэтому передача priority=6 в тестовый репозиторий намеренно обходит предметный валидатор. SQLite отклоняет такую строку, а SQLAlchemy сообщает IntegrityError. Мы проверяем именно существующее ограничение таблицы. Новое уникальное правило для title здесь не нужно."}
-        </p>
-        <p>
-          {"Если в том же Session.begin сначала успешно прошёл flush допустимой строки, а затем база отклонила вторую, весь блок всё ещё не подтверждён. При выходе исключения первая строка также отменяется. Это отличие транзакции от последовательности независимых сохранений: связанные изменения либо фиксируются вместе, либо не становятся итогом операции."}
-        </p>
-        <p>
-          {"После неудачного flush текущая Session не готова к новому запросу. SQLAlchemy помечает транзакцию неактивной; простое перехватывание IntegrityError в Python её не восстанавливает. Если мы специально продолжаем исследовать ту же Session, сначала нужен rollback. В обычном сервисном пути исключение выходит из write_scope, контекст завершает отмену, а короткоживущий ресурс закрывается."}
-        </p>
-
-        <QuizCard orientation="vertical"
-          description={<CodeBlock code={'session.add(TaskRow(title="Проверка", priority=6))\ntry:\n    session.flush()\nexcept IntegrityError:\n    rows = session.scalars(select(TaskRow)).all()'} />}
-          question={"Почему последняя строка не является безопасным продолжением после отказа flush?"}
-          options={[
-            "Таблица TaskRow запрещает любой SELECT после INSERT",
-            "Session осталась в failed-транзакции, сначала нужен rollback",
-            "IntegrityError автоматически закрывает все Session для этого Engine",
-          ]}
-          correctIndex={1}
-          explanation={"База отклонила значение, и SQLAlchemy требует отката неудачной транзакции прежде, чем та же Session выполнит следующий запрос. Перехват исключения не меняет её состояние."}
-          answer={<CodeBlock caption="Исправленный вариант" code={'except IntegrityError:\n    session.rollback()\n    rows = session.scalars(select(TaskRow)).all()'} />}
-        />
-        <p>
-          {"В контрольных тестах этот механизм уже наблюдался напрямую: второе вставление с недопустимым приоритетом отменяло обе строки, а запрос в той же Session до rollback вызывал PendingRollbackError. В этом занятии мы не дублируем эти проверки. Ищем границу, которой не доказывает сырой тест Session: сервисная операция успела изменить строку, а ошибка появилась до commit."}
-        </p>
+      <Section number="02" title="Что увидит новая Session">
+        <Lead>Снимок таблицы сохраняет обычные значения до записи. Для сравнения откроем ещё одну Session к тому же файлу после закрытия первой.</Lead>
+        <p>Пример подготавливает две отдельные временные базы с таблицей контактов. В каждой начинается с подтверждённой строки <code>(1, "Склад")</code>. После <code>flush()</code> запрос ищет имя второго контакта внутри транзакции. <code>no_autoflush</code> запрещает запросу самому отправить ожидающие изменения, поэтому находка подтверждает, что INSERT уже выполнился.</p>
+        <p>В одном запуске исключение выходит из <code>begin()</code>, в другом возникает после выхода. Обработчик <code>except LearningError</code> стоит снаружи обоих блоков. После выхода <code>closed</code> показывает факт вызова <code>close()</code>. Для чтения <code>observe(sessions)</code> каждый раз запрашивает у фабрики новый экземпляр Session.</p>
+        <p>Для запуска сохраним файл <code>contact_rollback_demo.py</code> под свободным именем в папке <code>project/</code> и выполним <code>python contact_rollback_demo.py</code> в окружении Planner. Скрипт сам создаёт схему, закрывает Engine и удаляет временный каталог. Для практики этот файл не понадобится.</p>
+        <CopyablePython code={contactDemo} filename="contact_rollback_demo.py" />
+        <CodeBlock code={contactOutput} language="text" caption="Ожидаемый вывод справочника" />
+        <p>До commit новая Session читает только «Склад». После этого отдельная штатная транзакция сохраняет «Мастерскую». Во втором опыте «Пункт выдачи» остаётся после ошибки, поэтому автоматический повтор создания может добавить ещё одну строку.</p>
+        <ContactRollbackLab />
       </Section>
 
-      <Section number="03" title={"Проверка через новую Session"}>
-        <Lead>
-          {"Надёжное свидетельство мы получаем после завершения неудачной области, открыв отдельную Session. Она не опирается на ORM-объект из предыдущего identity map и читает данные из той же тестовой SQLite-базы после rollback."}
-        </Lead>
-        <p>
-          {"Для изоляции сценария используем существующую фикстуру с файлом SQLite внутри tmp_path. Мы заранее сохраняем целевую задачу и соседа. После контролируемой ошибки читаем обе строки новой Session и сверяем id, title, priority, is_done, tags и title_normalized. Сравнение всех полей замечает частичный результат, например обновлённый заголовок при старом техническом значении поиска."}
-        </p>
-        <p>
-          {"Это похоже на проверку бухгалтерской книги вторым сотрудником: запись, которую видел только автор незавершённой операции, ещё не подтверждает общий итог. Граница аналогии в том, что SQLAlchemy не ведёт отдельную книгу. Новая Session лишь убирает прежний контекст объектов и заново спрашивает ту же базу."}
-        </p>
-        <p>
-          {"Для первого доказательства подходит update через обычный PlannerService.replace_task. Репозиторий внутри операции вызывает flush. Узкая тестовая оболочка write_scope запускает session.begin, отдаёт управление сервису, а после возвращения из него поднимает RuntimeError до выхода из внутреннего контекста. Так мы проверяем путь сервиса и оставляем production-код нетронутым."}
-        </p>
-        <p>
-          {"Такое управляемое исключение в конкретной точке называют fault injection, то есть внедрением сбоя для теста. Оно проверяет реакцию кода на выбранное событие, но не симулирует отключение питания или поломку диска. В тесте важно не устанавливать глобальный listener и не оставлять monkeypatch на следующие проверки. Если изменяем зависимость временно, возвращаем её в исходное состояние даже при ошибке."}
-        </p>
-
-        <MatchPairs
-          prompt={"Свяжем событие с тем доказательством, которое оно даёт"}
-          leftTitle="Событие"
-          rightTitle="Что можно заключить"
-          pairs={[
-            { left: "Исключение до выхода Session.begin", right: "Контекст отменяет незавершённую транзакцию" },
-            { left: "Failed flush без rollback", right: "Та же Session не готова к следующему SQL" },
-            { left: "Session закрыта", right: "Ресурс освобождён, итог отдельно не проверен" },
-            { left: "Чтение из новой Session", right: "Состояние получено вне прежнего identity map" },
-            { left: "Исключение после commit", right: "Подтверждённая строка остаётся в базе" },
-          ]}
-          explanation={"Мы различили отмену транзакции, состояние ресурса и факт сохранения. Ни закрытие, ни текст ошибки сами не заменяют независимое чтение."}
-        />
-        <p>
-          {"Сравним целевую задачу и соседа целиком, а не только число строк. Если тест изменяет только одну строку, проверка соседа всё равно полезна: она ловит случайный широкий UPDATE или ошибку выбора id. После этого отдельный новый ресурс выполняет допустимую операцию. Так мы подтверждаем восстановление пути работы, а не только отсутствие частичного результата."}
-        </p>
-      </Section>
-
-      <Section number="04" title={"Отказ после commit"}>
-        <Lead>
-          {"Теперь рассмотрим противоположную границу. Запись успешно подтверждена, но вызывающий код всё ещё может не получить ожидаемый результат."}
-        </Lead>
-        <p>
-          {"Представим бронирование переговорной: пока бронь только готовится внутри транзакции, отказ отменяет её; после подтверждения брони сбой при отправке письма не освобождает комнату. Аналогия помогает отделить сохранение от доставки ответа. Она не описывает блокировки базы или все гарантии её транзакций."}
-        </p>
-        <p>
-          {"В тесте мы можем обернуть штатный session.begin контекстом, который сначала полностью выходит из него, а значит завершает commit, и только потом поднимает RuntimeError. Сервисная функция не вернёт вызывающему коду созданную Task. Но новая Session найдёт строку. Этот сценарий не говорит, что приложение действительно потеряет ответ в сети; он фиксирует важную возможность между подтверждением записи и наблюдаемым результатом."}
-        </p>
-        <p>
-          {"После такого исхода rollback уже не отменяет предыдущую завершённую транзакцию. Автоматически повторять create тоже опасно: повтор может создать вторую задачу с новым id, потому что title не уникален. Мы не добавляем здесь ключ идемпотентности, повторную очередь или компенсацию. Сначала честно обозначаем границу гарантии; решение неопределённого результата требует отдельного продуктового договора."}
-        </p>
-        <p>{"Проверим уже подтверждённое изменение на коротком независимом примере SQLite. До UPDATE таблица хранит значение «черновик»; затем ошибка возникает после UPDATE, но до второго commit."}</p>
-        <PredictOutput
-          code={'import sqlite3\n\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE notes (value TEXT)")\ndb.execute("INSERT INTO notes VALUES (?)", ("черновик",))\ndb.commit()\n\ntry:\n    db.execute("UPDATE notes SET value = ?", ("изменено",))\n    raise RuntimeError("ответ не подготовлен")\nexcept RuntimeError:\n    db.rollback()\n\nprint(db.execute("SELECT value FROM notes").fetchone()[0])\ndb.close()'}
-          output={"черновик"}
-          hint={"Первую запись мы уже подтвердили отдельным commit. Rollback относится к транзакции с UPDATE."}
-        />
-        <p>
-          {"В выводе остаётся «черновик»: отменилось изменение после первого commit, а не сама подтверждённая строка. В тестах StudyHub этот короткий опыт становится проверкой SQLAlchemy-сервиса и независимого чтения новой Session. Интерактив показывает границу на SQLite, он не заменяет такую проектную проверку."}
-        </p>
-        <p>
-          {"Ответ интерфейса и состояние базы остаются двумя отдельными наблюдениями. Если проверяем HTTP или CLI, статус и сообщение сверяем с согласованной политикой ошибок, а результат записи читаем из базы. В этой практике мы работаем на уровне существующего сервиса и тестовой базы, не меняя интерфейсные ответы и не добавляя новый обработчик."}
-        </p>
-
+      <Section number="03" title="Как собрать проверку Planner">
+        <Lead>В Planner вызов <code>add_task(title, priority, tags=...)</code> выполняет вставку через репозиторий. Репозиторий сам вызывает <code>flush()</code>, а сервис вызывает переданный ему <code>write_scope</code>, когда начинается запись.</Lead>
+        <p>Для обычной записи передаём <code>session.begin</code> как аргумент <code>write_scope</code>. Сервис сам вызовет метод. Вызов <code>session.begin()</code> со скобками открыл бы транзакцию прямо сейчас. Чтобы проверочное чтение не открыло транзакцию раньше записи, для чтения берём отдельную Session.</p>
+        <p>Готовый адаптер <code>stop_before_commit(session, title)</code> возвращает вызываемый объект для <code>write_scope</code>. Он даёт репозиторию закончить вставку, ищет эту строку по заголовку внутри транзакции без autoflush и сохраняет её id в <code>session.flushed_id</code>. После этого внутренняя область получает <code>ControlledWriteError</code> и откатывается. Без уже выполненной вставки адаптер выдаст диагностическую ошибку, а отметка останется пустой.</p>
+        <p>Назначение <code>pytest.raises(LearningError)</code> видно на коротком примере со справочником. В блоке только вызов, от которого ждём учебную ошибку. Если ошибка другого типа или её не было, pytest остановит проверку. Поскольку ошибка вышла из транзакции, pytest проверяет её уже после отката.</p>
+        <CodeBlock caption="Проверка ожидаемой ошибки справочника" code={
+          'def broken_import():\n    raise LearningError("учебный сбой")\n\nwith pytest.raises(LearningError):\n    broken_import()'
+        } />
+        <p>Готовая функция <code>read_rows(session)</code> возвращает словарь по id. Пять значений для каждого ключа идут по порядку: название, приоритет, отметка выполнения, кортеж тегов и нормализованное название. Кортеж сохраняет содержимое тегов отдельно от ORM-объекта.</p>
+        <CodeBlock caption="Два снимка адресной книги" code={
+          'before = {1: ("Склад",)}\nafter = {1: ("Склад",)}\nassert after == before\nassert after[1] == ("Склад",)'
+        } />
+        <p>В первом <code>assert</code> сравниваются и набор ключей, и все значения. Второй показывает, как проверить поля одной записи по ключу. В тесте Planner до следующей вставки сравним весь набор. Затем возьмём id из результата штатного вызова. SQLite может снова выдать id, который был выделен отменённой вставке, поэтому сравниваем содержимое в нужный момент.</p>
         <QuizCard
-          question={"Какой вариант доказывает, что создание осталось в базе, даже если сервис выбросил ошибку?"}
-          options={[{ title: "Смотрим на объект до завершения текущей Session", code: 'row = session.get(TaskRow, task_id)\nassert row.title == "Новая задача"', description: "Объект может отражать текущее состояние этой Session." }, { title: "Открываем новый ресурс после ошибки", code: 'with session_factory() as check_session:\n    row = check_session.get(TaskRow, task_id)\nassert row is not None', description: "Новая Session читает состояние базы после завершения транзакции." }]}
-          
-          correctIndex={1}
-          explanation={"Чтобы доказать сохранение, мы проверяем результат после выхода из транзакции отдельным чтением. Состояние старого ORM-объекта само по себе не показывает, что commit состоялся."}
+          question="Справочник показал «Пункт выдачи» внутри транзакции, но после ошибки в новой Session остался один «Склад». Какое наблюдение показывает, что проверка дошла до INSERT?"
+          options={[
+            "Первая Session нашла «Пункт выдачи» после flush запросом с отключённым autoflush.",
+            "После исключения вызвался close.",
+            "Вторая Session прочитала только «Склад».",
+          ]}
+          correctIndex={0}
+          explanation="Без первого наблюдения отсутствие новой строки могло бы означать, что ошибка возникла ещё до вставки. Проверка требует и отметки записи, и независимого результата после неё."
         />
-        <p>
-          {"В итоге место сбоя задаёт допустимый вывод. До commit проверяем полный rollback и целые соседние данные. После failed flush не продолжаем той же Session без rollback. После commit читаем новой Session и не повторяем создание автоматически. Если ответ API/CLI также входит в проверку, сверяем его отдельно, не подменяя им состояние SQLite."}
-        </p>
       </Section>
 
-      <Section number="08" title={"Что мы будем делать в практике"}>
-        <Lead>
-          {"Практика продолжает существующую матрицу транзакций и добавляет два недостающих доказательства вокруг сервисной границы."}
-        </Lead>
-        <LinkedNotes
-          items={[
-            {
-              title: "Сверим прежние тесты",
-              description: "Мы отделим уже покрытые failed flush и trigger-отказы от ошибки после успешного flush.",
-            },
-            {
-              title: "Проверим отказ до commit",
-              description: "Мы вызовем обычное изменение PlannerService, затем отменим область и перечитаем задачу с соседом.",
-            },
-            {
-              title: "Проверим поздний отказ",
-              description: "Мы поднимем исключение после commit и подтвердим запись новой Session без повтора create.",
-            },
-          ]}
-        />
-        <p>
-          {"Готовая опора здесь уже есть: тестовая SQLite создаётся в tmp_path, сервис принимает существующую write_scope, а репозиторий вызывает flush. Сначала мы читаем текущие проверки транзакций и фикстуры, чтобы не копировать уже имеющиеся тесты или ошибки, которые trigger отклоняет на самом SQL-действии."}
-        </p>
-        <p>
-          {"Результат покажет исходные поля после отказа до commit, работу следующей независимой операции и наличие строки после сбоя вслед за commit. CRUD, схема, HTTP-контракт, сообщения CLI и политика неизвестной ошибки остаются прежними. В этой работе нет имитации аварии реального диска."}
-        </p>
+      <Section number="04" title="Что мы будем делать в практике">
+        <Lead>В своём Planner добавим один тест в <code>tests/test_write_recovery.py</code>. SQLite и две исходные задачи подготовит тестовая оснастка.</Lead>
+        <LinkedNotes items={[
+          { title: "Остановим незавершённую запись", description: "Увидим назначенный при flush id, ожидаемое исключение и факт закрытия Session." },
+          { title: "Перечитаем и запишем снова", description: "Свежая Session подтвердит исходные строки. После отдельной успешной записи ещё одна Session прочитает новую задачу." },
+        ]} />
+        <p>Первое чтение даёт данные для сравнения после сбоя. Позднее чтение подтверждает, что штатная запись снова работает. Готовый контраст отдельно проверяет ошибку уже после commit.</p>
+
+        <h3 id="write-recovery-starter">Стартовый файл проверки записи</h3>
+        <p>Скопируем полный блок в новый <code style={{ overflowWrap: "anywhere", whiteSpace: "normal" }}>project/tests/test_write_recovery.py</code>. Если файл с таким именем уже есть, возьмём свободное имя с <code>test_</code> в начале и подставим его в команды. В файле есть временная база с подготовленными строками, параметры наблюдения, адаптер и отдельный готовый контраст. Свою функцию проверки добавим после контраста.</p>
+        <CopyablePython code={practiceStarter} filename="test_write_recovery.py" />
+        <p>Запустим готовый контраст из <code>project/</code> в тестовом окружении. На Windows можно заменить <code>python</code> на <code>{".\\.venv\\Scripts\\python.exe"}</code>, если окружение не активировано.</p>
+        <CodeBlock language="text" caption="Запуск готового контраста" code="python -m pytest -q tests/test_write_recovery.py::test_post_commit_keeps_row" />
+        <p>Ожидается один пройденный тест. Учебная SQLite создаётся под <code>tmp_path</code>. Приложение запускать не требуется.</p>
       </Section>
     </RichLesson>
   );

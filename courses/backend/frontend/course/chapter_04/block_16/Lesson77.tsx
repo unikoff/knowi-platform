@@ -1,291 +1,396 @@
-import { BarChart3, Database, Eye, Search, ShieldCheck } from "lucide-react";
+import { useId, useState } from "react";
 import {
-  Callout,
   CodeBlock,
-  Diagram,
-  DiagramArrow,
-  DiagramFlow,
-  DiagramNode,
   Lead,
   LinkedNotes,
-  ContentList,
-  PredictOutput,
-  QuizCard,
   RichHero,
   RichLesson,
   Section,
-  StepThrough,
 } from "../../shared";
 
-const BLOCK_TITLE = "Этап 4 · Блок 16 · Надёжность и наблюдение SQL";
+const inventoryExample = `import logging
+
+from sqlalchemy import create_engine, text
+
+
+def read_first_open(engine):
+    statement = text(
+        "SELECT id FROM inventory WHERE state = :wanted ORDER BY id LIMIT :size"
+    )
+    with engine.connect() as connection:
+        return connection.execute(
+            statement, {"wanted": "open", "size": 1}
+        ).scalars().all()
+
+
+def test_inventory_observation(caplog):
+    name = "inventory_example"
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        hide_parameters=True,
+        echo=False,
+        logging_name=name,
+    )
+    logger_name = f"sqlalchemy.engine.Engine.{name}"
+    previous_level = logging.getLogger(logger_name).level
+    try:
+        with engine.begin() as connection:
+            connection.execute(text("CREATE TABLE inventory (id INTEGER, state TEXT)"))
+            connection.execute(
+                text("INSERT INTO inventory VALUES (:id, :state)"),
+                [
+                    {"id": 1, "state": "closed"},
+                    {"id": 2, "state": "open"},
+                    {"id": 3, "state": "open"},
+                ],
+            )
+            total = connection.scalar(text("SELECT COUNT(*) FROM inventory"))
+
+        caplog.clear()
+        with caplog.at_level(logging.INFO, logger=logger_name):
+            selected = read_first_open(engine)
+
+        print("Подготовлено:", total)
+        print("Ответ внутри окна:", selected)
+        for record in caplog.records:
+            if record.name == logger_name:
+                print(record.getMessage())
+        print("Уровень восстановлен:", logging.getLogger(logger_name).level == previous_level)
+
+        caplog.clear()
+        print("Ответ после окна:", read_first_open(engine))
+        print("Сообщений после окна:", sum(r.name == logger_name for r in caplog.records))
+    finally:
+        engine.dispose()`;
+
+const selectionStarter = `import logging
+import re
+from contextlib import closing
+from types import SimpleNamespace
+from uuid import uuid4
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.engine import URL
+
+from app.DBase.models import Base, TaskRow
+from app.DBase.session import create_session_factory
+from app.api import app
+
+
+GET_PARAMS = {"is_done": "false", "sort_desc": "false", "limit": 1}
+ROWS = (
+    (11, "demo_title_a", "demo_tag_a", True),
+    (23, "demo_title_b", "demo_tag_b", False),
+    (41, "demo_title_c", "demo_tag_c", False),
+)
+HIDDEN_NOTICE = "[SQL parameters hidden due to hide_parameters=True]"
+
+
+@pytest.fixture
+def selection_lab(tmp_path):
+    name = f"selection_{uuid4().hex}"
+    database_url = URL.create("sqlite", database=(tmp_path / "selection.sqlite3").as_posix())
+    engine = create_engine(
+        database_url, hide_parameters=True, echo=False, logging_name=name
+    )
+    logger_name = f"sqlalchemy.engine.Engine.{name}"
+    logger = logging.getLogger(logger_name)
+    original_level = logger.level
+    logger.setLevel(logging.WARNING)
+    try:
+        Base.metadata.create_all(engine)
+        session_factory = create_session_factory(engine)
+        with session_factory.begin() as session:
+            session.add_all([
+                TaskRow(
+                    id=task_id, title=title, priority=2, tags=[tag],
+                    title_normalized=title.lower(), is_done=is_done,
+                )
+                for task_id, title, tag, is_done in ROWS
+            ])
+
+        previous_factory = app.state.session_factory
+        app.state.session_factory = session_factory
+        try:
+            with closing(TestClient(app)) as client:
+                yield SimpleNamespace(
+                    client=client, logger_name=logger_name, before=logger.level
+                )
+        finally:
+            app.state.session_factory = previous_factory
+    finally:
+        logger.setLevel(original_level)
+        engine.dispose()
+
+
+def response_ids(response):
+    if response.status_code != 200:
+        pytest.fail(f"Ожидали HTTP 200, получен {response.status_code}.", pytrace=False)
+    return [task["id"] for task in response.json()]
+
+
+def show_observation(lab, caplog, response):
+    if logging.getLogger(lab.logger_name).level != lab.before:
+        pytest.fail("Уровень логгера не восстановился.", pytrace=False)
+
+    messages = [record.getMessage() for record in caplog.records if record.name == lab.logger_name]
+    markers = [value for _, title, tag, _ in ROWS for value in (title, tag)]
+    if any(marker in message for marker in markers for message in messages):
+        pytest.fail("В журнале появился тестовый маркер данных.", pytrace=False)
+
+    safe_lines = []
+    hidden = False
+    for message in messages:
+        if message in {"BEGIN (implicit)", "BEGIN", "COMMIT", "ROLLBACK"}:
+            safe_lines.append(message)
+        elif message.endswith(HIDDEN_NOTICE):
+            hidden = True
+            safe_lines.append("Параметры скрыты.")
+        elif message.lstrip().upper().startswith("SELECT "):
+            statement = " ".join(message.split())
+            if not re.fullmatch(r"[A-Za-z0-9_., ?=*<>]+", statement):
+                pytest.fail("SELECT содержит неожиданный фрагмент.", pytrace=False)
+            safe_lines.append(statement)
+        elif message.lstrip().upper().startswith(("PRAGMA ", "CREATE ", "INSERT ", "UPDATE ", "DELETE ")):
+            safe_lines.append("В окне есть команда подготовки или записи.")
+        else:
+            pytest.fail("Журнал содержит открытые параметры или неожиданный формат.", pytrace=False)
+
+    if not hidden:
+        pytest.fail("В окне нет подтверждения сокрытия параметров.", pytrace=False)
+
+    ids = response_ids(response)
+    print(f"HTTP {response.status_code}, id: {ids}")
+    print("\\n".join(safe_lines))
+    print("Маркеров нет. Уровень логгера восстановлен.")
+
+
+def test_selection_baseline(selection_lab, caplog):
+    caplog.clear()
+    response = selection_lab.client.get("/tasks", params=GET_PARAMS)
+    assert response_ids(response) == [23]
+    assert not any(record.name == selection_lab.logger_name for record in caplog.records)
+
+
+def test_selection_observation(selection_lab, caplog):
+    caplog.clear()
+    response = None
+    # Здесь добавим наблюдение за одним вызовом.
+    if response is None:
+        pytest.fail("Сначала добавим наблюдение за выборкой.", pytrace=False)
+    show_observation(selection_lab, caplog, response)`;
+
+const eventColumns = [
+  { step: "Подготовка", call: "Загружаем предметы и проверяем их число.", sql: "CREATE, INSERT, контрольный SELECT" },
+  { step: "Чтение", call: "Просим первый открытый предмет.", sql: "BEGIN, SELECT, ROLLBACK" },
+  { step: "Ответ", call: "Получаем список [2].", sql: "Окно записи уже закрыто" },
+];
+
+function ObservationTimeline() {
+  return (
+    <figure style={{ margin: 0, width: "100%" }}>
+      <figcaption style={{ marginBottom: 10, fontWeight: 600 }}>
+        Вызов и журнал на одной шкале времени
+      </figcaption>
+      <ol style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 185px), 1fr))",
+        gap: 10,
+        listStyle: "none",
+        padding: 0,
+        margin: 0,
+      }}>
+        {eventColumns.map(({ step, call, sql }, index) => (
+          <li key={step} style={{
+            padding: "10px 14px",
+            minWidth: 0,
+            borderRadius: 8,
+            border: index === 1 ? "1px solid currentColor" : "1px solid color-mix(in srgb, currentColor 28%, transparent)",
+          }}>
+            <strong>{step}</strong>
+            <div>Вызов. {call}</div>
+            <div>Журнал. {sql}.</div>
+            {index === 1 && <div><strong>Окно записи</strong></div>}
+          </li>
+        ))}
+      </ol>
+    </figure>
+  );
+}
+
+const logEvents = [
+  { phase: 0, text: "CREATE, INSERT", select: false },
+  { phase: 0, text: "SELECT COUNT(*) FROM inventory", select: true },
+  { phase: 1, text: "BEGIN", select: false },
+  { phase: 1, text: "SELECT id FROM inventory WHERE state = ? ORDER BY id LIMIT ?", select: true },
+  { phase: 1, text: "Параметры скрыты.", select: false },
+  { phase: 1, text: "ROLLBACK", select: false },
+];
+
+const windowChoices = [
+  { label: "Перед подготовкой", reason: "Контрольный SELECT подготовки попал в журнал вместе с выборкой предмета." },
+  { label: "Перед чтением", reason: "Подготовка уже закончилась. В журнал попала только выборка предмета. BEGIN и ROLLBACK обозначают границы чтения." },
+  { label: "После чтения", reason: "К началу записи чтение уже завершилось, поэтому его SELECT в журнале отсутствует." },
+];
+
+const controlSize = { minHeight: 44, paddingInline: 8 };
+
+function CaptureWindowDemo() {
+  const controlId = useId();
+  const [start, setStart] = useState(1);
+  const [hasOpenRows, setHasOpenRows] = useState(true);
+  const [prediction, setPrediction] = useState("");
+  const [showResult, setShowResult] = useState(false);
+
+  const captured = logEvents.filter((event) => event.phase >= start);
+  const count = captured.filter((event) => event.select).length;
+  const result = hasOpenRows ? "[2]" : "[]";
+
+  function reset() {
+    setStart(1);
+    setHasOpenRows(true);
+    setPrediction("");
+    setShowResult(false);
+  }
+
+  return (
+    <div style={{
+      width: "100%",
+      boxSizing: "border-box",
+      border: "1px solid color-mix(in srgb, currentColor 28%, transparent)",
+      borderRadius: 10,
+      padding: 14,
+      display: "grid",
+      gap: 12,
+    }}>
+      <strong>Куда поставить начало записи?</strong>
+      <div>Модель журнала. Инвентарь содержит предметы 1, 2 и 3. Читаем первый открытый предмет и закрываем запись после чтения.</div>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 165px), 1fr))",
+        gap: 10,
+      }}>
+        <div style={{ display: "grid", gap: 4 }}>
+          <label htmlFor={`${controlId}-start`}>Начало окна</label>
+          <select id={`${controlId}-start`} style={controlSize} value={start} onChange={(event) => {
+            setStart(Number(event.target.value));
+            setShowResult(false);
+          }}>
+            {windowChoices.map(({ label }, index) => <option key={label} value={index}>{label}</option>)}
+          </select>
+        </div>
+        <div style={{ display: "grid", gap: 4 }}>
+          <label htmlFor={`${controlId}-prediction`}>Сколько SELECT ожидаем?</label>
+          <select id={`${controlId}-prediction`} style={controlSize} value={prediction} onChange={(event) => {
+            setPrediction(event.target.value);
+            setShowResult(false);
+          }}>
+            <option value="">Выберем число</option>
+            <option value="0">0</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+          </select>
+        </div>
+      </div>
+      <label style={{ display: "flex", gap: 8, alignItems: "center", minHeight: 36 }}>
+        <input type="checkbox" checked={hasOpenRows} onChange={(event) => {
+          setHasOpenRows(event.target.checked);
+          setShowResult(false);
+        }} />
+        Предметы 2 и 3 открыты
+      </label>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <button type="button" style={controlSize} disabled={prediction === ""} onClick={() => setShowResult(true)}>Посмотреть журнал</button>
+        <button type="button" style={controlSize} onClick={reset}>Сбросить</button>
+      </div>
+      <div aria-live="polite">
+        {showResult && (
+          <>
+            <strong>{Number(prediction) === count ? "Прогноз совпал." : "Число отличается от прогноза."} SELECT: {count}. Ответ: <code>{result}</code>.</strong>
+            <div>{windowChoices[start].reason}</div>
+            {!hasOpenRows && <div>Список пуст, потому что открытых предметов нет. Чтение всё равно выполнилось.</div>}
+            {captured.length > 0 && (
+              <ul style={{ paddingInlineStart: 20, marginBottom: 0 }}>
+                {captured.map(({ text }) => (
+                  <li key={text}><code style={{ overflowWrap: "anywhere" }}>{text}</code></li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function Lesson77({ module }: { module?: string }) {
   return (
     <RichLesson>
       <RichHero
-        chip={module ?? BLOCK_TITLE}
-        title="SQL-запросы Planner"
-        intro="Увидим SQL за уже знакомыми операциями Planner и соберём безопасные наблюдения, на которые можно опереться при решении об улучшении."
-        tags={[
-          { icon: <Eye size={14} />, label: "временное наблюдение" },
-          { icon: <ShieldCheck size={14} />, label: "без параметров" },
-          { icon: <Database size={14} />, label: "изолированная SQLite" },
-          { icon: <BarChart3 size={14} />, label: "свидетельство для 103" },
-        ]}
+        chip={module ?? "Надёжность и наблюдение SQL"}
+        title="Наблюдаем SQL одной выборки"
+        intro="Свяжем один ответ Planner с командой SQLite и соберём след, в котором значения параметров скрыты."
       />
 
-      <Section number="00" title="От работы через SQL к наблюдаемой работе">
-        <Lead>
-          После перехода на SQLite операции Planner уже проходят через SQLAlchemy. По строке Python, например `service.list_tasks()`, нельзя точно узнать, сколько команд отправилось в базу, какие значения вернулись и превратились ли они в обычные объекты `Task`. Теперь мы ограничим наблюдение одной операцией и сопоставим запись журнала с результатом для приложения.
-        </Lead>
-        <LinkedNotes
-          items={[
-            {
-              title: "Точка старта",
-              description: "Мы используем знакомые SQL, ORM, короткую Session и Planner, работающий через SQLite.",
-            },
-            {
-              title: "Новый вопрос",
-              description: "Какие SQL-команды выполняет база для одного действия и какая часть работы действительно повторяется?",
-            },
-            {
-              title: "Результат",
-              description: "Мы соберём безопасный след одного сценария и передадим в следующее занятие наблюдение, а не догадку об ускорении.",
-            },
-          ]}
-        />
-        <p>
-          Здесь мы исследуем уже существующие `get`, `list`, `select`, `statistics` и `search`. Их фильтрация, подсчёт и поиск остаются частью B15. Мы не переносим их в этот урок и не объявляем лишним запрос до того, как увидим его в конкретном сценарии.
-        </p>
+      <Section number="00" title="Вступление">
+        <Lead>Запрашиваем открытые задачи и получаем нужную запись. По ответу видим, что вернул Planner. Как узнать, какую работу при этом выполнила SQLite?</Lead>
+        <LinkedNotes items={[
+          { title: "Точка старта", description: "Мы умеем сверить ответ выборки по возвращённым задачам." },
+          { title: "Новый вопрос", description: "Как увидеть, выполнила ли фильтр сама база?" },
+          { title: "Результат", description: "Соберём след одного запроса и найдём фильтр, порядок и лимит. Значения параметров останутся скрытыми." },
+        ]} />
+        <p>Сначала прочитаем одну команду в журнале. Затем ограничим запись временем одного вызова и сравним журнал с ответом.</p>
       </Section>
 
-      <Section number="01" title="SQL-команда, ORM-строка и Task">
-        <Lead>
-          В одном действии есть несколько разных результатов. Репозиторий составляет выражение SQLAlchemy, Engine передаёт SQL драйверу, база возвращает строки или значения, а код может преобразовать ORM-строки в доменные объекты `Task`. Журнал Engine показывает обмен с базой, но не печатает по одному сообщению на каждый объект Python.
-        </Lead>
-        <p>
-          Представим кассовый чек и покупки. Чек показывает операции оплаты, а не отдельную карточку на каждый товар, который мы унесли. Так же один `SELECT` может вернуть много строк, которые затем станут несколькими `Task`. И наоборот, один вызов сервиса может внутри потребовать чтение и изменение. Аналогия помогает различить след обмена и результат в Python, но не описывает, как работает транзакция.
-        </p>
-        <ContentList
-          items={[
-            { title: "SQL-запись", description: "Команда и служебное сообщение, переданные через Engine" },
-            { title: "ORM-строка", description: "Объект `TaskRow`, связанный с таблицей и текущей Session" },
-            { title: "Task", description: "Обычный предметный объект, который сервис возвращает после mapping" },
-            { title: "Словарь статистики", description: "Агрегированные числа, а не список материализованных задач" },
-          ]}
-        />
-        <p>
-          Проследим фрагмент настоящего `SqlTaskRepository.get`. При первом запросе в новой Session `session.get` обычно отправляет выборку по первичному ключу. Если строки нет, репозиторий возвращает `None`. Если она есть, `task_from_row` копирует нужные значения в `Task`. Это один путь от команды до предметного результата, а не четыре независимые записи журнала.
-        </p>
-        <Diagram caption="Путь запроса и возвращаемого результата">
-          <DiagramFlow label="Путь команды от Planner к базе">
-            <DiagramNode title="PlannerService">
-              <p>Выбирает предметную операцию</p>
-            </DiagramNode>
-            <DiagramArrow label="вызывает репозиторий" />
-            <DiagramNode title="Session и Engine">
-              <p>Формируют и передают SQL</p>
-            </DiagramNode>
-            <DiagramArrow label="выполняют запрос" />
-            <DiagramNode title="SQLite" shape="database">
-              <p>Возвращает строки или агрегат</p>
-            </DiagramNode>
-          </DiagramFlow>
-          <DiagramFlow label="Путь результата от базы к Planner">
-            <DiagramNode title="SQLite" shape="database">
-              <p>Возвращает строки или агрегат</p>
-            </DiagramNode>
-            <DiagramArrow label="передаёт результат" />
-            <DiagramNode title="Session и mapping" shape="process">
-              <p>Читают и преобразуют строки</p>
-            </DiagramNode>
-            <DiagramArrow label="возвращают значение" />
-            <DiagramNode title="Task или статистика" shape="terminator">
-              <p>Результат для сервиса</p>
-            </DiagramNode>
-          </DiagramFlow>
-        </Diagram>
-        <StepThrough
-          code={`row = self.session.get(TaskRow, task_id)
-if row is None:
-    return None
-task = task_from_row(row)
-return task`}
-          steps={[
-            { line: 0, note: "В новом контексте `Session.get` ищет строку по первичному ключу. Если объект уже есть в identity map и не устарел, SQL может не понадобиться." },
-            { line: 1, note: "Если база не вернула строку, репозиторий не создаёт задачу и не вызывает mapping." },
-            { line: 3, note: "Mapping создаёт обычный `Task`, который не зависит от последующего чтения ORM-атрибутов." },
-            { line: 4, note: "Сервис получает предметный результат. Журнал запроса не является списком выданных Python-объектов." },
-          ]}
-        />
-        <QuizCard
-          question="В базе лежат 12 задач. Сколько `SELECT` обязательно выполнит один вызов `list_tasks()` в свежей Session?"
-          options={["По одному на каждую задачу", "Один запрос списка может вернуть все 12 строк", "Двенадцать объектов означают двенадцать SQL-запросов"]}
-          correctIndex={1}
-          explanation="Один SELECT списка может вернуть много строк. Затем код создаёт по одному Task на строку, но число объектов не равно числу SQL-команд."
-        />
+      <Section number="01" title="Что видно по одному SELECT">
+        <Lead>В инвентаре предмет 1 закрыт, а 2 и 3 открыты. Чтобы получить первый открытый предмет, база отбросит закрытые, упорядочит остальные по id и оставит один. В результате увидим <code>[2]</code>.</Lead>
+        <CodeBlock language="text" caption="Команда в журнале SQLite"
+          code="SELECT id FROM inventory WHERE state = ? ORDER BY id LIMIT ?" />
+        <p><code>WHERE</code> задаёт условие отбора, <code>ORDER BY</code> порядок, <code>LIMIT</code> число результатов. Знак <code>?</code> отмечает место, куда драйвер подставляет значение, переданное отдельно от SQL. Его называют связанным параметром. Например, статус и размер выборки приходят в драйвер отдельно.</p>
+        <p>Один знак <code>?</code> ещё ничего не говорит о сокрытии. SQLAlchemy может записать значения в следующее сообщение. Мы заранее создаём диагностический <code>Engine</code> с <code>hide_parameters=True</code>. Форма команды остаётся доступна, а вместо списка значений SQLAlchemy пишет, что параметры скрыты.</p>
+        <p>В SQL может остаться часть самого выражения, например <code>is_done = 0</code> для булева условия SQLite. Флаг скрывает отдельно связанные значения. Текст, вставленный прямо в SQL, и строки результата при уровне <code>DEBUG</code> он не скрывает. Для опыта берём вымышленные данные и уровень <code>INFO</code>.</p>
       </Section>
 
-      <Section number="02" title="Включаем SQL-логирование и скрываем параметры">
-        <Lead>
-          SQLAlchemy пишет команды через стандартный модуль `logging`. Для SQL-сообщений используется пространство имён `sqlalchemy.engine`: уровень `INFO` показывает команды, а `DEBUG` может добавить строки результата. В занятии достаточно `INFO`. Переключатель `echo=True` служит ещё одним способом вывода и может вести себя независимо от уже настроенного логирования, поэтому одновременно включать оба способа не нужно.
-        </Lead>
-        <p>
-          В тесте мы можем временно поднять уровень логирования через фикстуру pytest `caplog`. Она собирает записи, чтобы тест мог проверить их текст. Уровень задаём до открытия новой короткой Session и до первого обращения к соединению. SQLAlchemy проверяет настройки при получении соединения, поэтому смена уровня внутри уже активного обмена может не изменить поведение этой Session. Контекст `caplog.at_level` возвращает прежний уровень после выхода, включая выход из-за ошибки.
-        </p>
-        <p>
-          Лог может содержать значения параметров запроса. Поэтому в существующей фабрике Engine мы включаем `hide_parameters=True`. SQLAlchemy оставляет в журнале текст команды, но скрывает переданные отдельно параметры в стандартных SQL-сообщениях. При этом мы продолжаем связывать значения с запросом через параметризацию. Сокрытие не удаляет значение, вручную склеенное в текст SQL, и не очищает любой возможный вывод приложения или драйвера.
-        </p>
-        <p>
-          Настройка `echo` похожа на отдельный громкоговоритель в комнате, а `caplog` на микрофон, которым мы записываем одну репетицию. Микрофон помогает услышать ход действия, но сам не меняет его. Граница аналогии: SQLAlchemy проверяет уровень журнала при получении соединения, а обычный микрофон ничего не знает о соединениях и Session.
-        </p>
-        <CodeBlock
-          caption="Фрагмент теста: новый ресурс открывается уже внутри capture"
-          code={`with caplog.at_level(logging.INFO, logger="sqlalchemy.engine"):
-    with session_factory() as session:
-        result = repository_for(session).list()`}
-        />
-        <p>
-          В этом фрагменте `session_factory` и `repository_for` подготовлены тестом, а база содержит только временные данные. Мы сначала выполняем DDL и добавляем строки, затем очищаем capture, и лишь потом вызываем одну операцию. Значения title, tags и поисковый текст не печатаем отдельно. `hide_parameters` защищает именно параметры SQLAlchemy, а не все возможные источники секретов.
-        </p>
-        <QuizCard orientation="vertical"
-          description={<CodeBlock code={`def make_engine(database_url):
-    return create_engine(database_url, echo=True)`} />}
-          question="Что стоит изменить, если мы хотим коротко собирать журнал тестом и не показывать параметры?"
-          options={[
-            "Оставить `echo=True` и дополнительно включить `caplog`",
-            "Создать Engine с `hide_parameters=True`, оставить echo выключенным и временно захватить logger в тесте",
-            "Включить `DEBUG`, чтобы увидеть только SQL без результатов",
-          ]}
-          correctIndex={1}
-          explanation="Одновременно echo и управляемый logging могут дублировать вывод. DEBUG добавляет подробности о строках результата. Мы задаём защиту параметров на Engine, а уровень INFO временно включаем вокруг одного действия."
-          answer={<CodeBlock caption="Исправленный вариант" code={`def make_engine(database_url):
-    return create_engine(database_url, hide_parameters=True)`} />}
-        />
+      <Section number="02" title="Где открыть и закрыть окно записи">
+        <Lead>Пока готовим таблицу, SQLite выполняет свои команды. Если включить журнал заранее, они смешаются с чтением, которое мы хотим проверить.</Lead>
+        <ObservationTimeline />
+        <p><code>BEGIN</code> открывает транзакцию, а <code>ROLLBACK</code> здесь завершает ресурс чтения. Команду SELECT считаем один раз, даже если след занимает несколько строк и рядом записаны служебные события.</p>
+        <p>Готовый инструмент pytest <code>caplog</code> собирает сообщения в памяти. Поднимаем уровень для конкретного логгера, то есть источника сообщений диагностического Engine. После выхода из <code>with</code> прежний уровень возвращается даже при ошибке. Новый ресурс чтения берёт соединение уже внутри окна. На занятом соединении изменение уровня может вступить в силу только после следующего получения соединения.</p>
+        <CodeBlock caption="Форма короткого захвата" code={
+          "with caplog.at_level(logging.INFO, logger=logger_name):\n    selected = read_first_open(engine)"
+        } />
+        <p><code>logging.INFO</code> делает SQL-команды видимыми, а <code>logger=logger_name</code> задаёт, чьи сообщения нужны. Строки с отступом работают при временном уровне. Настройку <code>echo</code> оставляем выключенной, чтобы Engine не выводил журнал отдельно.</p>
+        <CaptureWindowDemo />
+        <h3>Запускаемый пример с инвентарём</h3>
+        <p>Весь опыт уже собран ниже. Подготовка создаёт одну таблицу в памяти, добавляет три предмета и проверяет их число. В <code>read_first_open</code> SQLite получает условие <code>:wanted</code> и предел <code>:size</code> отдельно от текста команды. <code>scalars().all()</code> собирает выбранные id в список. Читаем один раз внутри окна и ещё раз после него.</p>
+        <p>Чтобы повторить опыт локально, сохраним код как <code style={{ overflowWrap: "anywhere" }}>test_inventory_observation.py</code> во временной папке. Из неё в окружении проекта запустим <code style={{ overflowWrap: "anywhere" }}>python -m pytest -q -s test_inventory_observation.py</code>. Флаг <code>-q</code> сокращает служебный вывод, а <code>-s</code> показывает строки <code>print</code>.</p>
+        <CodeBlock caption="test_inventory_observation.py" code={inventoryExample} />
+        <p>Сначала появится «Подготовлено: 3». В журнале после «Ответ внутри окна: [2]» увидим <code>BEGIN (implicit)</code>, один <code>SELECT</code>, отметку о скрытых параметрах и <code>ROLLBACK</code>. После выхода получим «Уровень восстановлен: True». Повторное чтение снова даст <code>[2]</code>, а «Сообщений после окна: 0» покажет, что запись выключена.</p>
       </Section>
 
-      <Section number="03" title="Ограничиваем область наблюдения">
-        <Lead>
-          Чтобы понять работу одной операции, мы отделяем её от подготовки окружения. Сначала создаём таблицу и тестовые строки. Затем начинаем capture, создаём новую Session, вызываем одну функцию сервиса и закрываем Session. Инициализация схемы, seed, вызовы соседних операций и независимое чтение после изменения остаются за границей capture.
-        </Lead>
+      <Section number="03" title="Что мы будем делать в практике">
+        <Lead>В Planner уже есть выборка и короткая Session на запрос. Сначала проверим исходный ответ на временной базе. Затем сами выберем границы записи вокруг одного вызова этой выборки.</Lead>
+        <LinkedNotes items={[
+          { title: "Снимем журнал выборки", description: "Запишем временное окно в тесте и убедимся, что после одного GET уровень логгера восстановился." },
+          { title: "Сопоставим с ответом", description: "Найдём в следе один SELECT с фильтром, порядком и лимитом. Сохраним обезличенную форму команды и выбранный id." },
+        ]} />
+        <p>Ответ показывает, какая задача вернулась. Окно связывает с ответом одну команду базы и позволяет заметить посторонние события подготовки.</p>
+        <h3>Подготовка к запуску</h3>
+        <p>Скопируем файл из блока ниже в <code style={{ overflowWrap: "anywhere" }}>project/tests/test_sql_selection_observation.py</code>. Если уже начали этот тест, сохраним свои изменения. Работаем из папки <code>project/</code> в окружении, где запускаются тесты Planner. Если зависимостей ещё нет, установим их привычной командой проекта <code style={{ overflowWrap: "anywhere" }}>python -m pip install -r requirements-dev.txt</code>.</p>
+        <p>Файл создаёт таблицу и три тестовые задачи во временной SQLite. Задача 11 уже завершена, 23 и 41 открыты. <code>selection_lab.client</code> вызывает существующий API Planner. У <code>client.get</code> есть путь и именованный аргумент <code>params</code> для параметров запроса. Они уже собраны в <code>GET_PARAMS</code>. <code>selection_lab.logger_name</code> содержит имя источника журнала. Готовая сводка читает статус и id из ответа в <code>response</code>, проверяет защиту и показывает безопасные строки.</p>
+        <p>В командах из практики <code>::</code> выбирает один тест из файла. <code>--show-capture=no</code> выключает показ захваченных сообщений при ошибке. <code style={{ overflowWrap: "anywhere" }}>--log-cli-level=WARNING</code> удерживает обычный вывод логов в терминале на уровне предупреждений. Диагностические строки покажет наша сводка.</p>
         <p>
-          В журнале рядом с запросом могут появиться `BEGIN`, `COMMIT`, `ROLLBACK`, `PRAGMA` или DDL-команда. Они помогают увидеть границы работы драйвера и транзакции, но не обязательно являются выборкой приложения. Например, `BEGIN (implicit)` сообщает о начале транзакции, которую SQLAlchemy открыл по необходимости. Это не доказательство, что репозиторий выполнил ещё один SELECT.
+          <a
+            href={`data:text/plain;charset=utf-8,${encodeURIComponent(selectionStarter + "\n")}`}
+            download="test_sql_selection_observation.py"
+          >
+            Скачать исходный тест
+          </a>
         </p>
-        <p>
-          Для чтений используем отдельную короткую Session на каждый вызов. Так проще понять, что сделал `get`, `list` или `statistics`, и identity map одной операции не подменяет другую. Identity map, то есть таблица объектов внутри Session, связывает ключ строки с ORM-объектом. Повторный `Session.get` того же неустаревшего ключа может вернуть уже загруженный объект без нового запроса. Обычный `select(...)` всё равно отправляет SQL, хотя ORM может вернуть ту же Python-ссылку.
-        </p>
-        <p>
-          Одна Session похожа на рабочий стол с уже открытой карточкой записи. Если мы снова просим ту же карточку по ключу, Session может показать её со стола. Но этот стол не является общей базой-кешем: другая Session имеет свой набор объектов, а SQL-фильтр всё равно нужно выполнить в базе. Это помогает понять повторный `get`, но не предсказывает любой запрос и не гарантирует, что сохранённое состояние актуально.
-        </p>
-        <PredictOutput
-          code={`first = session.get(TaskRow, 7)
-second = session.get(TaskRow, 7)
-print(first is second)`}
-          output="True"
-          hint="Предполагаем одну Session, строка найдена, объект не expire-нут и между вызовами нет commit."
-        />
-        <p>
-          Ответ `True` говорит о совпадении Python-ссылок, а не о числе SQL-команд. При этих условиях первый вызов в пустой Session отправляет запрос, второй использует identity map. Если объект истёк или отсутствует, поведение изменится. Поэтому в capture мы фиксируем начальное состояние, а вывод проверяем по SQL и результату отдельно.
-        </p>
-        <QuizCard
-          question="Если между двумя SELECT в журнале видны BEGIN и COMMIT, значит приложение отправило четыре SELECT."
-          options={["Правда", "Ложь"]} correctIndex={1}
-          explanation="BEGIN и COMMIT отмечают границу транзакции. Чтобы посчитать выборки приложения, мы выделяем сами SQL-команды и соотносим их с одним вызовом, а не считаем все строки журнала как SELECT."
-        />
-      </Section>
-
-      <Section number="04" title="Предсказываем запросы знакомых операций">
-        <Lead>
-          Мы уже знаем назначение операций Planner, поэтому сначала предсказываем форму SQL и предметный результат. Затем выполняем одну операцию на изолированных строках и сверяем предположение с журналом. В примерах имена соответствуют существующему SQL-репозиторию StudyHub на checkpoint 75.1.
-        </Lead>
-        <ContentList
-          items={[
-            { title: "`get_task(id)`", description: "Выборка одной строки по первичному ключу, затем mapping в Task; повторный `get` зависит от состояния Session" },
-            { title: "`list_tasks()`", description: "Упорядоченный SELECT списка; одна команда может вернуть много Task" },
-            { title: "`select_tasks(...)`", description: "WHERE, ORDER BY и LIMIT входят в запрос, результат ограничивается в базе" },
-            { title: "`get_statistics()`", description: "COUNT и условные агрегаты возвращают числа без создания списка Task" },
-            { title: "`search_tasks(query)`", description: "Нормализованный текст ищется через параметр; пустой запрос после strip возвращает пустой список без SELECT" },
-          ]}
-        />
-        <p>
-          Фильтр, порядок и limit внутри запроса ожидаемы. Если в тесте три строки, один SELECT списка не означает ошибку. Статистика тоже может быть полезной даже при одном SQL-сообщении: в ответе будет одна строка с несколькими счётчиками, а не все задачи. И наоборот, поиск из пробелов может завершиться до обращения к базе. Сначала сверим вход операции, затем будем толковать журнал.
-        </p>
-        <p>
-          Изменение полезно читать как последовательность. `add_task` открывает область записи в сервисе, репозиторий добавляет `TaskRow` и вызывает `flush`, чтобы база выполнила INSERT и выдала id. Завершение области подтверждает транзакцию до успешного ответа. В `replace_task` есть причина для чтения перед UPDATE: сервис получает прежнюю задачу, проверяет её и сохраняет внутренние tags. Наличие SELECT здесь не доказывает лишнюю работу.
-        </p>
-        <CodeBlock
-          caption="Путь создания из существующего сервиса"
-          code={`with self.write_scope():
-    task = self.repository.create(title, priority, tags)
-return task`}
-        />
-        <p>
-          Внутри репозитория `flush` отправляет INSERT, но сам по себе не доказывает commit. Транзакционный контекст сервиса завершает запись при выходе без ошибки. В журнале мы различаем команду изменения и строку, которую сервис вернул после mapping. Чтобы проверить сохранённое состояние, нужна новая независимая Session уже после операции, однако такую проверку принимаем только на подготовленной и подтверждённой транзакционной опоре.
-        </p>
-      </Section>
-
-      <Section number="05" title="Читаем повторные запросы без поспешных выводов">
-        <Lead>
-          Один и тот же запрос может появиться несколько раз по разным причинам. Это может быть две операции приложения, повтор после `refresh`, чтение истёкшего ORM-состояния или действительно неиспользуемая загрузка. Журнал даёт нам наблюдение, но причину нужно найти в коде, границах Session и ожидаемом результате.
-        </Lead>
-        <p>
-          Identity map действует только внутри своей Session и по ключу ORM-объекта. `Session.get` может вернуть уже загруженную неустаревшую строку без SQL. Обычный запрос `select(TaskRow).where(...)` всё равно обращается к базе, даже если совпадающая строка уже присутствует в identity map. После `expire` чтение атрибута может снова обратиться к базе, а `refresh` явно перечитывает значения. Поэтому уменьшать количество SELECT любой ценой опасно: мы можем потерять актуальные данные или изменить предметный результат.
-        </p>
-        <p>
-          `flush` переносит накопленные изменения из состояния Session в текущую транзакцию и отправляет соответствующие INSERT/UPDATE/DELETE. Это не равнозначно окончательному commit. Commit подтверждает транзакцию, а close освобождает ресурс Session. В тесте одну запись можно наблюдать отдельно, а затем открыть новую Session и проверить, что результат виден после commit. Ошибка до commit и сбой после уже завершённого commit имеют разный смысл, поэтому не называем rollback универсальной кнопкой отмены.
-        </p>
-        <p>
-          Перед любым сценарием изменения мы подтверждаем безопасную основу предыдущих занятий о классификации отказов и восстановлении. До этого можно изучать настройки logger и наблюдать read-only операции на `tmp_path`, но нельзя считать проверку записи после отказа принятой. Рабочая база не становится лабораторией, даже если запрос кажется маленьким.
-        </p>
-        <QuizCard
-          question="Если журнал показывает INSERT после flush, этого достаточно, чтобы утверждать, что задача сохранена после успешного commit."
-          options={["Правда", "Ложь"]} correctIndex={1}
-          explanation="INSERT показывает, что команда была отправлена внутри текущей транзакции. Сохранённый результат подтверждаем после выхода из области записи независимым чтением новой Session."
-        />
-      </Section>
-
-      <Section number="06" title="Собираем свидетельство, а не обещание ускорения">
-        <Lead>
-          SQL-лог отвечает на вопрос «какие команды отправились в базу в этом сценарии?». Он сам по себе не измеряет задержку, не показывает полный план выполнения и не доказывает, что команда вредна. `SCAN` или несколько строк вывода не означают автоматически, что нам нужен индекс или новая схема.
-        </Lead>
-        <p>
-          Для каждой гипотезы мы связываем пять фактов: исходные тестовые строки, один вызов Planner, SQL-команды в границе capture, предметный результат и требования к нему. Если подозреваем повтор, укажем оба места вызова и объясним, почему второе чтение не нужно. Если считаем, что статистика загружает Task ради подсчёта, проверим это по форме SELECT и результату. При необходимости признаем, что запрос уже делает нужную работу и менять его не за чем.
-        </p>
-        <p>
-          Несколько команд не равны проблеме N+1. Для такого вывода обычно нужно увидеть рост числа запросов вместе с числом связанных записей. В текущей схеме есть одна таблица задач без отношений, поэтому мы не придумываем здесь историю про загрузку каждой связи. Дальнейшая оценка конкретного результата покажет, стоит ли менять код или достаточно закрепить поведение проверкой.
-        </p>
-        <Callout tone="success">
-          Передаём для дальнейшей оценки короткую запись: действие, ожидаемый результат, наблюдённый SQL, предполагаемый повтор и основание для вывода. Если лишней работы не нашли, сохраняем проверенный запрос и объяснение, почему он достаточен.
-        </Callout>
-      </Section>
-
-      <Section number="07" title="Что мы будем делать в практике">
-        <Lead>
-          Сначала подтверждаем вход по журналу обучения и коду на одном checkpoint. Затем защищаем параметры, отделяем подготовку базы от capture и наблюдаем по одному знакомому действию. Изменяющую операцию принимаем только после подтверждения безопасной обработки отказов и транзакционного восстановления.
-        </Lead>
-        <LinkedNotes
-          items={[
-            {
-              title: "Сверим опору",
-              description: "Подтвердим B15 и входные результаты 76–76.1 по StudyHub, не по одному лишь плану или рабочему diff.",
-            },
-            {
-              title: "Подготовим безопасный журнал",
-              description: "Скроем SQL-параметры на Engine и временно включим INFO capture только внутри теста.",
-            },
-            {
-              title: "Сопоставим операции и результат",
-              description: "На базе из tmp_path увидим чтение, фильтр, агрегат и поиск отдельно от seed и DDL.",
-            },
-            {
-              title: "Проверим изменение и передадим вывод",
-              description: "После подтверждения транзакционных checkpoint сверим одну запись независимой Session и оформим доказательство для 103.",
-            },
-          ]}
-        />
-        <p>
-          Результат практики нужен, чтобы решить следующий вопрос на фактах, а не ради минимального числа запросов. Если проверки отказа и восстановления ещё не подтверждены, сохраняем безопасную часть наблюдения и не принимаем зависимую проверку отказа или записи. Ни постоянный SQL-лог, ни новый endpoint, ни изменение договора API/CLI для этого урока не нужны.
-        </p>
+        <CodeBlock caption="tests/test_sql_selection_observation.py" code={selectionStarter} />
+        <p>Сначала доступен <code style={{ overflowWrap: "anywhere" }}>test_selection_baseline</code>. Он проверяет ожидаемый ответ с выключенным журналом. Для своей записи работаем только в <code style={{ overflowWrap: "anywhere" }}>test_selection_observation</code>. Критерии готовности и команды запуска находятся в карточке практики.</p>
       </Section>
     </RichLesson>
   );
