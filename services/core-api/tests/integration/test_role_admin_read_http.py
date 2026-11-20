@@ -285,6 +285,7 @@ async def exercise():
             def selected_lesson(payload):
                 return next(item for item in payload['courses'][track_id] if item['id'] == lesson_id)
             assert selected_lesson(before)['completed'] is False
+            assert selected_lesson(before)['historical_completion_credit'] is False
             with engine.begin() as conn:
                 if lesson_receipt:
                     conn.execute(text("""INSERT INTO user_lesson_progress(user_id,lesson_id,course_id,completed_at)
@@ -296,6 +297,7 @@ async def exercise():
             assert selected_lesson(after) == {
                 'id': lesson_id, 'title': selected_lesson(before)['title'], 'completed': True,
                 'completed_on': '2026-11-19', 'counts_toward_statistics': True,
+                'historical_completion_credit': True,
             }
             personal = (await check(6, '/api/learning/catalog', 200, params={'course_id':'backend'})).json()
             for field, value in selected_lesson(after).items():

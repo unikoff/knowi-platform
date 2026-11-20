@@ -302,8 +302,13 @@ def _historical_catalog(response_fixture: dict[str, Any]) -> dict[str, Any]:
     """Validate the extended fields before comparing the legacy response snapshot."""
     comparable = _without_content_revision(response_fixture)
     for lesson in comparable["body"]["lessons"]:
-        assert type(lesson.pop("counts_toward_statistics")) is bool
+        countable = lesson.pop("counts_toward_statistics")
+        assert type(countable) is bool
+        credited = lesson.pop("historical_completion_credit")
+        assert type(credited) is bool
         completed_on = lesson.pop("completed_on")
+        if credited:
+            assert countable and completed_on is not None
         if completed_on is not None:
             assert lesson["completed"] is True
             date.fromisoformat(completed_on)
