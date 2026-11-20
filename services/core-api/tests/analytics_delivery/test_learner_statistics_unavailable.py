@@ -30,7 +30,7 @@ def test_statistics_fails_closed_after_session_and_role_checks(monkeypatch):
 
     monkeypatch.setattr(learner_analytics, "run_request_sql", run_sql)
     monkeypatch.setattr(learner_analytics, "authorize_grant", authorize)
-    monkeypatch.setattr(learner_analytics, "read_completions", lambda *args: ())
+    monkeypatch.setattr(learner_analytics, "read_learner_completions", lambda *args: ())
     app = FastAPI()
     app.include_router(learner_analytics.router, prefix="/api/user")
     app.state.identity_sessions = Identity()

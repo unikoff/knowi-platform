@@ -115,7 +115,7 @@ def test_statistics_projection_and_verified_history(monkeypatch):
 
     monkeypatch.setattr(learner_analytics, "run_request_sql", run_sql)
     monkeypatch.setattr(learner_analytics, "authorize_grant", authorize)
-    monkeypatch.setattr(learner_analytics, "read_completions", completions)
+    monkeypatch.setattr(learner_analytics, "read_learner_completions", completions)
     monkeypatch.setattr(learner_analytics, "capture", lambda db, principal, kind: (claims, 4))
     app = FastAPI()
     app.include_router(learner_analytics.router, prefix="/api/user")

@@ -166,6 +166,12 @@ def lock_lifecycle_user(database, user_id, reference):
     return lock_user(database, user_id, reference)
 
 
+def read_learner_completions(database, principal, course_id, start, end):
+    from pymentor_core.adapters.sql.learner_statistics import read_completions
+
+    return read_completions(database, principal, course_id, start, end)
+
+
 def role_admin_reads():
     from pymentor_core.adapters.sql import role_admin_reads as adapter
     return adapter

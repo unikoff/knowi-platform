@@ -9,12 +9,12 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, ValidationErro
 
 from pymentor_core.modules.analytics_delivery.errors import LearnerReadUnavailable
 from pymentor_core.app.async_request import run_request_sql
+from pymentor_core.app.wiring import read_learner_completions
 from pymentor_core.modules.analytics_delivery.grants import authorize_grant
 from pymentor_core.modules.analytics_delivery.source_watermark import capture
 from pymentor_core.modules.identity.api.sessions import async_current_principal, session_cookie_scheme
 from pymentor_core.modules.identity.activity_policy import MOSCOW_TZ
 from pymentor_core.modules.identity.learner_statistics import LearnerReport, ProjectionReport
-from pymentor_core.adapters.sql.learner_statistics import read_completions
 
 router = APIRouter(dependencies=[Security(session_cookie_scheme)])
 
@@ -114,7 +114,7 @@ async def statistics(
             claims = authorize_grant(db, principal, purpose="self_report", course_id=course_id, target_ref=None)
             if claims["role"] != "user":
                 raise HTTPException(403, "Learner Analytics unavailable for this role")
-            return claims, read_completions(db, principal, course_id, start, now)
+            return claims, read_learner_completions(db, principal, course_id, start, now)
 
         before = await run_request_sql(request, capture_progress)
         if not getattr(request.app.state, "analytics_grant_signer", None):
