@@ -179,6 +179,7 @@ class StatisticsLesson(DTO):
     completed: bool
     completed_on: date | None
     counts_toward_statistics: bool
+    historical_completion_credit: bool = False
 
 
 class StudentStatistics(DTO):
@@ -241,6 +242,7 @@ class UnavailableCourseTrend(DTO):
 class CourseTrends(DTO):
     visits: AvailableCourseTrend | UnavailableCourseTrend
     completions: AvailableCourseTrend | UnavailableCourseTrend
+    estimated_completion_time: AvailableCourseTrend | None = None
 
 
 class CourseOverview(DTO):

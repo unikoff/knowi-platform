@@ -48,6 +48,7 @@ export function AccountWorkspace({ courseId, user, tracks, courseEntries, tracks
               title: lesson.title,
               completed: Boolean(lesson.completed),
               completedOn: lesson.completed_on ?? null,
+              historicalCredit: lesson.historical_completion_credit === true,
             })),
           };
         }),

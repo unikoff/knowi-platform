@@ -2,7 +2,7 @@ import { STUDENT_SEARCH_REQUIRED } from "../../analytics-reporting/client";
 import { coursePath } from "../scopedApi";
 
 export type Target = { id: number; account_ref: string };
-type StatisticsLesson = { id: string; title: string; completed: boolean; completed_on: string | null; counts_toward_statistics: boolean };
+type StatisticsLesson = { id: string; title: string; completed: boolean; completed_on: string | null; counts_toward_statistics: boolean; historical_completion_credit?: boolean };
 type StatisticsBlock = { id: string; title: string; completed: number; total: number; lesson_ids: string[] };
 type StatisticsTrack = { id: string; title: string; lessons_completed: number; lessons_countable: number; blocks: StatisticsBlock[] };
 export type StatisticsCatalog = { tracks: StatisticsTrack[]; courses: Record<string, StatisticsLesson[]> };
@@ -27,6 +27,7 @@ function isTrack(value: unknown): value is StatisticsTrack {
 function isLesson(value: unknown): value is StatisticsLesson {
   return isRecord(value) && typeof value.id === "string" && typeof value.title === "string"
     && typeof value.completed === "boolean" && typeof value.counts_toward_statistics === "boolean"
+    && (value.historical_completion_credit === undefined || typeof value.historical_completion_credit === "boolean")
     && (value.completed_on === null || isDate(value.completed_on));
 }
 

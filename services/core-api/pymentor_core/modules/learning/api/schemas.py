@@ -135,6 +135,7 @@ class TracksResponse(BaseModel):
 class CatalogLessonSummaryResponse(LessonSummaryResponse):
     counts_toward_statistics: bool
     completed_on: date | None = None
+    historical_completion_credit: bool = False
 
 
 class LearningCatalogResponse(TracksResponse):

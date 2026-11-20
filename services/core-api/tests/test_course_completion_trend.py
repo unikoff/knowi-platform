@@ -22,6 +22,8 @@ def test_course_completion_trend_counts_each_current_proof_once(synthetic_engine
     ])
     with synthetic_engine.begin() as db:
         db.execute(text('CREATE TEMP TABLE users (id int PRIMARY KEY, is_admin bool, subscription_until timestamptz)'))
+        db.execute(text('CREATE TEMP TABLE account_lifecycles (user_id int PRIMARY KEY)'))
+        db.execute(text('INSERT INTO account_lifecycles VALUES (1),(2),(3)'))
         db.execute(text('''CREATE TEMP TABLE user_lesson_progress (
             user_id int, course_id text, lesson_id text, completed_at timestamptz,
             UNIQUE(course_id,user_id,lesson_id))'''))
@@ -47,6 +49,7 @@ def test_course_completion_trend_counts_each_current_proof_once(synthetic_engine
             (4,'selected','current-task','stale','2026-11-19 21:00Z')'''),
             {'marker': chapter_one_completion_task_id(marker['id']), 'revision': chapter_one_completion_revision(marker)})
         trend = reads._course_completion_trend(db, 'selected', catalog, now)
+        credited = reads._course_completion_trend(db, 'selected', catalog, now, historical_credit=True)
         other = reads._course_completion_trend(db, 'foreign', catalog, now)
         db.execute(text('DELETE FROM users WHERE id=4'))
         after_deletion = reads._course_completion_trend(db, 'selected', catalog, now)
@@ -55,6 +58,8 @@ def test_course_completion_trend_counts_each_current_proof_once(synthetic_engine
     assert len(trend['daily']) == 30
     assert trend['daily'][0]['date'] == date(2026, 10, 22)
     assert trend['daily'][-1]['date'] == date(2026, 11, 20)
+    assert credited['daily'][0]['with_subscription'] == 7_200_000
+    assert credited['daily'][-1]['without_subscription'] == 7_200_000
     assert {(row['date'], row['with_subscription'], row['without_subscription'])
             for row in trend['daily'] if row['with_subscription'] or row['without_subscription']} == {
         (date(2026, 10, 22), 1, 0),

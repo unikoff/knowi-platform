@@ -2,7 +2,7 @@ import { useId, useLayoutEffect, useRef, useState } from "react";
 import { Activity, BarChart3, BookCheck, CalendarDays, Check, ChevronDown, Flame, TrendingUp } from "lucide-react";
 import { useAccountStatistics } from "./useAccountStatistics";
 
-type CourseLessonProgress = { id: string; title: string; completed: boolean; completedOn?: string | null };
+type CourseLessonProgress = { id: string; title: string; completed: boolean; completedOn?: string | null; historicalCredit?: boolean };
 type CourseBlockProgress = {
   id: string;
   title: string;
