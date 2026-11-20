@@ -1128,13 +1128,19 @@ def test_kubectl_proxy_transmits_delete_uid_to_offline_fake_api():
                                     "--address", "127.0.0.1", "--port", str(port)],
                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         ready = False
-        for _ in range(100):
+        status = None
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            if process.poll() is not None:
+                break
             try:
-                ready = httpx.get("http://127.0.0.1:" + str(port) + "/readyz", timeout=.2, trust_env=False).status_code == 200
+                status = httpx.get("http://127.0.0.1:" + str(port) + "/readyz", timeout=.2, trust_env=False).status_code
+                ready = status == 200
                 if ready: break
             except httpx.HTTPError:
-                time.sleep(.05)
-        assert ready
+                pass
+            time.sleep(.05)
+        assert ready, f"offline kubectl proxy not ready: exit={process.poll()}, last HTTP status={status}"
         kube = bench.Kube("kubectl", config, "fake", bench.namespace_for(RUN))
         kube.proxy = {"process": process, "port": port, "job": SimpleNamespace(assert_listener=lambda value: None)}
         uid = str(UUID(int=9))
