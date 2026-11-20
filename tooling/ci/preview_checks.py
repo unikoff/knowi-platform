@@ -215,7 +215,7 @@ def main(group=None):
                 for index, name in enumerate(files):
                     with timed(f'HTTP {name}'):
                         pytest_checked([name], http_env, reports / f'http-{index}.xml')
-        if group in (None, 'runtime'):
+        if group is None:
             # Existing Runner/security suite remains a required failure-propagating step.
             with timed('Runner contract suite'):
                 run([sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'services/runner-pool/tests', '-v'], env)

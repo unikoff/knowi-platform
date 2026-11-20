@@ -117,41 +117,77 @@ class ReleasePlanTests(unittest.TestCase):
         self.assertFalse(result['core_checks'])
         self.assertTrue(result['web_checks'])
 
-    def test_gate_scope_scenarios(self):
+    def test_service_ownership_and_contract_boundaries(self):
         scenarios = {
-            'apps/web/src/example.css': (False, True),
-            'apps/web/public/logo.svg': (False, True),
-            'apps/web/src/features/example.ts': (True, True),
-            'services/analytics/pymentor_analytics/app.py': (False, False),
-            'services/analytics/tests/cross_service/test_contract.py': (False, False),
-            'services/core-api/pymentor_core/analytics_delivery/client.py': (True, True),
-            'services/core-api/contracts/events.json': (True, True),
-            'services/core-api/migrations/versions/new.py': (True, False),
-            'services/core-api/tests/test_api.py': (True, False),
-            'services/runner-pool/tests/test_runner.py': (True, False),
-            'courses/backend/frontend/course/Lesson.tsx': (True, True),
-            'courses/shared/backend/catalog.py': (True, True),
-            'docs/example.md': (False, False),
-            'unknown/file.txt': (True, True),
+            'apps/web/src/example.css': ('web',),
+            'apps/web/src/shared/ui/VisualHeading.tsx': ('web',),
+            'apps/web/src/features/example.ts': ('core', 'web', 'analytics'),
+            'apps/web/src/shared/api/client.ts': ('core', 'web', 'analytics'),
+            'apps/web/src/shared/api/contracts/account.ts': ('core', 'web'),
+            'apps/web/src/features/learning/api.ts': ('core', 'web', 'runner'),
+            'services/analytics/pymentor_analytics/app/telemetry.py': ('analytics',),
+            'services/analytics/pymentor_analytics/contracts/producer_v1.py': ('core', 'web', 'analytics'),
+            'services/analytics/migrations/versions/new.py': ('analytics',),
+            'services/core-api/pymentor_core/modules/notifications/policy.py': ('core',),
+            'services/core-api/pymentor_core/modules/analytics_delivery/contracts.py': ('core', 'web', 'analytics'),
+            'services/core-api/migrations/versions/new.py': ('core', 'analytics'),
+            'services/core-api/tests/test_api.py': ('core',),
+            'services/runner-pool/pool_manager.py': ('runner',),
+            'services/runner-pool/pool_service.py': ('core', 'web', 'runner'),
+            'services/runner-pool/tests/test_runner.py': ('runner',),
+            'courses/backend/frontend/course/Lesson.tsx': ('core', 'web'),
+            'courses/shared/backend/catalog.py': ('core', 'web', 'analytics'),
+            'docs/example.md': (),
+            'unknown/file.txt': rp.SERVICE_CHECKS,
         }
         for path, expected in scenarios.items():
             with self.subTest(path=path):
-                self.assertEqual(rp.check_scope(path), expected)
+                self.assertEqual(rp.classify(path).checks, expected)
 
-    def test_analytics_only_and_combined_scope_are_accumulated(self):
-        self.write('services/analytics/pymentor_analytics/app.py', 'analytics')
+    def test_web_and_analytics_changes_run_only_their_suites(self):
+        self.write('apps/web/src/shared/ui/VisualHeading.tsx', 'web')
+        self.commit('web')
+        web = self.sha()
+        self.write('services/analytics/pymentor_analytics/app/telemetry.py', 'analytics')
         self.commit('analytics')
-        result = rp.plan('pr', self.sha(), base_ref=self.published)
-        self.assertTrue(result['analytics_checks'])
-        self.assertFalse(result['core_checks'])
-        self.assertFalse(result['web_checks'])
-        self.write('services/runner-pool/tests/test_runner.py', 'runner')
-        self.write('apps/web/src/example.css', 'style')
-        self.commit('runner and style')
-        result = rp.plan('pr', self.sha(), base_ref=self.published)
+        for result, expected, builds in (
+            (rp.plan('pr', web, base_ref=self.published), {'web'}, ['frontend']),
+            (rp.plan('pr', self.sha(), base_ref=web), {'analytics'}, ['analytics']),
+            (rp.plan('push', self.sha(), self.published), {'web', 'analytics'}, ['frontend', 'analytics']),
+        ):
+            with self.subTest(builds=builds):
+                selected = {service for service in rp.SERVICE_CHECKS if result[f'{service}_checks']}
+                self.assertEqual(selected, expected)
+                self.assertEqual(set(result['check_reasons']), expected)
+                self.assertEqual(result['build'], builds)
+                self.assertFalse(result['core_rehearsal'])
+                self.assertFalse(result['analytics_rehearsal'])
+
+    def test_moving_a_contract_preserves_old_and_new_ownership(self):
+        contract = Path('services/analytics/pymentor_analytics/contracts/example.py')
+        self.write(contract, 'shared contract')
+        self.commit('shared contract')
+        base = self.sha()
+        target = Path('apps/web/src/shared/ui/example.py')
+        target.parent.mkdir(parents=True)
+        contract.rename(target)
+        self.commit('move contract')
+        result = rp.plan('pr', self.sha(), base_ref=base)
         self.assertTrue(result['core_checks'])
         self.assertTrue(result['web_checks'])
         self.assertTrue(result['analytics_checks'])
+        self.assertFalse(result['runner_checks'])
+        self.assertTrue(result['analytics_rehearsal'])
+
+    def test_runner_tests_are_isolated_without_rebuilding(self):
+        self.write('services/runner-pool/tests/test_contracts.py', 'runner')
+        self.commit('runner tests')
+        result = rp.plan('push', self.sha(), self.published)
+        self.assertTrue(result['runner_checks'])
+        self.assertFalse(result['core_checks'])
+        self.assertFalse(result['web_checks'])
+        self.assertFalse(result['analytics_checks'])
+        self.assertFalse(result['deploy'])
 
     def test_manual_or_incomplete_manifest_falls_back(self):
         self.write(rp.RELEASE, json.dumps(dict(source_sha=self.source, **self.digests)))
@@ -205,6 +241,7 @@ class ReleasePlanTests(unittest.TestCase):
             self.assertTrue(result['core_rehearsal'])
             self.assertTrue(result['core_checks'])
             self.assertTrue(result['web_checks'])
+            self.assertTrue(result['runner_checks'])
 
 
 if __name__ == '__main__':

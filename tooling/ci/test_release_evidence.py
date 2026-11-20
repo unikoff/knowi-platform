@@ -23,13 +23,13 @@ class ReleaseEvidenceTest(unittest.TestCase):
         self.output.write_text('existing=value\n', encoding='utf-8')
         self.plan = {
             'core_checks': False, 'core_rehearsal': True, 'web_checks': False,
-            'analytics_checks': True, 'analytics_rehearsal': False,
+            'analytics_checks': True, 'analytics_rehearsal': False, 'runner_checks': False,
             'build': ['core'],
             'reuse': {name: DIGEST for name in IMAGES if name != 'core'},
             'image_sources': {name: SHA if name == 'core' else OLD_SHA for name in IMAGES},
         }
         self.env = dict(os.environ, GITHUB_SHA=SHA, GITHUB_RUN_ID='123', GITHUB_OUTPUT=str(self.output),
-                        CORE_RESULT='success', WEB_RESULT='skipped', ANALYTICS_RESULT='success',
+                        CORE_RESULT='success', WEB_RESULT='skipped', RUNNER_RESULT='skipped', ANALYTICS_RESULT='success',
                         ANALYTICS_REHEARSAL_RESULT='skipped')
         for name in IMAGES:
             path = self.record_path(name)
@@ -55,12 +55,24 @@ class ReleaseEvidenceTest(unittest.TestCase):
     def test_selected_and_unselected_gates(self):
         self.assertEqual(self.run_cli('check-gates').returncode, 0)
         for variable, value in [('CORE_RESULT', 'skipped'), ('ANALYTICS_RESULT', 'failure'),
-                                ('WEB_RESULT', 'success'), ('WEB_RESULT', 'cancelled')]:
+                                ('WEB_RESULT', 'success'), ('WEB_RESULT', 'cancelled'),
+                                ('RUNNER_RESULT', 'success'), ('RUNNER_RESULT', 'failure')]:
             with self.subTest(variable=variable, value=value):
                 previous = self.env[variable]
                 self.env[variable] = value
                 self.assertNotEqual(self.run_cli('check-gates').returncode, 0)
                 self.env[variable] = previous
+        self.plan['runner_checks'] = True
+        self.env['RUNNER_RESULT'] = 'success'
+        self.assertEqual(self.run_cli('check-gates').returncode, 0)
+        for result in ('skipped', 'failure', 'cancelled', ''):
+            with self.subTest(selected_runner_result=result):
+                self.env['RUNNER_RESULT'] = result
+                self.assertNotEqual(self.run_cli('check-gates').returncode, 0)
+        self.env['RUNNER_RESULT'] = 'success'
+        self.plan['runner_checks'] = 'true'
+        self.assertNotEqual(self.run_cli('check-gates').returncode, 0)
+        self.plan['runner_checks'] = True
         self.plan['core_checks'] = 'false'
         self.assertNotEqual(self.run_cli('check-gates').returncode, 0)
 
