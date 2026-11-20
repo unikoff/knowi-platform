@@ -679,6 +679,17 @@
             }
           ],
           "title": "Completions"
+        },
+        "estimated_completion_time": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AvailableCourseTrend"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -2095,6 +2106,11 @@
         },
         "counts_toward_statistics": {
           "title": "Counts Toward Statistics",
+          "type": "boolean"
+        },
+        "historical_completion_credit": {
+          "default": false,
+          "title": "Historical Completion Credit",
           "type": "boolean"
         }
       },

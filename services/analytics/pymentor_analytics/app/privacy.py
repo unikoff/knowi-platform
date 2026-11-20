@@ -17,7 +17,7 @@ class PrivacyRuntime:
     the dedicated privacy-role process receives a deletion store. Runtime
     transactions recheck this gate before work and before committing/materializing.
     """
-    def __init__(self, client, database, *, store=None, poll_seconds=1.0):
+    def __init__(self, client, database, *, store=None, poll_seconds=1.0, recovery_permit=None):
         if not 0.05 <= poll_seconds <= 1.0:
             raise ValueError("invalid privacy poll bound")
         self.client = client
@@ -25,6 +25,7 @@ class PrivacyRuntime:
         self.store = store
         self.authority_id = client.config.authority_id
         self.poll_seconds = poll_seconds
+        self.recovery_permit = recovery_permit
         self._stop = asyncio.Event()
         self._task = None
         self._session = None
@@ -127,6 +128,7 @@ class PrivacyRuntime:
                 pass
 
     def _proof(self, applied):
+        self._check_recovery_permit()
         value = self._latest
         if (value is None or not value.is_fresh() or self._session is None
                 or self._opening_barrier is None or self._initial_hwm is None
@@ -148,9 +150,14 @@ class PrivacyRuntime:
         if not proof.permits_opening(expected_authority_id=self.authority_id):
             raise PrivacyUnavailable()
 
+    def _check_recovery_permit(self):
+        if self.recovery_permit is not None and self.recovery_permit() is not True:
+            raise PrivacyUnavailable()
+
     async def check_in_transaction(self, session):
         # Both checks matter: authority may become stale/unavailable while the
         # bounded DB statement yields. Never lock privacy_state for reading.
+        self._check_recovery_permit()
         if self._latest is None or not self._latest.is_fresh():
             raise PrivacyUnavailable()
         row = (await session.execute(text("SELECT authority_id,applied_through FROM analytics.privacy_state WHERE singleton=true"))).one_or_none()
@@ -160,6 +167,7 @@ class PrivacyRuntime:
 
     async def is_ready(self):
         try:
+            self._check_recovery_permit()
             applied = await self._read_cursor()
             if applied is None:
                 return False

@@ -1,0 +1,14 @@
+# Prepared only: no production collection, route, migration or authority is enabled.
+# Supply an immutable image and the existing resources after the recovery gates pass.
+migration:
+  revision: a014
+  enabled: false
+ingress:
+  enabled: false
+syntheticBenchmark:
+  enabled: false
+authorityServer:
+  enabled: false
+roles:
+  privacy:
+    enabled: false

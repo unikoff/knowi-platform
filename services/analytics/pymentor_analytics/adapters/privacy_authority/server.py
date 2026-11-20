@@ -101,7 +101,7 @@ async def _body(request: Request) -> bytes:
 def create_authority_app(journal: Journal, *, issuer: str, kid: str, signing_key: Ed25519PrivateKey,
                          producer_issuer: str, producer_public_keys: dict[str, bytes],
                          allowed_producers: set[str], producer_command_public_keys: dict[str, bytes],
-                         reader_secret: str) -> FastAPI:
+                         reader_secret: str, recovery_permit=None) -> FastAPI:
     TypeAdapter(Identifier).validate_python(issuer, strict=True)
     TypeAdapter(Identifier).validate_python(kid, strict=True)
     if not isinstance(signing_key, Ed25519PrivateKey) or len(_unb64(reader_secret)) != 32:
@@ -197,6 +197,11 @@ def create_authority_app(journal: Journal, *, issuer: str, kid: str, signing_key
             raise JournalError("frame exceeds bound")
         return envelope
 
+    def append_permitted(producer, control):
+        if recovery_permit is not None and recovery_permit() is not True:
+            raise JournalError("recovery is quarantined")
+        return journal.append(producer, control)
+
     @app.post("/v1/append")
     async def append(request: Request):
         if writer_requests.locked(): return _error(503)
@@ -210,7 +215,7 @@ def create_authority_app(journal: Journal, *, issuer: str, kid: str, signing_key
                     command_keys[producer.sub].verify(_unb64(data.signature),
                                                        deletion_command_bytes(producer.sub, data.nonce, data.control))
                     remember_nonce(data.nonce)
-                    status, seq = await io(journal.append, producer.sub, data.control, writing=True)
+                    status, seq = await io(append_permitted, producer.sub, data.control, writing=True)
                     issued = int(time.time())
                     receipt = {"version": 1, "kind": "append", "authority_id": journal.authority_id,
                                "issuer": issuer, "audience": "analytics-privacy-journal", "kid": kid,

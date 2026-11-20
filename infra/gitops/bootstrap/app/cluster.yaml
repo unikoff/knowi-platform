@@ -9,6 +9,6 @@ type: Opaque
 stringData:
   name: in-cluster-preview
   server: https://kubernetes.default.svc
-  namespaces: pymentor
+  namespaces: pymentor,knowi-analytics
   clusterResources: 'false'
   config: '{}'

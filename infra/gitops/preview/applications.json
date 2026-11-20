@@ -164,14 +164,37 @@
               "app": "core-api-progressive"
             },
             "annotations": {
-              "pymentor.io/source-revision": "7fdeb2e13e6ddcb92071dc936d79a4ebcd241e06",
+              "pymentor.io/source-revision": "645c38cb8799bcf6f73aadd551d86f8c2f5958be",
               "pymentor.io/ownership-check": "20261109"
             }
           },
           "spec": {
             "automountServiceAccountToken": false,
+            "volumes": [
+              {
+                "name": "analytics-core-wire",
+                "secret": {
+                  "secretName": "knowi-analytics-core-wire-s17",
+                  "defaultMode": 292
+                }
+              },
+              {
+                "name": "analytics-catalog-receipts",
+                "hostPath": {
+                  "path": "/var/lib/knowi-analytics-catalog-s17/receipts",
+                  "type": "Directory"
+                }
+              }
+            ],
             "containers": [
               {
+                "envFrom": [
+                  {
+                    "configMapRef": {
+                      "name": "knowi-analytics-core-env-s17"
+                    }
+                  }
+                ],
                 "env": [
                   {
                     "name": "PYMENTOR_REDIS_PREFIX",
@@ -235,7 +258,7 @@
                   },
                   {
                     "name": "PYMENTOR_RELEASE_REVISION",
-                    "value": "7fdeb2e13e6ddcb92071dc936d79a4ebcd241e06"
+                    "value": "645c38cb8799bcf6f73aadd551d86f8c2f5958be"
                   },
                   {
                     "name": "PYMENTOR_SMTP_HOST",
@@ -299,6 +322,18 @@
                   {
                     "containerPort": 8001,
                     "protocol": "TCP"
+                  }
+                ],
+                "volumeMounts": [
+                  {
+                    "name": "analytics-core-wire",
+                    "mountPath": "/var/run/analytics-core",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "analytics-catalog-receipts",
+                    "mountPath": "/run/analytics-catalog",
+                    "readOnly": true
                   }
                 ],
                 "readinessProbe": {
@@ -571,7 +606,7 @@
               "app": "frontend-progressive"
             },
             "annotations": {
-              "pymentor.io/source-revision": "7fdeb2e13e6ddcb92071dc936d79a4ebcd241e06",
+              "pymentor.io/source-revision": "645c38cb8799bcf6f73aadd551d86f8c2f5958be",
               "pymentor.io/ownership-check": "20261109"
             }
           },
@@ -611,7 +646,7 @@
                 "env": [
                   {
                     "name": "PYMENTOR_RELEASE_REVISION",
-                    "value": "7fdeb2e13e6ddcb92071dc936d79a4ebcd241e06"
+                    "value": "645c38cb8799bcf6f73aadd551d86f8c2f5958be"
                   }
                 ],
                 "securityContext": {

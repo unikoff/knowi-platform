@@ -9,12 +9,16 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any
 
 from pymentor_core.modules.identity.principal import Principal
 
 
 Lesson = dict[str, Any]
+
+# Completion proofs already present at the historical conversion boundary.
+BACKEND_COMPLETION_CREDIT_CUTOFF = datetime(2026, 11, 20, 17, 56, 42, tzinfo=timezone.utc)
 
 
 class CompletionError(Exception):

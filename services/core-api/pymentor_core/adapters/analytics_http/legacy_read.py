@@ -136,13 +136,14 @@ def _admin_completions(value, at, *, course=False):
 
 
 class LegacyReadClient:
-    def __init__(self, endpoint: str, *, transport=None):
+    def __init__(self, endpoint: str, *, transport=None, verify=True):
         url = urlsplit(endpoint)
         if (url.scheme not in {"http", "https"} or not url.hostname or url.username or url.password
                 or url.query or url.fragment or (url.scheme == "http" and url.hostname not in {"127.0.0.1", "localhost", "::1"})):
             raise ValueError("invalid Analytics query endpoint")
         self._endpoint = endpoint.rstrip("/")
         self._transport = transport
+        self._verify = verify
 
     async def read(self, kind: str, grant: str, *, year=None, month=None, subject_ref=None, at=None, course_id=None, deadline_seconds=1):
         if kind not in _PATHS or not isinstance(grant, str) or not grant or len(grant) > 16384:
@@ -179,7 +180,7 @@ class LegacyReadClient:
             query = "?" + urlencode(params)
         result = await request("GET", self._endpoint + _PATHS[kind] + query,
             headers={"Authorization": "Bearer " + grant, "Accept": "application/json"}, body=None,
-            deadline_seconds=deadline_seconds, max_bytes=65536, transport=self._transport)
+            deadline_seconds=deadline_seconds, max_bytes=65536, transport=self._transport, verify=self._verify)
         if result is None or result[0] != 200:
             raise LegacyReadUnavailable()
         try:

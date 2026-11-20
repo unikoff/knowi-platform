@@ -1,0 +1,87 @@
+{{- if .Values.authorityServer.enabled }}
+{{- include "analytics.guard" . }}
+{{- $a := .Values.authorityServer }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Release.Name }}-analytics-authority
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-analytics-authority
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app.kubernetes.io/name: analytics-authority, app.kubernetes.io/instance: {{ .Release.Name }}}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: analytics-authority, app.kubernetes.io/instance: {{ .Release.Name }}}
+    spec:
+      serviceAccountName: {{ .Release.Name }}-analytics-authority
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, fsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: authority
+          image: {{ printf "%s@%s" .Values.image.repository .Values.image.digest | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "-m", "pymentor_analytics.adapters.privacy_authority.production_server"]
+          args: ["serve", "--config", "/var/run/authority/config.json"{{ if .Values.runtime.hostBootRecoveryGate }}, "--host-boot-recovery-gate"{{ end }}]
+          ports: [{name: https, containerPort: {{ $a.port }}}]
+          volumeMounts:
+            - {name: config, mountPath: /var/run/authority, readOnly: true}
+            - {name: journal, mountPath: /var/lib/authority/journal}
+{{- if .Values.runtime.hostBootRecoveryGate }}
+            - {name: recovery-permit, mountPath: /var/run/analytics-recovery, readOnly: true}
+{{- end }}
+          resources:
+{{ toYaml $a.resources | indent 12 }}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          readinessProbe: {tcpSocket: {port: https}, periodSeconds: 5, timeoutSeconds: 3}
+      volumes:
+        - name: config
+          secret: {secretName: {{ $a.configSecretName | quote }}, defaultMode: 0440}
+        - name: journal
+          persistentVolumeClaim: {claimName: {{ $a.journalClaimName | quote }}}
+{{- if .Values.runtime.hostBootRecoveryGate }}
+        - name: recovery-permit
+          hostPath: {path: /run/knowi-analytics-recovery, type: Directory}
+{{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-analytics-authority
+spec:
+  type: ClusterIP
+  selector: {app.kubernetes.io/name: analytics-authority, app.kubernetes.io/instance: {{ .Release.Name }}}
+  ports: [{name: https, port: {{ $a.port }}, targetPort: https}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-analytics-authority
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: analytics-authority, app.kubernetes.io/instance: {{ .Release.Name }}}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: {matchLabels: {app.kubernetes.io/name: analytics, app.kubernetes.io/instance: {{ .Release.Name }}}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: {{ $a.coreNamespace | quote }}}}
+          podSelector:
+            matchLabels:
+{{ toYaml $a.corePodLabels | indent 14 }}
+      ports: [{protocol: TCP, port: {{ $a.port }}}]
+  egress:
+    - to:
+        - ipBlock: {cidr: {{ $a.anchorCIDR | quote }}}
+      ports: [{protocol: TCP, port: {{ $a.anchorPort }}}]
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: {{ .Values.network.dnsNamespace | quote }}}}
+          podSelector:
+            matchLabels:
+{{ toYaml .Values.network.dnsPodLabels | indent 14 }}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+{{- end }}

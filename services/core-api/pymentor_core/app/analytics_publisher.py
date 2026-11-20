@@ -87,12 +87,20 @@ def build_clients(env):
         raise ValueError("signing keys must be independent")
     producer = env["PYMENTOR_ANALYTICS_PRODUCER_ID"]
     token = lambda: signer.producer(producer)
-    transport = TransferHttp(env["PYMENTOR_ANALYTICS_TRANSFER_URL"], token)
+    from pymentor_core.adapters.analytics_http.http import client_tls
+    transfer_url = env["PYMENTOR_ANALYTICS_TRANSFER_URL"]
+    transport = TransferHttp(transfer_url, token, verify=client_tls(env, "PYMENTOR_ANALYTICS_TRANSFER", transfer_url))
     authority = AuthorityClient(endpoint=env["PYMENTOR_ANALYTICS_AUTHORITY_URL"],
         authority_id=env["PYMENTOR_ANALYTICS_AUTHORITY_ID"], issuer=env["PYMENTOR_ANALYTICS_AUTHORITY_ISSUER"],
         public_keys={env["PYMENTOR_ANALYTICS_AUTHORITY_KID"]: authority_pem},
-        producer=producer, producer_token=token, command_key=command)
+        producer=producer, producer_token=token, command_key=command, verify=authority_tls(env))
     return transport, authority
+
+
+def authority_tls(env):
+    """Require explicit mutual TLS credentials for a non-loopback authority."""
+    from pymentor_core.adapters.analytics_http.http import client_tls
+    return client_tls(env, "PYMENTOR_ANALYTICS_AUTHORITY", env["PYMENTOR_ANALYTICS_AUTHORITY_URL"])
 
 
 async def run(sessions, transport, authority, stop, *, interval=5.0):

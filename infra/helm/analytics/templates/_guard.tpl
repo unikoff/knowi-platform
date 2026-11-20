@@ -1,4 +1,37 @@
 {{- define "analytics.guard" -}}
+{{- if not (kindIs "bool" .Values.analyticsDatabaseTLS.enabled) -}}
+{{- fail "analyticsDatabaseTLS.enabled must be boolean" -}}
+{{- end -}}
+{{- if .Values.analyticsDatabaseTLS.enabled -}}
+{{- if or (ne .Values.runtime.mode "production") (not (regexMatch "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$" .Values.analyticsDatabaseTLS.caSecretName)) -}}
+{{- fail "Analytics database TLS requires production mode and a CA Secret name" -}}
+{{- end -}}
+{{- end -}}
+{{- if .Values.knowi01Staged.enabled -}}
+{{- if or (ne .Release.Namespace "knowi-analytics") (ne .Values.runtime.mode "production") (not .Values.runtime.hostBootRecoveryGate) (not .Values.authorityServer.enabled) (not .Values.privateCoreSource.enabled) (not .Values.roles.privacy.enabled) (not .Values.image.repository) (not .Values.network.databaseCIDR) -}}
+{{- fail "knowi01 staged profile requires production guards, authority, private source, privacy, image repository and exact Analytics DB address" -}}
+{{- end -}}
+{{- if or .Values.migration.enabled .Values.ingress.enabled .Values.browserCollection.enabled .Values.coreTransfer.enabled .Values.catalog.enabled .Values.activityProjection.enabled .Values.activityDay.enabled .Values.activityCourse.enabled .Values.activityBoundaryCredit.enabled -}}
+{{- fail "knowi01 staged profile must keep migration, public and user-facing paths disabled" -}}
+{{- end -}}
+{{- end -}}
+{{- if not (kindIs "bool" .Values.runtime.hostBootRecoveryGate) -}}
+{{- fail "runtime.hostBootRecoveryGate must be boolean" -}}
+{{- end -}}
+{{- if and .Values.runtime.hostBootRecoveryGate (or (ne .Values.runtime.mode "production") (not .Values.authorityServer.enabled)) -}}
+{{- fail "Host-boot recovery gate requires the production runtime and its managed authority" -}}
+{{- end -}}
+{{- if not (kindIs "bool" .Values.browserCollection.enabled) -}}
+{{- fail "browserCollection.enabled must be boolean" -}}
+{{- end -}}
+{{- if .Values.browserCollection.enabled -}}
+{{- if or (ne .Values.runtime.mode "production") (not .Values.catalog.enabled) (not .Values.roles.privacy.enabled) .Values.network.coreIngress.cidr (not .Values.network.coreIngress.namespace) (not .Values.network.coreIngress.podLabels) -}}
+{{- fail "Browser collection requires production, catalog, privacy and a selected Core namespace and Pod" -}}
+{{- end -}}
+{{- if not (and .Values.activityProjection.enabled .Values.activityDay.enabled .Values.activityCourse.enabled) -}}
+{{- fail "Browser collection requires the activity, day and course projections" -}}
+{{- end -}}
+{{- end -}}
 {{- $benchmarkNamespace := and (eq .Values.syntheticBenchmark.enabled true) (regexMatch "^knowi-analytics-bench-[0-9a-f]{32}$" .Release.Namespace) -}}
 {{- if and (ne .Release.Namespace "knowi-analytics") (not $benchmarkNamespace) -}}
 {{- fail "Analytics must be installed in the separately bootstrapped knowi-analytics namespace" -}}
@@ -95,5 +128,46 @@
 {{- end -}}
 {{- if and .Values.activityBoundaryCredit.enabled (or (not (has .Values.migration.revision (list "a013" "a014"))) (not .Values.activityCourse.enabled)) -}}
 {{- fail "Boundary credit requires a013 or a014 and course projection" -}}
+{{- end -}}
+{{- if .Values.authorityServer.enabled -}}
+{{- $a := .Values.authorityServer -}}
+{{- $anchorExact := or (regexMatch "^([0-9]{1,3}\\.){3}[0-9]{1,3}/32$" $a.anchorCIDR) (regexMatch "^[0-9A-Fa-f:]+/128$" $a.anchorCIDR) -}}
+{{- if or (ne .Values.runtime.mode "production") .Values.syntheticBenchmark.enabled .Values.fixtureCatalog.configMapName (not .Values.image.digest) (not $a.configSecretName) (not $a.journalClaimName) (ne $a.anchorBackend "postgres") (not $anchorExact) (not $a.coreNamespace) (not $a.corePodLabels) (not .Values.authorityClientTLS.secretName) -}}
+{{- fail "Authority requires an immutable image, journal claim, exact PostgreSQL anchor, private config and client TLS Secrets and explicit Core selector" -}}
+{{- end -}}
+{{- if and (eq $a.anchorCIDR .Values.network.databaseCIDR) (not .Values.runtime.hostBootRecoveryGate) -}}
+{{- fail "A shared database address requires the host-boot recovery gate" -}}
+{{- end -}}
+{{- end -}}
+{{- if not (has .Values.runtime.mode (list "synthetic" "production")) -}}
+{{- fail "runtime.mode must be synthetic or production" -}}
+{{- end -}}
+{{- if .Values.privateCoreSource.enabled -}}
+{{- $s := .Values.privateCoreSource -}}
+{{- $dbExact := or (regexMatch "^([0-9]{1,3}\\.){3}[0-9]{1,3}/32$" $s.databaseCIDR) (regexMatch "^[0-9A-Fa-f:]+/128$" $s.databaseCIDR) -}}
+{{- $dbSelector := and $s.databaseNamespace $s.databasePodLabels -}}
+{{- if or (and $s.databaseCIDR (or (not $dbExact) $s.databaseNamespace $s.databasePodLabels)) (and (not $s.databaseCIDR) (not $dbSelector)) -}}
+{{- fail "Private Core source DB egress requires either one exact IP or a namespace and non-empty Pod selector" -}}
+{{- end -}}
+{{- if or (ne .Values.runtime.mode "production") (not $s.imageRepository) (not (regexMatch "^sha256:[0-9a-f]{64}$" $s.imageDigest)) (not $s.databaseSecretName) (not $s.hmacSecretName) (not $s.databaseCASecretName) (not $s.serverTLSSecretName) (not $s.expectedHost) (not $s.expectedDatabase) (not $s.expectedUser) (not (regexMatch "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" $s.instanceId)) -}}
+{{- fail "Private Core source requires production, immutable Core image, separate Secrets, DB identity and instance UUID" -}}
+{{- end -}}
+{{- if ne (len (uniq (list $s.databaseSecretName $s.hmacSecretName $s.databaseCASecretName $s.serverTLSSecretName))) 4 -}}
+{{- fail "Private Core source DB, HMAC, DB CA and TLS Secrets must be distinct" -}}
+{{- end -}}
+{{- if or (ne .Values.coreDeletion.namespace .Release.Namespace) (ne (len .Values.coreDeletion.podLabels) 2) (ne (get .Values.coreDeletion.podLabels "app.kubernetes.io/name") "analytics-core-source") (ne (get .Values.coreDeletion.podLabels "app.kubernetes.io/instance") .Release.Name) (ne (int .Values.coreDeletion.port) (int .Values.internalTLS.port)) -}}
+{{- fail "Private Core source requires Core deletion egress to select this release source Pod and HTTPS port" -}}
+{{- end -}}
+{{- end -}}
+{{- if eq .Values.runtime.mode "production" -}}
+{{- $d := .Values.coreDeletion -}}
+{{- $tls := .Values.internalTLS -}}
+{{- if or .Values.syntheticBenchmark.enabled .Values.fixtureCatalog.configMapName .Values.ingress.enabled (not .Values.network.coreIngress.enabled) (not $tls.enabled) (not $tls.proxyImageRepository) (not (regexMatch "^sha256:[0-9a-f]{64}$" $tls.proxyImageDigest)) (not $tls.collectorSecretName) (not $tls.querySecretName) (eq $tls.collectorSecretName $tls.querySecretName) (not .Values.image.digest) (not .Values.trustManifest.configMapName) (not .Values.privacyAuthority.secretName) (not .Values.authorityClientTLS.secretName) (not $d.sourceSecretName) (not $d.statusSecretName) (not $d.relaySecretName) (not $d.tlsSecretName) (not $d.namespace) (not $d.podLabels) -}}
+{{- fail "Production requires immutable image, trust, authority, deletion source/status/relay and TLS Secrets and explicit Core selector; fixtures are forbidden" -}}
+{{- end -}}
+{{- $private := concat $secrets (list .Values.privacyAuthority.secretName $d.sourceSecretName $d.statusSecretName $d.relaySecretName) -}}
+{{- if ne (len (uniq $private)) (len $private) -}}
+{{- fail "Database, authority, deletion source, status and relay Secrets must be distinct" -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}

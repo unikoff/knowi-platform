@@ -326,7 +326,7 @@ def student_statistics(db, principal, course, user_id, reference, content, selec
     with course_scope(course):
         catalog = build_catalog_progress(db, user_id=user_id, content=content)
     track_fields = ('id', 'title', 'lessons_completed', 'lessons_countable', 'blocks')
-    lesson_fields = ('id', 'title', 'completed', 'completed_on', 'counts_toward_statistics')
+    lesson_fields = ('id', 'title', 'completed', 'completed_on', 'counts_toward_statistics', 'historical_completion_credit')
     return {
         'course_id': course,
         'user_id': user_id,
@@ -399,6 +399,7 @@ def course_overview(db, principal, course, year, month, *, include_completions=T
     unavailable = {'status': 'unavailable', 'quality': 'unknown', 'daily': []}
     # Core owns lesson and task receipts even when legacy roster summaries are offloaded.
     completions = unavailable
+    credit = None
     try:
         catalog = default_runtime().snapshot(course).catalog
     except CoursePackageError:
@@ -406,8 +407,11 @@ def course_overview(db, principal, course, year, month, *, include_completions=T
     else:
         now = db.execute(text('SELECT clock_timestamp()')).scalar_one()
         completions = _course_completion_trend(db, course, catalog, now)
+        if course == 'backend':
+            credit = _course_completion_trend(db, course, catalog, now, historical_credit=True)
     return {'course_id': course, 'period': {'year': year, 'month': month}, **dict(row),
-            'course_activity_days': None, 'course_trends': {'visits': unavailable, 'completions': completions},
+            'course_activity_days': None, 'course_trends': {'visits': unavailable, 'completions': completions,
+                                                          'estimated_completion_time': credit},
             'dashboard': _course_dashboard(db, course, include_completions=include_completions)}
 
 
@@ -445,12 +449,15 @@ _COURSE_COMPLETION_TREND = text('''
            count(*) FILTER (WHERE NOT coalesce(u.subscription_until>:now, false)) AS without_subscription
     FROM completions c
     JOIN users u ON u.id=c.user_id
-    WHERE c.completed_at BETWEEN :start AND :now AND NOT u.is_admin
+    WHERE c.completed_at BETWEEN :start AND :through AND NOT u.is_admin
+      AND (NOT :historical_credit OR EXISTS (SELECT 1 FROM account_lifecycles l WHERE l.user_id=u.id))
     GROUP BY 1
 ''')
 
 
-def _course_completion_trend(db, course, catalog, now):
+def _course_completion_trend(db, course, catalog, now, *, historical_credit=False):
+    from pymentor_core.modules.learning.complete_lesson import BACKEND_COMPLETION_CREDIT_CUTOFF
+
     countable = {lesson_id for track in catalog.get_tracks_summary() for lesson_id in track['countable_lesson_ids']}
     requirements = []
     for lesson in catalog.LESSONS:
@@ -467,13 +474,17 @@ def _course_completion_trend(db, course, catalog, now):
     # The latest receipt dates one proof, and the earliest complete proof dates the lesson.
     rows = db.execute(_COURSE_COMPLETION_TREND, {
         'course': course, 'start': start, 'now': now, 'requirements': json.dumps(requirements),
+        'through': min(now, BACKEND_COMPLETION_CREDIT_CUTOFF) if historical_credit else now,
+        'historical_credit': historical_credit,
     }).mappings()
     by_day = {row['day']: (row['with_subscription'], row['without_subscription']) for row in rows}
     daily = []
     for offset in range(30):
         day = first_day + timedelta(days=offset)
         subscribed, unsubscribed = by_day.get(day, (0, 0))
-        daily.append({'date': day, 'with_subscription': subscribed, 'without_subscription': unsubscribed})
+        multiplier = 7_200_000 if historical_credit else 1
+        daily.append({'date': day, 'with_subscription': subscribed * multiplier,
+                      'without_subscription': unsubscribed * multiplier})
     return {'status': 'available', 'quality': 'complete', 'daily': daily}
 
 

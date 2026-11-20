@@ -1,5 +1,5 @@
 import { apiRequest } from "../../shared/api/client";
-import type { ActivitySummaryResponse, ActivityVisitResponse, CalendarMonth, QuotaStatus, StudentSlot } from "../../shared/api/contracts/account";
+import type { ActivitySummaryResponse, ActivityCalendarResponse, ActivityVisitResponse, CalendarMonth, QuotaStatus, StudentSlot } from "../../shared/api/contracts/account";
 
 export function recordActivityVisit(date?: string) {
   return apiRequest<ActivityVisitResponse>("/user/activity/visit", date === undefined ? {} : { activity_date: date });
@@ -17,6 +17,10 @@ export type MeasuredActivityResponse = {
 export function getMeasuredActivity(month: CalendarMonth, courseId: string) {
   const params = new URLSearchParams({year: String(month.year), month: String(month.month), course_id: courseId});
   return apiRequest<MeasuredActivityResponse>(`/user/activity/measured?${params}`);
+}
+
+export function getActivityCalendar(month: CalendarMonth) {
+  return apiRequest<ActivityCalendarResponse>(`/user/activity?year=${month.year}&month=${month.month}`);
 }
 
 export function getActivitySummary() {

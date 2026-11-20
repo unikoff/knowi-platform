@@ -252,13 +252,41 @@ def restore_after_deletion(restored_db, restored_urls, common, roster, subject, 
                         "course_ids": ["backend"], "subject_refs": [], "global_read": False},
                        (folder / "grant.private.pem").read_bytes(), algorithm="EdDSA", headers={"kid": "g"})
     with httpx.Client(base_url="http://127.0.0.1:18156", timeout=4, trust_env=False) as http:
-        # Give the process time to observe the journal; there is no restored
-        # privacy worker yet, so the old prefix must not admit a read.
+        # Prove that this is an old prefix, rather than an unrelated outage.
+        with closing(sqlite3.connect("file:" + (folder / "journal.sqlite").as_posix() + "?mode=ro", uri=True, timeout=3)) as journal:
+            journal_tip = journal.execute("SELECT high_watermark FROM authority_meta WHERE singleton=1").fetchone()[0]
+        with psycopg.connect(restored_db["dsn"], connect_timeout=3) as conn:
+            assert conn.execute("SELECT applied_through FROM analytics.privacy_state").fetchone()[0] < journal_tip
+        # There is no restored privacy worker yet, so the old prefix must not
+        # admit reads or processing.
         time.sleep(1)
         assert query.poll() is None and http.get("/ready").status_code == 503
         blocked = http.get("/internal/analytics/v1/legacy/calendar", params={"year": 2026, "month": 11},
                            headers={"Authorization": "Bearer " + token})
         assert blocked.status_code == 503
+        # A worker using the *new* generation must also stay closed while the
+        # restored privacy prefix trails the external journal.
+        if activity_projection:
+            def work_state():
+                with psycopg.connect(restored_db["dsn"], connect_timeout=3) as conn:
+                    tables = ("activity_projection_backfill", "activity_projection_buckets",
+                              "activity_projection_day_backfill", "activity_projection_day_sources",
+                              "activity_projection_days", "processing_jobs") if day_projection else (
+                                  "activity_projection_backfill", "activity_projection_buckets", "processing_jobs")
+                    return tuple(conn.execute(sql.SQL("SELECT COALESCE(array_agg(row_to_json(t)::text ORDER BY row_to_json(t)::text), ARRAY[]::text[]) FROM analytics.{} t").format(sql.Identifier(table))).fetchone()[0] for table in tables)
+            before_barrier = work_state()
+            blocked_env = dict(common, ANALYTICS_PROCESSOR_DATABASE_URL=restored_urls["processor"],
+                               ANALYTICS_PROCESSOR_ACTIVITY_PROJECTION_ENABLED="true", ANALYTICS_ACTIVITY_PROJECTION_RUN_ID=str(new_run_id))
+            if day_projection:
+                blocked_env["ANALYTICS_PROCESSOR_ACTIVITY_DAY_WORKER_ENABLED"] = "true"
+            blocked_worker = r.spawn_owned([sys.executable, "-B", "-m", "pymentor_analytics.app.cli", "processor", "--port", "18159"],
+                                           cwd=ROOT, env=blocked_env, folder=folder, label="restored-blocked-worker", children=children, job=job, on_spawn=on_spawn)
+            r.wait_port(blocked_worker, 18159); job.assert_listener(18159)
+            time.sleep(1.2)
+            assert blocked_worker.poll() is None
+            assert httpx.get("http://127.0.0.1:18159/ready", timeout=4, trust_env=False).status_code == 503
+            assert work_state() == before_barrier
+            r.processes_stop([blocked_worker])
         privacy_env = dict(common, ANALYTICS_PRIVACY_DATABASE_URL=restored_urls["privacy"])
         privacy = r.spawn_owned([sys.executable, "-B", "-m", "pymentor_analytics.app.cli", "privacy", "--port", "18157"],
                                 cwd=ROOT, env=privacy_env, folder=folder, label="restored-privacy", children=children, job=job, on_spawn=on_spawn)
@@ -331,7 +359,9 @@ def restore_after_deletion(restored_db, restored_urls, common, roster, subject, 
             assert_no_old_bucket_or_day_claims(conn, old_run_id)
             assert conn.execute("SELECT count(*) FROM analytics.activity_projection_days").fetchone()[0] > 0
         tables = ("activity_facts", "processing_jobs", "processing_receipts", "core_transfer_entities", "core_transfer_projection")
-        for table in tables + (("core_snapshot_proofs",) if full_chain else ()) + (("activity_projection_buckets",) if activity_projection else ()) + (("activity_projection_day_sources", "activity_projection_days") if day_projection else ()):
+        revision = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+        sidecars = ("activity_course_buckets", "activity_course_days", "activity_credit_windows", "activity_credit_days") if revision == "a014" else ()
+        for table in tables + (("core_snapshot_proofs",) if full_chain else ()) + (("activity_projection_buckets",) if activity_projection else ()) + (("activity_projection_day_sources", "activity_projection_days") if day_projection else ()) + sidecars:
             assert conn.execute(sql.SQL("SELECT count(*) FROM analytics.{} WHERE subject_ref=%s").format(sql.Identifier(table)), (subject,)).fetchone()[0] == 0
     r.processes_stop([query, privacy] + ([new_worker] if activity_projection else []))
 
@@ -406,6 +436,8 @@ def main():
     parser.add_argument("--a010", action="store_true", help="include the synthetic a010 activity projection")
     parser.add_argument("--a011", action="store_true", help="include the synthetic a011 day projection")
     parser.add_argument("--a012", action="store_true", help="rehearse course projections and keep collection running during the browser hold")
+    parser.add_argument("--a014", action="store_true", help="same-schema a014 switch, rollback and logical restore privacy")
+    parser.add_argument("--rollback-read", action="store_true", help="restart Core on its legacy reader after replay and return to Analytics")
     parser.add_argument("--publisher", action="store_true", help="exercise the autonomous Core publisher on a fresh no-hold chain")
     parser.add_argument("--progress-history", action="store_true", help="verify task progress and date-only history on the synthetic chain")
     parser.add_argument("--admin-completions", action="store_true", help="check the global completion read switch on the synthetic chain")
@@ -413,7 +445,7 @@ def main():
     parser.add_argument("--publisher-image", metavar="SHA256", help="run the publisher in an exact local Linux image")
     args = parser.parse_args()
     if args.release:
-        if args.hold_seconds or args.chain or args.a010 or args.a011 or args.a012 or args.publisher or args.publisher_image or args.browser_pages or args.progress_history or args.admin_completions or args.learner_course_review:
+        if args.hold_seconds or args.chain or args.a010 or args.a011 or args.a012 or args.a014 or args.rollback_read or args.publisher or args.publisher_image or args.browser_pages or args.progress_history or args.admin_completions or args.learner_course_review:
             parser.error("hold duration applies only to --run")
         release_hold(args.release)
         return 0
@@ -423,6 +455,10 @@ def main():
         parser.error("a010 requires the full preceding chain")
     if args.a011 and not (args.chain and args.a010):
         parser.error("a011 requires --chain and --a010")
+    if args.rollback_read and not (args.chain and args.a010 and args.a011 and not args.hold_seconds):
+        parser.error("rollback-read requires --chain --a010 --a011 without browser hold")
+    if args.a014 and not (args.rollback_read and not args.a012 and not args.publisher and not args.publisher_image):
+        parser.error("a014 requires --rollback-read without a012 or publisher options")
     if args.a012 and not (args.a011 and args.learner_course_review):
         parser.error("a012 rehearsal requires --a011 and --learner-course-review")
     if args.progress_history and (not args.chain or (args.hold_seconds and not args.learner_course_review) or args.publisher_image):
@@ -514,11 +550,11 @@ def main():
         migrate_core(core_python, core_db, folder, full_chain=args.chain)
         r.install_analytics(urls, full_chain=args.chain, activity_projection=args.a010, day_projection=args.a011)
         r.install_analytics(restored_urls, full_chain=args.chain, activity_projection=args.a010, day_projection=args.a011)
-        if args.a012:
+        if args.a012 or args.a014:
             from pymentor_analytics.adapters.postgres.migrate import upgrade
             from pymentor_analytics.app.config import Settings
             for target in (urls, restored_urls):
-                upgrade(Settings(database_url=target["migrate"]), target_revision="a012")
+                upgrade(Settings(database_url=target["migrate"]), target_revision="a014" if args.a014 else "a012")
         r.verify_analytics_grants(analytics_db)
         r.verify_analytics_grants(restored_db)
         print("PASS synthetic schemas and role grants", flush=True)
@@ -758,7 +794,7 @@ def main():
             snapshot_subjects = [subject, historical_subject] if args.a010 else subject
             if args.a011:
                 snapshot_subjects.append(day_fixture[0])
-            day_revision = "a012" if args.a012 else "a011"
+            day_revision = "a014" if args.a014 else "a012" if args.a012 else "a011"
             old_snapshot = snapshot(analytics_db, snapshot_subjects, proof=True, privacy_history=True,
                                     catalog_history=True, browser=args.a010, day_projection=args.a011,
                                     run_id=projection_run if args.a011 else None, day_revision=day_revision)
@@ -791,26 +827,49 @@ def main():
             r.wait_http(processes["query"], "http://127.0.0.1:18153/ready"); job.assert_listener(18153)
             print("PASS admin profile/quota offload parity and Query outage before mutation", flush=True)
             replay_day = chain.assert_outbox_only_visits(fixture, core_db)
+            deleted_evidence = None
+            if args.rollback_read:
+                a011_checks.wait_day_ready(analytics_db, projection_run)
+                with psycopg.connect(analytics_db["dsn"], connect_timeout=3, options="-c default_transaction_read_only=on") as conn:
+                    assert conn.execute("SELECT count(*) FROM analytics.activity_projection_days WHERE subject_ref=%s", (test_student["subject_ref"],)).fetchone()[0] > 0
+                deleted_evidence = chain.delete_subject_with_proof(core_python, relay_env, fixture, core_db, analytics_db, folder, browser_payload=browser_payload, user=test_student, day_projection=True)
             r.processes_stop([processes["core"]])
             chain.replay_mirror(core_python, core_env, core_db, fixture, replay_day)
+            if args.rollback_read:
+                chain.assert_deleted_after_replay(fixture, analytics_db, folder, test_student, deleted_evidence, browser_payload)
+            if args.rollback_read:
+                processes["core"] = r.spawn_owned([str(core_python), "-B", "-m", "uvicorn", entrypoint, "--factory",
+                                                    "--host", "127.0.0.1", "--port", "18151", "--no-access-log"],
+                                                   cwd=CORE, env=core_env, folder=folder, label="core-rollback", children=children, job=job, on_spawn=on_spawn)
+                r.wait_http(processes["core"], fixture["core_url"] + "/health/ready"); job.assert_listener(18151)
+                chain.assert_legacy_rollback_read(fixture, core_db, replay_day)
+                print("PASS replayed Core rows are visible through the legacy HTTP reader", flush=True)
+                r.processes_stop([processes["core"]])
             processes["core"] = r.spawn_owned([str(core_python), "-B", "-m", "uvicorn", entrypoint, "--factory",
                                                 "--host", "127.0.0.1", "--port", "18151", "--no-access-log"],
                                                cwd=CORE, env=analytics_core_env, folder=folder, label="core-mirror", children=children, job=job, on_spawn=on_spawn)
             r.wait_http(processes["core"], fixture["core_url"] + "/health/ready"); job.assert_listener(18151)
             reconcile_outbox(core_python, relay_env, core_db)
+            if args.rollback_read:
+                r.run_child([str(core_python), "-B", str(core_fixture), "proof-refresh-student"], cwd=CORE, env=relay_env, timeout=45)
+                chain.assert_complete_query(fixture, core_db)
+                chain.assert_returned_analytics_read(fixture)
+                chain.assert_deleted_after_replay(fixture, analytics_db, folder, test_student, deleted_evidence, browser_payload)
+                print("PASS returned Analytics Query and guarded Core HTTP read", flush=True)
             print("PASS guarded outbox-only writes and bounded replay to mirror", flush=True)
-            if args.a011:
+            if args.a011 and not args.rollback_read:
                 a011_checks.wait_day_ready(analytics_db, projection_run)
                 with psycopg.connect(analytics_db["dsn"], connect_timeout=3, options="-c default_transaction_read_only=on") as conn:
                     assert conn.execute("SELECT count(*) FROM analytics.activity_projection_days WHERE subject_ref=%s", (test_student["subject_ref"],)).fetchone()[0] > 0
-            chain.delete_subject_with_proof(core_python, relay_env, fixture, core_db, analytics_db, folder, browser_payload=browser_payload, user=test_student, day_projection=args.a011)
+            if not args.rollback_read:
+                chain.delete_subject_with_proof(core_python, relay_env, fixture, core_db, analytics_db, folder, browser_payload=browser_payload, user=test_student, day_projection=args.a011)
             r.record(folder, token, state="restore_check_running", **({"restore_phase": "rebuild_pending"} if args.a011 else {}))
             restore_after_deletion(restored_db, restored_urls, common, roster, subject, folder, children, job, on_spawn,
                                    full_chain=True, activity_projection=args.a010, day_projection=args.a011, old_run_id=projection_run, new_run_id=restore_run,
                                    surviving_day=day_fixture if args.a011 else None)
             if args.a011:
                 r.record(folder, token, restore_phase="rebuild_complete")
-            print("PASS proof and bucket purge plus old snapshot journal barrier" if args.a010 else "PASS a007-a009 proof purge and old snapshot journal barrier", flush=True)
+            print("PASS logical snapshot purge and journal barrier" if args.a010 else "PASS a007-a009 proof purge and logical snapshot journal barrier", flush=True)
         else:
             r.record(folder, token, state="restore_check_running")
             restore_after_deletion(restored_db, restored_urls, common, roster, subject, folder, children, job, on_spawn)
@@ -867,7 +926,7 @@ def main():
             print("PASS admin quota rejects buffered stale response after synthetic numeric ID reuse", flush=True)
         if memory_short.is_set():
             raise RuntimeError("memory headroom fell below 1536 MiB")
-        r.record(folder, token, state="acceptance_passed")
+        r.record(folder, token, state="switch_rehearsal_passed" if args.a014 else "acceptance_passed")
         successful = True
     except Exception as exc:
         try:
@@ -922,7 +981,8 @@ def main():
                 if job is not None:
                     job.close(); r.set_job(None)
                 r.cleanup_private(folder, token)
-                print("Synthetic acceptance complete; cleaned owned databases:", core_db["name"], analytics_db["name"], restored_db["name"])
+                result = "Synthetic a014 switch and logical restore rehearsal complete" if args.a014 else "Synthetic acceptance complete"
+                print(result + "; cleaned owned databases:", core_db["name"], analytics_db["name"], restored_db["name"])
             except Exception as exc:
                 if job is not None:
                     job.close(); r.set_job(None)

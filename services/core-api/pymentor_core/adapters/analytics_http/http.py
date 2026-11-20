@@ -3,13 +3,31 @@ import asyncio
 import httpx
 
 
-async def request(method, url, *, headers, body, deadline_seconds, max_bytes, transport=None):
+def client_tls(env, prefix, endpoint):
+    """Build a verified mTLS context for a remote service, never a fallback."""
+    import ssl
+    from urllib.parse import urlsplit
+
+    url = urlsplit(endpoint)
+    values = tuple(env.get(prefix + suffix) for suffix in ("_CA_FILE", "_CLIENT_CERT_FILE", "_CLIENT_KEY_FILE"))
+    if not any(values) and url.hostname in {"127.0.0.1", "localhost", "::1"}:
+        return True
+    if not all(values) or url.scheme != "https":
+        raise ValueError("Analytics mutual TLS configuration required")
+    context = ssl.create_default_context(cafile=values[0])
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.load_cert_chain(certfile=values[1], keyfile=values[2])
+    return context
+
+
+async def request(method, url, *, headers, body, deadline_seconds, max_bytes, transport=None, verify=True,
+                  include_safe_headers=False):
     if deadline_seconds <= 0 or max_bytes <= 0:
         return None
     try:
         async with asyncio.timeout(deadline_seconds):
             async with httpx.AsyncClient(trust_env=False, follow_redirects=False,
-                    timeout=httpx.Timeout(deadline_seconds), transport=transport,
+                    timeout=httpx.Timeout(deadline_seconds), transport=transport, verify=verify,
                     limits=httpx.Limits(max_connections=1, max_keepalive_connections=0)) as client:
                 async with client.stream(method, url, headers={**headers, "Accept-Encoding": "identity"}, content=body) as response:
                     if response.headers.get("content-encoding", "identity").lower() != "identity":
@@ -19,6 +37,14 @@ async def request(method, url, *, headers, body, deadline_seconds, max_bytes, tr
                         if len(chunks) + len(chunk) > max_bytes:
                             return None
                         chunks.extend(chunk)
+                    if include_safe_headers:
+                        safe = {}
+                        retry = response.headers.get("retry-after", "")
+                        if retry.isascii() and retry.isdecimal() and 1 <= len(retry) <= 6:
+                            safe["Retry-After"] = retry
+                        if response.headers.get("www-authenticate", "").lower() == "bearer":
+                            safe["WWW-Authenticate"] = "Bearer"
+                        return response.status_code, bytes(chunks), safe
                     return response.status_code, bytes(chunks)
     except (TimeoutError, httpx.HTTPError, ValueError):
         return None

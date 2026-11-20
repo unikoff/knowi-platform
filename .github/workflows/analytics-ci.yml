@@ -10,6 +10,11 @@ on:
       - 'infra/gitops/analytics/**'
   workflow_dispatch:
   workflow_call:
+    inputs:
+      verify_image:
+        description: Build and verify a local image when this run has no published candidate
+        type: boolean
+        default: true
 
 permissions: {}
 
@@ -46,12 +51,38 @@ jobs:
           python -B services/analytics/tools/export_catalog.py --check
           python -B services/analytics/tools/check_profile.py
       - name: Run isolated unit, contract and lifecycle checks
-        # Live PostgreSQL/image-migration tests require the guarded local runner;
-        # they deliberately remain skipped when its explicit opt-in is absent.
         run: python -B -m pytest services/analytics/tests -q -p no:cacheprovider
+      - name: Exercise protected Query, deletion replay and archive restore on isolated PostgreSQL
+        shell: bash
+        env:
+          ANALYTICS_RUN_SYNTHETIC_PRIVACY_INTEGRATION: '1'
+          ANALYTICS_RUN_ACTIVITY_DAY_PROJECTION_SYNTHETIC: '1'
+          ANALYTICS_RUN_FULL_RESTORE_SYNTHETIC: '1'
+        run: |
+          set -euo pipefail
+          python -B services/analytics/tools/setup_local_postgres.py
+          archive_override="$RUNNER_TEMP/analytics-archive.compose.yaml"
+          cat > "$archive_override" <<'YAML'
+          services:
+            analytics-postgres:
+              labels:
+                knowi.scope: a014-rollback-qa
+          YAML
+          pg=(docker compose -p knowi-analytics-01a1df75 -f infra/analytics-local/compose.postgres.yaml -f "$archive_override")
+          trap '"${pg[@]}" down --volumes' EXIT
+          "${pg[@]}" up -d --wait
+          container=$("${pg[@]}" ps -q analytics-postgres)
+          export ANALYTICS_SYNTHETIC_ARCHIVE_CONTAINER
+          ANALYTICS_SYNTHETIC_ARCHIVE_CONTAINER=$(docker inspect --format '{{.Id}}' "$container")
+          python -B -m pytest -q -rs -p no:cacheprovider \
+            services/analytics/tests/privacy_authority/test_production_chain_synthetic.py::test_protected_dual_delivery_and_purge \
+            services/analytics/tests/privacy_authority/test_protected_query_http_pg.py \
+            services/analytics/tests/activity_day_projection/test_a014_full_restore_pg.py
       - name: Build isolated application image
+        if: github.event_name != 'push' || inputs.verify_image
         run: docker build -t knowi-analytics:ci services/analytics
       - name: Check all image entrypoints without network access
+        if: github.event_name != 'push' || inputs.verify_image
         run: python -B services/analytics/tools/check_image.py knowi-analytics:ci
       - name: Validate separate Helm release
         shell: bash

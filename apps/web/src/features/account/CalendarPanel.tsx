@@ -11,6 +11,9 @@ import type { AccountActivityStatus } from "./useAccountSchedule";
 
 const MEASUREMENT_STATUS_MESSAGES = {
   disabled: "Данные учебной активности по курсу пока недоступны.",
+  visits_loading: "Загружаем посещения платформы…",
+  visits: "Показаны даты посещения платформы.",
+  visits_unavailable: "Посещения платформы недоступны.",
   loading: "Загружаем данные учебной активности по курсу…",
   unavailable: "Данные учебной активности по курсу недоступны.",
   unknown: null,
@@ -46,6 +49,9 @@ export function CalendarPanel({
   const [notice, setNotice] = useState("");
   const bookingReady = !bookingLoading && !bookingError;
   const measurementMessage = MEASUREMENT_STATUS_MESSAGES[measurementStatus];
+  const isVisits = measurementStatus === "visits";
+  const showActivityLegend = isVisits || measurementStatus === "complete" || measurementStatus === "partial" || measurementStatus === "unknown";
+  const activityLabel = isVisits ? "Посещения платформы" : "Учебная активность курса";
 
   const { freeDays, myDays, completedDays, slotsByDay, freeSlotCounts } = useMemo(() => {
     const free = new Set<string>();
@@ -147,6 +153,7 @@ export function CalendarPanel({
             <CalendarMonthGrid
               month={calendarMonth}
               activityDays={activityDays}
+              activityLabel={isVisits ? "посещение платформы" : "учебная активность курса"}
               freeDays={bookingReady ? freeDays : undefined}
               freeSlotCounts={freeSlotCounts}
               bookingDays={bookingReady ? myDays : undefined}
@@ -165,7 +172,7 @@ export function CalendarPanel({
                   { marker: "is-booking", label: "Ваша запись" },
                   { marker: "is-completed", label: "Время занятия прошло" },
                 ] as const : []),
-                ...(measurementStatus !== "disabled" ? [{ marker: "is-activity", label: "Учебная активность курса" }] as const : []),
+                ...(showActivityLegend ? [{ marker: "is-activity", label: activityLabel }] as const : []),
               ]}
             />
           </div>
@@ -189,7 +196,7 @@ export function CalendarPanel({
           {selectedDay && activityDays.has(selectedDay) && (
             <div className="account-calendar__activity-time">
               <span className="account-calendar__activity-icon"><Clock size={16} aria-hidden="true" /></span>
-              <div><strong>Учебная активность курса</strong></div>
+              <div><strong>{activityLabel}</strong></div>
             </div>
           )}
 
@@ -248,7 +255,7 @@ export function CalendarPanel({
             <div className="account-calendar__empty-state">
               <CalendarDays size={21} aria-hidden="true" />
               <div><strong>{activityDays.has(selectedDay) ? "Свободных слотов нет" : "На этот день пока нет окон"}</strong>
-                <span>{activityDays.has(selectedDay) ? "Учебная активность показана выше. Выберите другой день для записи." : "Выберите другой день, чтобы посмотреть расписание."}</span></div>
+                <span>{activityDays.has(selectedDay) ? isVisits ? "Посещение платформы показано выше. Выберите другой день для записи." : "Учебная активность показана выше. Выберите другой день для записи." : "Выберите другой день, чтобы посмотреть расписание."}</span></div>
             </div>
           ) : (
             <div className="account-calendar__overview">

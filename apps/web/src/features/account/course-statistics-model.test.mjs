@@ -9,6 +9,20 @@ const module = {exports: {}};
 new Function('module', 'exports', code)(module, module.exports);
 const {moscowToday, periodDates, validateStudyRange, shiftDate, formatStudyTime, courseTimeChartScale, formatStudyDate, emptyCourseSnapshot, acceptCourseSnapshot, flattenCourseLessons, summarizeCourseTime} = module.exports;
 
+test('historical credit uses only eligible completions and keeps lifetime lessons outside the selected dates', () => {
+  const day = '2026-11-19';
+  const first = {id: 'first', completed: true, completedOn: day, historicalCredit: true};
+  const proof = module.exports.completionCreditSnapshot('backend', [day, '2026-11-20'], [
+    first, first,
+    {id: 'old', completed: true, completedOn: '2026-10-01', historicalCredit: true},
+    {id: 'unfinished', completed: false, completedOn: day, historicalCredit: true},
+    {id: 'new', completed: true, completedOn: day, historicalCredit: false},
+  ]);
+  assert.deepEqual(proof.totals, {activeMs: 7_200_000, theoryMs: 3_600_000, practiceMs: 3_600_000});
+  assert.equal(proof.days[1].activeMs, 0);
+  assert.deepEqual(proof.lessons.map(row => row.lessonId), ['first', 'old']);
+});
+
 test('custom ranges validate inclusive dates and calendar boundaries', () => {
   const today = '2025-01-31';
   assert.deepEqual(validateStudyRange('2025-01-31', '2025-01-31', today), {valid: true, days: 1});

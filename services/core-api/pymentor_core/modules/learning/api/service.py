@@ -23,6 +23,7 @@ from pymentor_core.modules.identity.principal import Principal
 from pymentor_core.modules.practice.save_progress import save_progress
 from pymentor_core.modules.practice.public_specs import public_submit_result
 from pymentor_core.modules.learning.complete_lesson import CompletionError
+from pymentor_core.modules.learning.complete_lesson import BACKEND_COMPLETION_CREDIT_CUTOFF
 from pymentor_core.modules.learning.complete_lesson import CompletionPolicy
 from pymentor_core.modules.learning.complete_lesson import CompletionWrites
 from pymentor_core.modules.learning.complete_lesson import (
@@ -116,12 +117,12 @@ def _counts_toward_statistics(lesson: dict, countable_ids: set[str]) -> bool:
     return lesson["id"] in countable_ids and not is_overview_lesson(lesson)
 
 
-def _lesson_completion_date(
+def _lesson_completion_timestamp(
     lesson: dict,
     lesson_timestamp: datetime | None,
     task_facts: dict[str, tuple[str, datetime]],
-) -> date | None:
-    """Date the earliest surviving proof using the latest of its required receipts."""
+) -> datetime | None:
+    """Use the earliest surviving proof and the latest of its required receipts."""
     proven_at: list[datetime] = []
     for lesson_required, tasks in _lesson_completion_requirements(lesson):
         timestamps: list[datetime] = []
@@ -139,7 +140,11 @@ def _lesson_completion_date(
                 # Legacy naive timestamps are stored in UTC.
                 proven_at.append(max(value if value.tzinfo else value.replace(tzinfo=timezone.utc)
                                      for value in timestamps))
-    earliest = min(proven_at, default=None)
+    return min(proven_at, default=None)
+
+
+def _lesson_completion_date(lesson, lesson_timestamp, task_facts) -> date | None:
+    earliest = _lesson_completion_timestamp(lesson, lesson_timestamp, task_facts)
     return earliest.astimezone(MOSCOW_TZ).date() if earliest is not None else None
 
 
@@ -364,14 +369,19 @@ def build_catalog_progress(db: Session, *, user_id: int | None, content=None, le
                 available, reason = lesson_access(lesson)
                 item.update(is_available=available, locked_reason=reason)
             completed = _lesson_completion_status(lesson, completed_ids, revisions)
-            completed_on = (
-                _lesson_completion_date(lesson, lesson_facts.get(lesson["id"]), task_facts)
+            completed_at = (
+                _lesson_completion_timestamp(lesson, lesson_facts.get(lesson["id"]), task_facts)
                 if completed and not is_overview_lesson(lesson) else None
             )
+            countable = _counts_toward_statistics(lesson, countable_ids)
             item.update(
                 completed=completed,
-                completed_on=completed_on,
-                counts_toward_statistics=_counts_toward_statistics(lesson, countable_ids),
+                completed_on=completed_at.astimezone(MOSCOW_TZ).date() if completed_at is not None else None,
+                counts_toward_statistics=countable,
+                historical_completion_credit=(
+                    current_course_id() == "backend" and countable and completed_at is not None
+                    and completed_at <= BACKEND_COMPLETION_CREDIT_CUTOFF
+                ),
             )
             lessons.append(item)
             block_title = str(lesson.get("module") or "Другие уроки")

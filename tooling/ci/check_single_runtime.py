@@ -39,6 +39,7 @@ RETIRED_MODULES = (
 # exact files; retired Core imports and paths are still checked everywhere.
 ANALYTICS_SQLITE_FILES = frozenset({
     "services/analytics/pymentor_analytics/adapters/privacy_authority/journal.py",
+    "services/analytics/pymentor_analytics/adapters/privacy_authority/production_journal.py",  # Independent journal and loopback-only anchor fixture.
     "services/analytics/tests/activity_projection/test_projection_report_rollups_offline.py",
     "services/analytics/tests/core_local_privacy/test_local_client.py",
     "services/analytics/tests/cross_service/chain_checks.py",
@@ -46,6 +47,7 @@ ANALYTICS_SQLITE_FILES = frozenset({
     "services/analytics/tests/cross_service/test_chain_offline.py",
     "services/analytics/tests/cross_service/test_live_http.py",
     "services/analytics/tests/privacy_authority/test_authority.py",
+    "services/analytics/tests/privacy_authority/test_production_authority.py",
     "services/analytics/tools/test_cross_service.py",
     "services/analytics/tools/legacy_preservation/runtime.py",
 })

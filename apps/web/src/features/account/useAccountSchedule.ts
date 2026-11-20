@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getActivitySummary, getMeasuredActivity, getBookingContext, getStudentSlots, getLegacyStudentSlots, bookLegacyStudentSlot, cancelLegacyStudentBooking } from "./api";
+import { getActivitySummary, getActivityCalendar, getMeasuredActivity, getBookingContext, getStudentSlots, getLegacyStudentSlots, bookLegacyStudentSlot, cancelLegacyStudentBooking } from "./api";
 import { command } from "../admin/scopedApi";
 import { ApiError } from "../../shared/api/client";
 import type { ActivitySummaryResponse, CalendarMonth, QuotaStatus, StudentSlot } from "../../shared/api/contracts/account";
@@ -7,11 +7,12 @@ import { createActivityRead } from "./activityRead";
 
 const emptyActivityDays = new Set<string>();
 const isActivityUnavailable = (error: unknown) => error instanceof ApiError && error.status === 503;
-export type AccountActivityStatus = "disabled" | "loading" | "unavailable" | "unknown" | "partial" | "complete";
+export type AccountActivityStatus = "disabled" | "loading" | "unavailable" | "unknown" | "partial" | "complete" | "visits_loading" | "visits" | "visits_unavailable";
 
 export function useAccountSchedule(userId: number | null, courseId: string, calendarMonth: CalendarMonth, actorRef: string | undefined, authority: string, measured: boolean, bookingMode: "legacy" | "scoped" | null) {
   const [activitySummary, setActivitySummary] = useState<{ scope: string; value: ActivitySummaryResponse | null } | null>(null);
   const [measurement, setMeasurement] = useState<{ scope: string; value: Awaited<ReturnType<typeof getMeasuredActivity>> | null } | null>(null);
+  const [visits, setVisits] = useState<{ scope: string; days: string[] | null } | null>(null);
   const [bookingSlots, setBookingSlots] = useState<StudentSlot[]>([]);
   const [bookingQuota, setBookingQuota] = useState<QuotaStatus | null>(null);
   const [bookingError, setBookingError] = useState("");
@@ -65,7 +66,30 @@ export function useAccountSchedule(userId: number | null, courseId: string, cale
   }, [userId, courseId, calendarMonth.year, calendarMonth.month, activityScope, measured]);
 
   const currentMeasurement = measured && userId !== null && measurement?.scope === activityScope ? measurement.value : null;
-  const measurementStatus: AccountActivityStatus = !measured ? "disabled" : !courseId || userId === null ? "unavailable"
+  const needsVisits = userId !== null && (!measured || (measurement?.scope === activityScope && !currentMeasurement));
+  useEffect(() => {
+    if (!needsVisits) return;
+    const read = createActivityRead({
+      request: () => getActivityCalendar({ year: calendarMonth.year, month: calendarMonth.month }),
+      isCurrent: () => currentActivityScope.current === activityScope,
+      isRetryable: isActivityUnavailable,
+      onSuccess: (value) => {
+        const prefix = `${calendarMonth.year}-${String(calendarMonth.month).padStart(2, "0")}-`;
+        const valid = Array.isArray(value?.days) && value.days.every(day => typeof day === "string" &&
+          /^\d{4}-\d{2}-\d{2}$/.test(day) && day.startsWith(prefix) &&
+          !Number.isNaN(Date.parse(`${day}T00:00:00Z`)) && new Date(`${day}T00:00:00Z`).toISOString().slice(0, 10) === day);
+        setVisits({ scope: activityScope, days: valid ? value.days : null });
+      },
+      onError: () => setVisits({ scope: activityScope, days: null }),
+    });
+    read.load();
+    window.addEventListener("pymentor:activity-updated", read.load);
+    return () => { read.dispose(); window.removeEventListener("pymentor:activity-updated", read.load); };
+  }, [needsVisits, userId, activityScope, calendarMonth.year, calendarMonth.month]);
+  const currentVisits = needsVisits && visits?.scope === activityScope ? visits : null;
+  const measurementStatus: AccountActivityStatus = needsVisits
+    ? !currentVisits ? "visits_loading" : currentVisits.days ? "visits" : "visits_unavailable"
+    : !measured ? "disabled" : !courseId || userId === null ? "unavailable"
     : measurement?.scope !== activityScope ? "loading" : currentMeasurement?.coverage ?? "unavailable";
   const loadBookingSlots = useCallback(async () => {
     const request = ++sequence.current;
@@ -128,7 +152,7 @@ export function useAccountSchedule(userId: number | null, courseId: string, cale
   }, [userId, courseId, actorRef, authority, legacy, bookingAvailable, loadedScope, scope, bookingGeneration, displayScope, loadBookingSlots]);
   const bookSlot = useCallback((id: number) => runCommand("book", id), [runCommand]);
   const cancelSlotBooking = useCallback((id: number) => runCommand("cancel", id), [runCommand]);
-  return { activityDays: currentMeasurement ? new Set(currentMeasurement.days) : emptyActivityDays,
+  return { activityDays: currentMeasurement ? new Set(currentMeasurement.days) : currentVisits?.days ? new Set(currentVisits.days) : emptyActivityDays,
     measurementStatus, currentMeasurement,
     activitySummary: !measured && userId !== null && activitySummary?.scope === activityScope ? activitySummary.value : null,
     bookingSlots: loadedScope === displayScope ? bookingSlots : [], bookingQuota: loadedScope === displayScope ? bookingQuota : null, bookingError: loadedScope === displayScope ? bookingError : "", bookingLoading: loadedScope !== displayScope || bookingLoading, ownerName: loadedScope === displayScope ? ownerName : null, bookSlot, cancelSlotBooking };

@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from starlette.concurrency import run_in_threadpool
 
-from pymentor_core.app.analytics_catalog import read_published_catalog
+from pymentor_core.app.analytics_catalog import read_production_catalog, read_published_catalog
 from pymentor_core.app.async_request import request_principal, run_request_sql
 from pymentor_core.modules.analytics_delivery.grants import authorize_grant
 from pymentor_core.modules.learning.access import get_lesson_access
@@ -23,13 +23,19 @@ async def analytics_catalog(request: Request, response: Response, course_id: str
     if (getattr(request.app.state, "analytics_browser_presence_required", False) is True
             and getattr(request.app.state, "analytics_legacy_read_mode", "off") == "analytics"):
         response.headers["X-Analytics-Browser-Presence-Required"] = "true"
-    if getattr(request.app.state, "analytics_local_collection", None) is not None:
+    production = getattr(request.app.state, "analytics_production_catalog", None)
+    local = getattr(request.app.state, "analytics_local_collection", None)
+    if production is not None or local is not None:
         response.headers["X-Analytics-Collection-Mode"] = "parallel"
     def metadata():
         unavailable = {"course_id": course_id, "catalog_version": None, "lesson_ids": []}
         try:
-            local = getattr(request.app.state, "analytics_local_collection", None)
-            snapshot, message = read_published_catalog(course_id, local)
+            if production is None:
+                if getattr(request.app.state, "analytics_browser_gateway", None) is not None:
+                    return unavailable
+                snapshot, message = read_published_catalog(course_id, local)
+            else:
+                snapshot, message = read_production_catalog(course_id, production)
             image = message["catalog"]
             tracks = {t["track_id"] for t in image["tracks"] if not t["tombstone"]}
             active = {l["lesson_id"] for l in image["lessons"] if not l["tombstone"] and l["track_id"] in tracks}

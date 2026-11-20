@@ -1,0 +1,103 @@
+{{- if .Values.privateCoreSource.enabled }}
+{{- include "analytics.guard" . }}
+{{- $s := .Values.privateCoreSource }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Release.Name }}-private-core-source
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-private-core-source
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: analytics-core-source, app.kubernetes.io/instance: {{ .Release.Name }}}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: analytics-core-source, app.kubernetes.io/instance: {{ .Release.Name }}}
+    spec:
+      serviceAccountName: {{ .Release.Name }}-private-core-source
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, fsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: source
+          image: {{ printf "%s@%s" $s.imageRepository $s.imageDigest | quote }}
+          command: ["uvicorn", "pymentor_core.modules.analytics_delivery.production_collection:create_app", "--factory", "--host", "127.0.0.1", "--port", "8000", "--no-proxy-headers"]
+          env:
+            - {name: PYMENTOR_ANALYTICS_PRIVATE_SOURCE_ENABLED, value: "1"}
+            - {name: PYMENTOR_ANALYTICS_PRIVATE_SOURCE_DATABASE_URL, valueFrom: {secretKeyRef: {name: {{ $s.databaseSecretName | quote }}, key: DATABASE_URL}}}
+            - {name: PYMENTOR_ANALYTICS_PRIVATE_SOURCE_EXPECTED_HOST, value: {{ $s.expectedHost | quote }}}
+            - {name: PYMENTOR_ANALYTICS_PRIVATE_SOURCE_EXPECTED_DATABASE, value: {{ $s.expectedDatabase | quote }}}
+            - {name: PYMENTOR_ANALYTICS_PRIVATE_SOURCE_EXPECTED_USER, value: {{ $s.expectedUser | quote }}}
+            - {name: PYMENTOR_ANALYTICS_PRIVATE_SOURCE_INSTANCE_ID, value: {{ $s.instanceId | quote }}}
+            - {name: PYMENTOR_ANALYTICS_PRIVATE_SOURCE_KEY_FILE, value: /var/run/source-hmac/hmac.key}
+          volumeMounts:
+            - {name: hmac, mountPath: /var/run/source-hmac, readOnly: true}
+            - {name: db-ca, mountPath: /var/run/source-db-ca, readOnly: true}
+          readinessProbe: {exec: {command: ["python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8000), timeout=2).close()"]}, periodSeconds: 5, timeoutSeconds: 3}
+          resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {cpu: 500m, memory: 256Mi}}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+        - name: internal-tls
+          image: {{ printf "%s@%s" .Values.internalTLS.proxyImageRepository .Values.internalTLS.proxyImageDigest | quote }}
+          command: ["nginx", "-c", "/etc/analytics-tls/core-source.conf", "-g", "daemon off;"]
+          ports: [{name: https, containerPort: {{ .Values.internalTLS.port }}}]
+          readinessProbe: {tcpSocket: {port: https}, periodSeconds: 5, timeoutSeconds: 3}
+          volumeMounts:
+            - {name: proxy-config, mountPath: /etc/analytics-tls, readOnly: true}
+            - {name: server-tls, mountPath: /var/run/server-tls, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+          resources: {requests: {cpu: 25m, memory: 32Mi}, limits: {cpu: 250m, memory: 128Mi}}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+      volumes:
+        - name: hmac
+          secret: {secretName: {{ $s.hmacSecretName | quote }}, defaultMode: 0440}
+        - name: db-ca
+          secret: {secretName: {{ $s.databaseCASecretName | quote }}}
+        - name: proxy-config
+          configMap: {name: {{ .Release.Name }}-analytics-internal-tls}
+        - name: server-tls
+          secret: {secretName: {{ $s.serverTLSSecretName | quote }}, defaultMode: 0440}
+        - name: tmp
+          emptyDir: {sizeLimit: 16Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-private-core-source
+spec:
+  type: ClusterIP
+  selector: {app.kubernetes.io/name: analytics-core-source, app.kubernetes.io/instance: {{ .Release.Name }}}
+  ports: [{name: https, port: {{ .Values.internalTLS.port }}, targetPort: https}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-private-core-source
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: analytics-core-source, app.kubernetes.io/instance: {{ .Release.Name }}}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: {matchLabels: {app.kubernetes.io/name: analytics, app.kubernetes.io/instance: {{ .Release.Name }}}}
+      ports: [{protocol: TCP, port: {{ .Values.internalTLS.port }}}]
+  egress:
+    - to:
+{{- if $s.databaseCIDR }}
+        - ipBlock: {cidr: {{ $s.databaseCIDR | quote }}}
+{{- else }}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: {{ $s.databaseNamespace | quote }}}}
+          podSelector:
+            matchLabels:
+{{ toYaml $s.databasePodLabels | indent 14 }}
+{{- end }}
+      ports: [{protocol: TCP, port: {{ $s.databasePort }}}]
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: {{ .Values.network.dnsNamespace | quote }}}}
+          podSelector:
+            matchLabels:
+{{ toYaml .Values.network.dnsPodLabels | indent 14 }}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+{{- end }}

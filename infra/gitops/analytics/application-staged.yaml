@@ -1,0 +1,19 @@
+# Review template only: replace targetRevision with the commit containing this
+# profile, and supply all target-specific values in the source before any sync.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: analytics
+  namespace: argocd-preview
+spec:
+  project: analytics
+  source:
+    repoURL: https://github.com/unikoff/knowi-platform.git
+    targetRevision: REPLACE_WITH_PROFILE_COMMIT_SHA
+    path: infra/helm/analytics
+    helm:
+      releaseName: analytics
+      valueFiles: [values-knowi01-staged.yaml]
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: knowi-analytics

@@ -10,7 +10,6 @@ from pathlib import Path
 import subprocess
 import sys
 import shutil
-import socket
 import tempfile
 import tarfile
 import threading
@@ -1099,7 +1098,7 @@ def test_delete_uses_pod_uid_precondition(monkeypatch):
 
 
 @pytest.mark.skipif(shutil.which("kubectl") is None, reason="kubectl client unavailable")
-def test_kubectl_proxy_transmits_delete_uid_to_offline_fake_api():
+def test_kubectl_proxy_transmits_delete_uid_to_offline_fake_api(tmp_path):
     import httpx
     class Handler(http.server.BaseHTTPRequestHandler):
         received = None
@@ -1113,28 +1112,42 @@ def test_kubectl_proxy_transmits_delete_uid_to_offline_fake_api():
             self.send_response(200); self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data)
         def log_message(self, *args): pass
-    server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    fd, config = tempfile.mkstemp(prefix="kubectl-offline-", suffix=".yaml", dir=SERVICE / "tests/benchmark")
+    config = tmp_path / "kubeconfig.yaml"
+    proxy_output = tmp_path / "kubectl-proxy.log"
     process = None
     try:
-        with open(fd, "w", encoding="utf-8", closefd=True) as stream:
-            stream.write("apiVersion: v1\nkind: Config\nclusters:\n- name: fake\n  cluster:\n    server: http://127.0.0.1:"
-                         + str(server.server_port) + "\ncontexts:\n- name: fake\n  context:\n    cluster: fake\n"
-                         "    user: fake\ncurrent-context: fake\nusers:\n- name: fake\n  user: {}\n")
-        with socket.socket() as connection:
-            connection.bind(("127.0.0.1", 0)); port = connection.getsockname()[1]
-        process = subprocess.Popen(["kubectl", "--kubeconfig", config, "--context", "fake", "proxy",
-                                    "--address", "127.0.0.1", "--port", str(port)],
-                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        config.write_text("apiVersion: v1\nkind: Config\nclusters:\n- name: fake\n  cluster:\n    server: http://127.0.0.1:"
+                          + str(server.server_port) + "\ncontexts:\n- name: fake\n  context:\n    cluster: fake\n"
+                          "    user: fake\ncurrent-context: fake\nusers:\n- name: fake\n  user: {}\n", encoding="utf-8")
+        with proxy_output.open("wb") as log:
+            process = subprocess.Popen(["kubectl", "--kubeconfig", str(config), "--context", "fake", "proxy",
+                                        "--address", "127.0.0.1", "--port", "0"],
+                                       stdout=log, stderr=subprocess.STDOUT)
+        banner = "Starting to serve on 127.0.0.1:"
+        port = None
         ready = False
-        for _ in range(100):
-            try:
-                ready = httpx.get("http://127.0.0.1:" + str(port) + "/readyz", timeout=.2, trust_env=False).status_code == 200
-                if ready: break
-            except httpx.HTTPError:
+        status = None
+        deadline = time.monotonic() + 15
+        with httpx.Client(timeout=.5, trust_env=False) as client:
+            while process.poll() is None and time.monotonic() < deadline:
+                if port is None:
+                    for line in proxy_output.read_text(encoding="utf-8").splitlines():
+                        value = line.removeprefix(banner)
+                        if line.startswith(banner) and value.isascii() and value.isdecimal() and 0 < int(value) < 65536:
+                            port = int(value)
+                            break
+                if port is not None:
+                    try:
+                        status = client.get(f"http://127.0.0.1:{port}/readyz").status_code
+                        if status == 200:
+                            ready = True
+                            break
+                    except httpx.HTTPError:
+                        pass
                 time.sleep(.05)
-        assert ready
+        assert ready, f"offline kubectl proxy not ready: exit={process.poll()}, port={port}, last HTTP status={status}"
         kube = bench.Kube("kubectl", config, "fake", bench.namespace_for(RUN))
         kube.proxy = {"process": process, "port": port, "job": SimpleNamespace(assert_listener=lambda value: None)}
         uid = str(UUID(int=9))
@@ -1145,7 +1158,6 @@ def test_kubectl_proxy_transmits_delete_uid_to_offline_fake_api():
         if process is not None:
             process.terminate(); process.wait(timeout=5)
         server.shutdown(); server.server_close()
-        Path(config).unlink()
 
 
 @pytest.mark.parametrize("a011,failure", [(False, None), (False, "install"), (False, "hostproof"),

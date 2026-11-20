@@ -12,14 +12,15 @@ type DailyTrend = { date: string } & GroupValues;
 type ChartDay = DailyTrend & { learners?: GroupValues };
 type Trend = { status: "available" | "unavailable"; quality?: "unknown" | "complete" | null; daily: DailyTrend[] };
 
-export type CourseTrends = { visits: Trend; completions: Trend };
+export type CourseTrends = { visits: Trend; completions: Trend; estimated_completion_time?: Trend | null };
 
 const trendMetrics = {
   visits: { label: "Ученики", icon: Users, title: "Уникальные посетители курса по дням", emptyMessage: "Посещений не было" },
   completions: { label: "Обучение", icon: BookOpenCheck, title: "Завершённые уроки по дням", emptyMessage: "Завершений не было" },
   studyTime: { label: "Время учеников", icon: Clock3, title: "Время занятий учеников по дням", emptyMessage: "Нет зафиксированных данных" },
+  estimated_completion_time: { label: "Условное время", icon: Clock3, title: "Условное время за завершённые занятия по дням", emptyMessage: "Нет завершённых занятий за этот период" },
 };
-const metricKeys = ["visits", "completions", "studyTime"] as const;
+const metricKeys = ["visits", "completions", "studyTime", "estimated_completion_time"] as const;
 
 const subscriptionGroups = [
   { key: "with_subscription", label: "С подпиской" },
@@ -113,13 +114,14 @@ function isPartialTotal(day: DailyTrend, mode: TrendMode) {
 
 type DayPreview = { date: string; segment?: SubscriptionGroup };
 
-function TrendChart({ daily, title, mode, emptyMessage, quality, isStudyTime }: {
+function TrendChart({ daily, title, mode, emptyMessage, quality, isStudyTime, isEstimated }: {
   daily: ChartDay[];
   title: string;
   mode: TrendMode;
   emptyMessage: string;
   quality?: Trend["quality"];
   isStudyTime: boolean;
+  isEstimated?: boolean;
 }) {
   const lastDate = daily[daily.length - 1]?.date;
   const [focusedDate, setFocusedDate] = useState(lastDate);
@@ -138,7 +140,7 @@ function TrendChart({ daily, title, mode, emptyMessage, quality, isStudyTime }: 
   const scale = getChartScale(peak);
   const hasPositive = peak !== null && peak > 0;
   const hasUnknown = daily.some(day => dailyValue(day, mode) === null || isPartialTotal(day, mode));
-  const formatValue = isStudyTime ? formatDuration : numberFormat.format;
+  const formatValue = isStudyTime || isEstimated ? formatDuration : numberFormat.format;
 
   useEffect(() => {
     if (scrollArea.current) scrollArea.current.scrollLeft = scrollArea.current.scrollWidth;
@@ -355,7 +357,7 @@ export function CourseOverviewDashboard({ trends, studyTimeContext }: { trends?:
         <div className="admin-overview__group-heading course-trend__metric-heading">
           <h2><Icon size={17} aria-hidden="true" /> {label}</h2>
           <div className="course-stats__segments course-stats__segments--small" role="group" aria-label="Показатель графика">
-            {metricKeys.map(key => (
+            {metricKeys.filter(key => key !== "estimated_completion_time" || trends?.estimated_completion_time).map(key => (
               <button type="button" key={key} aria-pressed={metric === key} aria-controls={chartId}
                 onClick={() => setMetric(key)}>{trendMetrics[key].label}</button>
             ))}
@@ -375,7 +377,7 @@ export function CourseOverviewDashboard({ trends, studyTimeContext }: { trends?:
             </div>}
           </div>
           {daily.length > 0 ? (
-            <TrendChart key={`${metric}:${mode}`} daily={daily} title={title} mode={mode} emptyMessage={emptyMessage} quality={quality} isStudyTime={isStudyTime} />
+            <TrendChart key={`${metric}:${mode}`} daily={daily} title={title} mode={mode} emptyMessage={emptyMessage} quality={quality} isStudyTime={isStudyTime} isEstimated={metric === "estimated_completion_time"} />
           ) : timeStatus === "error" ? (
             <div className="form-error" role="alert">{studyTimeMessages.error} <button className="admin-back" type="button" onClick={studyTime.retry}>Повторить</button></div>
           ) : (

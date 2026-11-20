@@ -303,6 +303,33 @@ def replay_mirror(python, env, target, fixture, replay_day):
     assert dates["2026-11-11"] is None and dates["2026-11-13"] is not None and dates[replay_day] is not None
 
 
+def assert_legacy_rollback_read(fixture, core_db, replay_day):
+    """Verify the restarted legacy reader sees the replayed Core rows over HTTP."""
+    user = fixture["users"]["student"]
+    with psycopg.connect(core_db["dsn"], connect_timeout=3, options="-c default_transaction_read_only=on") as conn:
+        assert conn.execute("SELECT mode FROM analytics_transfer_write_gate WHERE singleton=1").fetchone() == ("mirror",)
+        assert conn.execute("SELECT count(*) FROM analytics_transfer_activity_state WHERE needs_core_replay").fetchone() == (0,)
+        rows = conn.execute("SELECT activity_date::text, visited_at FROM user_activity_days WHERE user_id=%s ORDER BY activity_date", (user["id"],)).fetchall()
+    with httpx.Client(base_url=fixture["core_url"], timeout=5, trust_env=False) as client:
+        login(client, user)
+        params = {"year": 2026, "month": 11}
+        response = client.get("/api/user/activity", params=params)
+        assert response.status_code == 200 and response.headers.get("x-analytics-source") is None
+        assert response.json()["days"] == [day for day, _ in rows if day.startswith("2026-11-")]
+        assert replay_day in response.json()["days"]
+        # Negative control proves that this response actually uses Core SQL.
+        assert client.get("/api/user/activity", params=params, headers={"X-Synthetic-No-Legacy-SQL": "1"}).status_code == 500
+
+
+def assert_returned_analytics_read(fixture):
+    with httpx.Client(base_url=fixture["core_url"], timeout=5, trust_env=False) as client:
+        login(client, fixture["users"]["student"])
+        response = client.get("/api/user/activity", params={"year": 2026, "month": 11},
+                              headers={"X-Synthetic-No-Legacy-SQL": "1"})
+        assert response.status_code == 200 and response.headers.get("x-analytics-source") == "mixed"
+        assert response.headers.get("x-analytics-coverage") == "complete"
+
+
 def seed_browser_student_activity(fixture, core_db, analytics_db, relay, *, user=None):
     user = user or fixture["browser_users"]["student"]
     with httpx.Client(base_url=fixture["core_url"], timeout=4, trust_env=False) as client:
@@ -776,3 +803,26 @@ def delete_subject_with_proof(python, relay_env, fixture, core_db, analytics_db,
                                       json={"events": [browser_payload]})
                 assert late.status_code == 403
         assert admin.delete(path, headers=headers).status_code == 204
+    return event, old[1] if old is not None else None, deletion[1]
+
+
+def assert_deleted_after_replay(fixture, analytics_db, folder, user, evidence, browser_payload):
+    event, fingerprint, epoch = evidence
+    with psycopg.connect(analytics_db["dsn"], connect_timeout=3, options="-c default_transaction_read_only=on") as conn:
+        assert conn.execute("SELECT deleted,epoch FROM analytics.subject_fences WHERE subject_ref=%s", (user["subject_ref"],)).fetchone() == (True, epoch)
+        revision = conn.execute("SELECT version_num FROM public.alembic_version").fetchone()[0]
+        tables = ("activity_facts", "core_transfer_projection", "core_snapshot_proofs", "activity_projection_buckets", "activity_projection_days")
+        if revision == "a014":
+            tables += ("activity_course_buckets", "activity_course_days", "activity_credit_windows", "activity_credit_days")
+        for table in tables:
+            from psycopg import sql
+            assert conn.execute(sql.SQL("SELECT count(*) FROM analytics.{} WHERE subject_ref=%s").format(sql.Identifier(table)), (user["subject_ref"],)).fetchone() == (0,)
+    with httpx.Client(base_url=fixture["collector_url"], timeout=4, trust_env=False) as collector:
+        if event is not None:
+            result = collector.post("/internal/core-transfer/v1/events", headers={"Authorization": "Bearer " + producer_token(folder)},
+                                    json={"event": event, "fingerprint": fingerprint})
+            assert result.status_code == 403
+        if browser_payload is not None:
+            result = collector.post("/api/analytics/events/batch", headers={"Authorization": "Bearer " + _grant_token(folder, user["subject_ref"])},
+                                    json={"events": [browser_payload]})
+            assert result.status_code == 403

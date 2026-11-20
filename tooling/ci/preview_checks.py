@@ -1,9 +1,12 @@
 """Required PostgreSQL/Redis release checks in isolated processes."""
+import argparse
+from contextlib import contextmanager
 import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 
 ROOT = Path(__file__).resolve().parents[2]
 PG = 'postgresql+psycopg://pymentor_test:pymentor_test@127.0.0.1:57382/pymentor_test'
@@ -92,6 +95,22 @@ def updater_tests():
         assert read('release.json') == dict(source_sha=sha, core_digest=digests[0], frontend_digest=digests[1], runner_digest=digests[2], migration_digest='sha256:' + '4' * 64)
         updater.update(directory, sha, *digests)
         assert len(read('runner.json')['spec']['template']['spec']['containers'][0]['env']) == 1
+        # A Web-only release must not rewrite the Core and runner Pod templates.
+        core = dict(workload('Rollout'), metadata={'name': 'core-api-progressive'})
+        web = dict(workload('Rollout'), metadata={'name': 'frontend-progressive'})
+        write('applications.json', {'kind': 'List', 'items': [core, web]})
+        write('runner.json', dict(workload('Deployment'), metadata={'name': 'preview-pool-broker'}))
+        image_sources = dict.fromkeys(('core', 'frontend', 'runner-pool'), sha)
+        updater.update(directory, sha, *digests, image_sources=image_sources)
+        before_core, before_web = read('applications.json')['items']
+        before_runner = (directory / 'runner.json').read_bytes()
+        new_sha = 'b' * 40
+        image_sources['frontend'] = new_sha
+        updater.update(directory, new_sha, digests[0], 'sha256:' + 'c' * 64, digests[2], image_sources=image_sources)
+        after_core, after_web = read('applications.json')['items']
+        assert before_core == after_core and before_web != after_web
+        assert (directory / 'runner.json').read_bytes() == before_runner
+        assert read('release.json')['image_sources'] == image_sources
     print('Preview updater fixture tests passed', flush=True)
 
 def require_test_results(path):
@@ -109,54 +128,107 @@ def pytest_checked(files, env, report, prefix='services/core-api/tests/'):
     require_test_results(report)
 
 
-def main():
+def http_partition(files, group):
+    """Split the ordered suite exactly once across two stable shards."""
+    if group == 'http-1':
+        return files[::2]
+    if group == 'http-2':
+        return files[1::2]
+    raise ValueError(f'Unknown HTTP group: {group}')
+
+
+@contextmanager
+def timed(label):
+    start = time.monotonic()
+    status = 'passed'
+    try:
+        yield
+    except BaseException:
+        status = 'failed'
+        raise
+    finally:
+        line = f'{label}: {time.monotonic() - start:.2f}s ({status})'
+        print(line, flush=True)
+        summary = os.environ.get('GITHUB_STEP_SUMMARY')
+        if summary:
+            try:
+                with open(summary, 'a', encoding='utf-8') as output:
+                    output.write(f'- {line}\n')
+            except OSError as error:
+                print(f'Could not write timing summary: {error}', file=sys.stderr, flush=True)
+
+
+def main(group=None):
     import json
-    updater_tests()
-    run([sys.executable, '-B', '-m', 'unittest', 'tooling.ci.test_preview_checks_contract', '-v'], os.environ.copy())
-    run([sys.executable, '-B', '-m', 'unittest', '-v',
-         'tooling.ci.test_cutover_package', 'tooling.ci.test_c528_cutover_package',
-         'tooling.ci.test_c528_rollout', 'tooling.ci.test_maintenance_control'], os.environ.copy())
-    run([sys.executable, 'tooling/ci/check_single_runtime.py'], os.environ.copy())
-    run([sys.executable, 'services/core-api/tools/check_architecture.py'], os.environ.copy())
-    env = os.environ.copy()
-    for key in ('PYMENTOR_PROFILE', 'PYMENTOR_DUAL_LOCAL_TEST', 'PYMENTOR_TEST_PG_URL',
-                'PYMENTOR_TEST_REDIS_URL', 'PYMENTOR_REDIS_PREFIX', 'PYMENTOR_LOGIN_RECOVERY_KEY'):
-        env.pop(key, None)
-    env.update(PYTHONPATH=os.pathsep.join((str(ROOT / 'services/core-api'), str(ROOT))),
-               PYTHON_DOTENV_DISABLED='1', PYTHONDONTWRITEBYTECODE='1', PYMENTOR_SCHEMA_MODE='managed',
-               PYMENTOR_LOCAL_NOTIFICATIONS='0', KNOWI_PG02_INTEGRATION='1',
-               KNOWI_TEST_PG_URL=env.get('KNOWI_TEST_PG_URL', PG),
-               KNOWI_TEST_REDIS_URL=env.get('KNOWI_TEST_REDIS_URL', REDIS),
-               KNOWI_REDIS_PREFIX='preview-ci:', KNOWI_LOGIN_RECOVERY_KEY='42' * 32)
-    env['DATABASE_URL'] = env['KNOWI_TEST_PG_URL']
-    env['REDIS_URL'] = env['KNOWI_TEST_REDIS_URL']
-    if env['REDIS_URL'] != REDIS:
-        raise RuntimeError('Disposable Redis target rejected')
-    run([sys.executable, 'tooling/ci/prepare_test_databases.py'], env)
-    from redis import Redis
-    with Redis.from_url(REDIS, socket_connect_timeout=3, socket_timeout=3) as cache:
-        if not cache.ping(): raise RuntimeError('Required Redis unavailable')
-    suites = json.loads((ROOT / 'services/core-api/tests/runtime_suites.json').read_text(encoding='utf-8'))
-    with tempfile.TemporaryDirectory(prefix='core-target-ci-') as temp:
-        reports = Path(temp)
-        unit = dict(env, DATABASE_URL='postgresql+psycopg://synthetic:synthetic@127.0.0.1:9/synthetic')
-        # Unit fixtures explicitly select their own aliases and recovery keys.
-        for key in ('KNOWI_REDIS_PREFIX', 'KNOWI_LOGIN_RECOVERY_KEY'):
-            unit.pop(key, None)
-        pytest_checked(suites['unit'], unit, reports / 'unit.xml')
-        pytest_checked(['tooling/ci/test_c504_backup.py'], unit, reports / 'backup-guards.xml', prefix='')
-        pytest_checked(suites['analytics_delivery'], unit, reports / 'analytics-delivery.xml')
-        pytest_checked(suites['runtime'], env, reports / 'runtime.xml')
-        from sqlalchemy.engine import make_url
-        http_env = dict(env, DATABASE_URL=make_url(env['DATABASE_URL']).set(database='pg08_http_test').render_as_string(hide_password=False))
-        for index, name in enumerate(suites['http']):
-            pytest_checked([name], http_env, reports / f'http-{index}.xml')
-    # Existing Runner/security suite remains a required failure-propagating step.
-    run([sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'services/runner-pool/tests', '-v'], env)
+    with timed(f'Core checks group {group or "full"}'):
+        if group in (None, 'unit'):
+            updater_tests()
+            run([sys.executable, '-B', '-m', 'unittest', 'tooling.ci.test_preview_checks_contract',
+                 'tooling.ci.test_preview_shards', '-v'], os.environ.copy())
+            run([sys.executable, '-B', '-m', 'unittest', '-v',
+                 'tooling.ci.test_cutover_package', 'tooling.ci.test_c528_cutover_package',
+                 'tooling.ci.test_c528_rollout', 'tooling.ci.test_maintenance_control'], os.environ.copy())
+            run([sys.executable, 'tooling/ci/check_single_runtime.py'], os.environ.copy())
+            run([sys.executable, 'services/core-api/tools/check_architecture.py'], os.environ.copy())
+        env = os.environ.copy()
+        for key in ('PYMENTOR_PROFILE', 'PYMENTOR_DUAL_LOCAL_TEST', 'PYMENTOR_TEST_PG_URL',
+                    'PYMENTOR_TEST_REDIS_URL', 'PYMENTOR_REDIS_PREFIX', 'PYMENTOR_LOGIN_RECOVERY_KEY'):
+            env.pop(key, None)
+        env.update(PYTHONPATH=os.pathsep.join((str(ROOT / 'services/core-api'), str(ROOT))),
+                   PYTHON_DOTENV_DISABLED='1', PYTHONDONTWRITEBYTECODE='1', PYMENTOR_SCHEMA_MODE='managed',
+                   PYMENTOR_LOCAL_NOTIFICATIONS='0', KNOWI_PG02_INTEGRATION='1',
+                   KNOWI_TEST_PG_URL=env.get('KNOWI_TEST_PG_URL', PG),
+                   KNOWI_TEST_REDIS_URL=env.get('KNOWI_TEST_REDIS_URL', REDIS),
+                   KNOWI_REDIS_PREFIX='preview-ci:', KNOWI_LOGIN_RECOVERY_KEY='42' * 32)
+        env['DATABASE_URL'] = env['KNOWI_TEST_PG_URL']
+        env['REDIS_URL'] = env['KNOWI_TEST_REDIS_URL']
+        if env['REDIS_URL'] != REDIS:
+            raise RuntimeError('Disposable Redis target rejected')
+        if group != 'unit':
+            with timed('Database preparation and Redis readiness'):
+                run([sys.executable, 'tooling/ci/prepare_test_databases.py'], env)
+                from redis import Redis
+                with Redis.from_url(REDIS, socket_connect_timeout=3, socket_timeout=3) as cache:
+                    if not cache.ping(): raise RuntimeError('Required Redis unavailable')
+        suites = json.loads((ROOT / 'services/core-api/tests/runtime_suites.json').read_text(encoding='utf-8'))
+        with tempfile.TemporaryDirectory(prefix='core-target-ci-') as temp:
+            reports = Path(temp)
+            isolated = dict(env, DATABASE_URL='postgresql+psycopg://synthetic:synthetic@127.0.0.1:9/synthetic')
+            # These fixtures choose their own database aliases and recovery keys.
+            for key in ('KNOWI_REDIS_PREFIX', 'KNOWI_LOGIN_RECOVERY_KEY'):
+                isolated.pop(key, None)
+            if group in (None, 'unit'):
+                with timed('Core unit suites'):
+                    pytest_checked(suites['unit'], isolated, reports / 'unit.xml')
+                with timed('Core backup guards'):
+                    pytest_checked(['tooling/ci/test_c504_backup.py'], isolated, reports / 'backup-guards.xml', prefix='')
+            if group in (None, 'runtime'):
+                # Delivery includes PostgreSQL-backed course completion fixtures.
+                with timed('Core Analytics delivery suites'):
+                    pytest_checked(suites['analytics_delivery'], isolated, reports / 'analytics-delivery.xml')
+                with timed('Core runtime suite'):
+                    pytest_checked(suites['runtime'], env, reports / 'runtime.xml')
+            if group is None or group.startswith('http-'):
+                from sqlalchemy.engine import make_url
+                http_env = dict(env, DATABASE_URL=make_url(env['DATABASE_URL']).set(database='pg08_http_test').render_as_string(hide_password=False))
+                files = suites['http'] if group is None else http_partition(suites['http'], group)
+                for index, name in enumerate(files):
+                    with timed(f'HTTP {name}'):
+                        pytest_checked([name], http_env, reports / f'http-{index}.xml')
+        if group in (None, 'runtime'):
+            # Existing Runner/security suite remains a required failure-propagating step.
+            with timed('Runner contract suite'):
+                run([sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'services/runner-pool/tests', '-v'], env)
 
 
 if __name__ == '__main__':
-    if sys.argv[1:] == ['--updater-tests-only']:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--group', choices=('unit', 'runtime', 'http-1', 'http-2'))
+    parser.add_argument('--updater-tests-only', action='store_true')
+    args = parser.parse_args()
+    if args.updater_tests_only:
+        if args.group:
+            parser.error('--updater-tests-only cannot be combined with --group')
         updater_tests()
     else:
-        main()
+        main(args.group)

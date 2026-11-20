@@ -37,7 +37,8 @@ function dashboardCatalog({ tracks, courses: entries }: StatisticsCatalog) {
       return {
         ...block,
         ...(lessons.length > 0 && { completed: counted.filter(lesson => lesson.completed).length, total: counted.length }),
-        lessons: blockLessons.map(lesson => ({ id: lesson.id, title: lesson.title, completed: lesson.completed, completedOn: lesson.completed_on })),
+        lessons: blockLessons.map(lesson => ({ id: lesson.id, title: lesson.title, completed: lesson.completed, completedOn: lesson.completed_on,
+          historicalCredit: lesson.historical_completion_credit === true })),
       };
     });
     return {

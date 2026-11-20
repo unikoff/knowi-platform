@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import json
 import re
+import ssl
 import time
 from dataclasses import dataclass
 from urllib.parse import urlsplit
@@ -55,18 +56,33 @@ class SourceConfig:
     url: str
     instance_id: UUID
     secret: bytes
+    runtime_mode: str = "local"
+    tls_ca_file: str | None = None
+    tls_cert_file: str | None = None
+    tls_key_file: str | None = None
 
     @classmethod
     def from_json(cls, raw):
         try:
             if len(raw.encode("utf-8")) > 4096: raise ValueError
             value = json.loads(raw, object_pairs_hook=_unique)
-            if not isinstance(value, dict) or set(value) != {"url", "instance_id", "secret"}: raise ValueError
+            if not isinstance(value, dict): raise ValueError
+            mode = value.get("runtime_mode", "local")
+            if mode == "local":
+                if set(value) != {"url", "instance_id", "secret"}: raise ValueError
+            elif mode == "production":
+                if set(value) != {"url", "instance_id", "secret", "runtime_mode", "tls_ca_file", "tls_cert_file", "tls_key_file"}: raise ValueError
+                if any(not isinstance(value[k], str) or not value[k].strip() or "\x00" in value[k] for k in ("tls_ca_file", "tls_cert_file", "tls_key_file")): raise ValueError
+            else: raise ValueError
             parsed = urlsplit(value["url"])
-            if (parsed.scheme != "http" or parsed.hostname != "127.0.0.1" or parsed.port != 18041
+            if (parsed.scheme != ("https" if mode == "production" else "http") or not parsed.hostname
+                    or (mode == "local" and (parsed.hostname != "127.0.0.1" or parsed.port != 18041))
+                    or (mode == "production" and (parsed.port is None or not parsed.hostname.isascii() or "%" in parsed.hostname))
                     or parsed.path != "/api/internal/analytics/deletions" or parsed.username is not None
-                    or parsed.password is not None or parsed.query or parsed.fragment): raise ValueError
-            return cls(value["url"], _uuid(value["instance_id"]), _secret(value["secret"]))
+                    or parsed.password is not None or parsed.query or parsed.fragment
+                    or any(ord(c) <= 32 or ord(c) == 127 for c in value["url"])): raise ValueError
+            return cls(value["url"], _uuid(value["instance_id"]), _secret(value["secret"]), mode,
+                       value.get("tls_ca_file"), value.get("tls_cert_file"), value.get("tls_key_file"))
         except Exception:
             raise ValueError("invalid Core deletion source configuration") from None
 
@@ -79,6 +95,15 @@ def deletion_control(instance, subject, deleted_at):
 class CoreDeletionClient:
     def __init__(self, config):
         self.config = config
+        self._tls = None
+        if config.runtime_mode == "production":
+            try:
+                self._tls = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                self._tls.minimum_version = ssl.TLSVersion.TLSv1_2
+                self._tls.load_verify_locations(cafile=config.tls_ca_file)
+                self._tls.load_cert_chain(certfile=config.tls_cert_file, keyfile=config.tls_key_file)
+            except (OSError, ssl.SSLError, ValueError):
+                raise ValueError("invalid Core deletion TLS configuration") from None
 
     async def snapshot(self):
         nonce = uuid4()
@@ -88,9 +113,11 @@ class CoreDeletionClient:
         started = time.monotonic()
         try:
             async with asyncio.timeout(1):
-                reader, writer = await asyncio.open_connection("127.0.0.1", 18041, limit=16 * 1024)
+                parsed = urlsplit(self.config.url)
+                options = {"ssl": self._tls, "server_hostname": parsed.hostname} if self._tls is not None else {}
+                reader, writer = await asyncio.open_connection(parsed.hostname, parsed.port, limit=16 * 1024, **options)
                 target = f"/api/internal/analytics/deletions?nonce={nonce}&instance_id={self.config.instance_id}"
-                writer.write((f"GET {target} HTTP/1.1\r\nHost: 127.0.0.1:18041\r\nX-Analytics-Request-MAC: {signature}\r\nCache-Control: no-cache, no-store\r\nConnection: close\r\n\r\n").encode("ascii"))
+                writer.write((f"GET {target} HTTP/1.1\r\nHost: {parsed.hostname}:{parsed.port}\r\nX-Analytics-Request-MAC: {signature}\r\nCache-Control: no-cache, no-store\r\nConnection: close\r\n\r\n").encode("ascii"))
                 await writer.drain()
                 header = await reader.readuntil(b"\r\n\r\n")
                 lines = header[:-4].split(b"\r\n")

@@ -106,14 +106,38 @@ export function summarizeCourseTime(snapshot: CourseTimeSnapshot): {activeDays: 
   return {activeDays, averageMs: activeDays > 0 ? snapshot.totals.activeMs / activeDays : 0};
 }
 
-export type ProgressLesson = {id: string; trackId: string; blockId: string; chapterTitle: string; blockTitle: string; title: string; completed: boolean; completedOn?: string | null};
-export function flattenCourseLessons(chapters: readonly {id: string; title: string; blocks: readonly {id: string; title: string; lessons: readonly {id: string; title: string; completed: boolean; completedOn?: string | null}[]}[]}[]): ProgressLesson[] {
+export type ProgressLesson = {id: string; trackId: string; blockId: string; chapterTitle: string; blockTitle: string; title: string; completed: boolean; completedOn?: string | null; historicalCredit?: boolean};
+export function flattenCourseLessons(chapters: readonly {id: string; title: string; blocks: readonly {id: string; title: string; lessons: readonly Pick<ProgressLesson, 'id' | 'title' | 'completed' | 'completedOn' | 'historicalCredit'>[]}[]}[]): ProgressLesson[] {
   const seen = new Set<string>();
   const result: ProgressLesson[] = [];
   for (const chapter of chapters) for (const block of chapter.blocks) for (const lesson of block.lessons) {
     if (seen.has(lesson.id)) continue;
     seen.add(lesson.id);
-    result.push({id: lesson.id, trackId: chapter.id, blockId: block.id, chapterTitle: chapter.title, blockTitle: block.title, title: lesson.title, completed: lesson.completed, completedOn: lesson.completedOn});
+    result.push({id: lesson.id, trackId: chapter.id, blockId: block.id, chapterTitle: chapter.title, blockTitle: block.title,
+      title: lesson.title, completed: lesson.completed, completedOn: lesson.completedOn,
+      ...(lesson.historicalCredit === true && {historicalCredit: true})});
   }
   return result;
+}
+
+/** Fixed completion credit is a separate series. The original completion day supplies its date. */
+export function completionCreditSnapshot(courseId: string, dates: string[], lessons: readonly ProgressLesson[]): CourseTimeSnapshot | null {
+  const credited = new Map<string, string>();
+  for (const lesson of lessons) {
+    if (lesson.completed && lesson.historicalCredit === true && lesson.completedOn) {
+      credited.set(lesson.id, lesson.completedOn);
+    }
+  }
+  if (!credited.size) return null;
+  const counts = new Map(dates.map(date => [date, 0]));
+  for (const day of credited.values()) {
+    if (counts.has(day)) counts.set(day, counts.get(day)! + 1);
+  }
+  const time = (count: number) => ({activeMs: count * 7_200_000, theoryMs: count * 3_600_000, practiceMs: count * 3_600_000});
+  return {
+    ...emptyCourseSnapshot(courseId, dates),
+    totals: time([...counts.values()].reduce((total, count) => total + count, 0)),
+    days: dates.map(date => ({date, ...time(counts.get(date)!)})),
+    lessons: [...credited.keys()].map(lessonId => ({lessonId, ...time(1)})),
+  };
 }

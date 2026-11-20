@@ -1,0 +1,74 @@
+{{- if .Values.internalTLS.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-analytics-internal-tls
+data:
+{{- range $role := list "collector" "query" }}
+  {{ $role }}.conf: |
+    worker_processes 1;
+    pid /tmp/nginx.pid;
+    error_log /dev/stderr warn;
+    events { worker_connections 256; }
+    http {
+      access_log off;
+      client_body_temp_path /tmp/client;
+      proxy_temp_path /tmp/proxy;
+      fastcgi_temp_path /tmp/fastcgi;
+      uwsgi_temp_path /tmp/uwsgi;
+      scgi_temp_path /tmp/scgi;
+      client_max_body_size 1m;
+      server {
+        listen {{ $.Values.internalTLS.port }} ssl;
+        ssl_certificate /var/run/server-tls/tls.crt;
+        ssl_certificate_key /var/run/server-tls/tls.key;
+        ssl_client_certificate /var/run/server-tls/ca.crt;
+        ssl_verify_client on;
+        ssl_protocols TLSv1.2 TLSv1.3;
+{{- if eq $role "collector" }}
+{{- if $.Values.browserCollection.enabled }}
+        location = /api/analytics/events/batch { client_max_body_size 256k; if ($request_method != POST) { return 405; } proxy_pass http://127.0.0.1:8000; }
+{{- end }}
+        location = /internal/core-transfer/v1/events { if ($request_method != POST) { return 405; } proxy_pass http://127.0.0.1:8000; }
+        location = /internal/core-transfer/v1/proofs { if ($request_method != POST) { return 405; } proxy_pass http://127.0.0.1:8000; }
+        location ~ ^/internal/core-transfer/v1/(receipts|deletions|proofs)/[A-Za-z0-9_-]+$ { if ($request_method != GET) { return 405; } proxy_pass http://127.0.0.1:8000; }
+{{- if $.Values.catalog.enabled }}
+        location = /internal/analytics/catalog/v1 { client_max_body_size 2m; if ($request_method != POST) { return 405; } proxy_pass http://127.0.0.1:8000; }
+        location ~ ^/internal/analytics/catalog/v1/receipts/[A-Za-z0-9._:-]+/sha256:[a-f0-9]+$ { if ($request_method != GET) { return 405; } proxy_pass http://127.0.0.1:8000; }
+{{- end }}
+{{- else }}
+        location ~ ^/api/analytics/reports/(activity|activity/details|measured-calendar)$ { if ($request_method != GET) { return 405; } proxy_pass http://127.0.0.1:8000; }
+        location ~ ^/api/analytics/reports/activity/(calendar|chapters|outline|outline/lifetime|outline/lifetime/student)$ { if ($request_method != POST) { return 405; } proxy_pass http://127.0.0.1:8000; }
+        location ~ ^/internal/analytics/v1/legacy/(history|calendar|summary|admin/activity|admin/completions|admin/profile|course/completions)$ { if ($request_method != GET) { return 405; } proxy_pass http://127.0.0.1:8000; }
+        location ~ ^/internal/analytics/v1/course/(visitors|study-time)$ { if ($request_method != POST) { return 405; } proxy_pass http://127.0.0.1:8000; }
+{{- end }}
+        location / { return 404; }
+      }
+    }
+{{- end }}
+{{- if .Values.privateCoreSource.enabled }}
+  core-source.conf: |
+    worker_processes 1;
+    pid /tmp/nginx.pid;
+    error_log /dev/stderr warn;
+    events { worker_connections 256; }
+    http {
+      access_log off;
+      client_body_temp_path /tmp/client;
+      proxy_temp_path /tmp/proxy;
+      fastcgi_temp_path /tmp/fastcgi;
+      uwsgi_temp_path /tmp/uwsgi;
+      scgi_temp_path /tmp/scgi;
+      server {
+        listen {{ .Values.internalTLS.port }} ssl;
+        ssl_certificate /var/run/server-tls/tls.crt;
+        ssl_certificate_key /var/run/server-tls/tls.key;
+        ssl_client_certificate /var/run/server-tls/ca.crt;
+        ssl_verify_client on;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        location = /api/internal/analytics/deletions { if ($request_method != GET) { return 405; } proxy_pass http://127.0.0.1:8000; }
+        location / { return 404; }
+      }
+    }
+{{- end }}
+{{- end }}

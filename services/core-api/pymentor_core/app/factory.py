@@ -200,6 +200,29 @@ def create_app(profile=None, *, laboratory=False):
         except (KeyError, OSError, ValueError):
             raise RuntimeError("Analytics grant signing is not configured") from None
         app.include_router(analytics_grant_router, prefix="/api")
+    from pymentor_core.app.analytics_browser_gateway import configure as configure_browser_gateway
+    app.state.analytics_browser_gateway = configure_browser_gateway(os.environ)
+    if app.state.analytics_browser_gateway is not None:
+        if not hasattr(app.state, "analytics_grant_signer"):
+            raise RuntimeError("Analytics browser gateway requires grant signing")
+        from pymentor_core.app.analytics_browser_gateway import router as analytics_browser_gateway_router
+        app.include_router(analytics_browser_gateway_router)
+    from pymentor_core.app.analytics_browser_query_gateway import configure as configure_browser_query_gateway
+    app.state.analytics_browser_query_gateway = configure_browser_query_gateway(os.environ)
+    if app.state.analytics_browser_query_gateway is not None:
+        if not hasattr(app.state, "analytics_grant_signer"):
+            raise RuntimeError("Analytics browser Query gateway requires grant signing")
+        from pymentor_core.app.analytics_browser_query_gateway import router as analytics_browser_query_gateway_router
+        app.include_router(analytics_browser_query_gateway_router)
+    from pymentor_core.app.analytics_catalog import production_binding_from_env
+    app.state.analytics_production_catalog = production_binding_from_env(os.environ)
+    if app.state.analytics_production_catalog is not None and (
+        os.environ.get("PYMENTOR_ANALYTICS_CATALOG_METADATA_ENABLED") != "1"
+        or app.state.analytics_browser_gateway is None
+        or os.environ.get("PYMENTOR_ANALYTICS_LOCAL_COLLECTION_ENABLED", "0") != "0"
+        or app.state.analytics_production_catalog.endpoint != os.environ["PYMENTOR_ANALYTICS_BROWSER_COLLECTOR_ORIGIN"]
+    ):
+        raise RuntimeError("Production catalog requires its browser Collector and exclusive metadata routing")
     if os.environ.get("PYMENTOR_ANALYTICS_CATALOG_METADATA_ENABLED") == "1":
         from pymentor_core.modules.learning.api.analytics_catalog_router import analytics_catalog_router
         app.include_router(analytics_catalog_router, prefix="/api")
@@ -240,7 +263,9 @@ def create_app(profile=None, *, laboratory=False):
             raise RuntimeError("Learner Analytics reads require grant signing")
         from pymentor_core.adapters.analytics_http.learner_read import LearnerAnalyticsClient
         try:
-            app.state.analytics_learner_client = LearnerAnalyticsClient(os.environ["PYMENTOR_ANALYTICS_QUERY_URL"])
+            from pymentor_core.adapters.analytics_http.http import client_tls
+            endpoint = os.environ["PYMENTOR_ANALYTICS_QUERY_URL"]
+            app.state.analytics_learner_client = LearnerAnalyticsClient(endpoint, verify=client_tls(os.environ, "PYMENTOR_ANALYTICS_QUERY", endpoint))
         except (KeyError, ValueError):
             raise RuntimeError("Learner Analytics query endpoint is not configured") from None
     if legacy_read_mode != "off":
@@ -248,7 +273,9 @@ def create_app(profile=None, *, laboratory=False):
             raise RuntimeError("Analytics legacy reads require grant signing")
         from pymentor_core.adapters.analytics_http.legacy_read import LegacyReadClient
         try:
-            app.state.analytics_legacy_client = LegacyReadClient(os.environ["PYMENTOR_ANALYTICS_QUERY_URL"])
+            from pymentor_core.adapters.analytics_http.http import client_tls
+            endpoint = os.environ["PYMENTOR_ANALYTICS_QUERY_URL"]
+            app.state.analytics_legacy_client = LegacyReadClient(endpoint, verify=client_tls(os.environ, "PYMENTOR_ANALYTICS_QUERY", endpoint))
         except (KeyError, ValueError):
             raise RuntimeError("Analytics legacy query endpoint is not configured") from None
         app.state.analytics_legacy_shadow = {}

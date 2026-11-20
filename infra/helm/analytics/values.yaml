@@ -4,6 +4,15 @@ image:
   digest: "" # Optional immutable manifest digest; takes precedence over tag.
   pullPolicy: IfNotPresent
 
+# Additional fail-closed checks for the staged single-VPS profile.
+knowi01Staged:
+  enabled: false
+
+# Optional production Analytics PostgreSQL server verification.
+analyticsDatabaseTLS:
+  enabled: false
+  caSecretName: "" # Secret key: ca.crt
+
 # Opt-in only for a fresh, synthetic benchmark namespace.
 syntheticBenchmark:
   enabled: false
@@ -36,6 +45,8 @@ coreTransfer:
 catalog:
   enabled: false
   namespace: ""
+browserCollection:
+  enabled: false # Prepared only; enable after restore quarantine verification.
 activityProjection:
   enabled: false
   runId: "" # Stable per dataset generation, shared by Processor and Query.
@@ -121,3 +132,61 @@ ingress:
   host: analytics.local
   entryPoint: websecure
   tlsSecretName: ""
+
+# Disabled until dedicated, independently recoverable stores and mTLS Secrets exist.
+authorityServer:
+  enabled: false
+  configSecretName: "" # Includes config.json and the referenced key/certificate files.
+  journalClaimName: "" # Pre-provisioned, initialized, non-disposable PVC.
+  anchorBackend: postgres # Config Secret must use postgres; provision independently.
+  anchorCIDR: "" # Exact address of independent, TLS-verified anchor PostgreSQL.
+  anchorPort: 5432
+  port: 57420
+  coreNamespace: ""
+  corePodLabels: {}
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 500m, memory: 256Mi}
+
+# mTLS material referenced by the authority client JSON. Never values or ConfigMap.
+authorityClientTLS:
+  secretName: ""
+
+# Production profile only wires authenticated guards; collection remains off.
+runtime:
+  mode: synthetic
+  hostBootRecoveryGate: false  # Operator-controlled volatile permit for a single-node installation.
+coreDeletion:
+  sourceSecretName: "" # key CORE_DELETION_SOURCE_JSON
+  statusSecretName: "" # key DATABASE_URL; dedicated transfer-status DB role
+  relaySecretName: "" # key CORE_DELETION_RELAY_JSON, privacy role only
+  tlsSecretName: "" # source client certificates; paths referenced by source JSON
+  namespace: ""
+  podLabels: {}
+  port: 8000
+
+# Production Core-to-Analytics mTLS, disabled until image and certificates exist.
+internalTLS:
+  enabled: false
+  proxyImageRepository: "" # Release-scanned frontend image, which contains nginx.
+  proxyImageDigest: ""
+  collectorSecretName: "" # tls.crt, tls.key, ca.crt; server SAN is Collector Service DNS.
+  querySecretName: "" # Distinct key and certificate, Query Service DNS SAN.
+  port: 8443
+
+privateCoreSource:
+  enabled: false
+  imageRepository: ""
+  imageDigest: ""
+  databaseSecretName: "" # DATABASE_URL with verify-full and sslrootcert
+  hmacSecretName: "" # key named hmac.key, 32-byte base64url without newline
+  databaseCASecretName: "" # key named ca.crt
+  serverTLSSecretName: "" # keys tls.crt, tls.key, ca.crt
+  expectedHost: ""
+  expectedDatabase: ""
+  expectedUser: ""
+  instanceId: ""
+  databaseCIDR: "" # Exact independent Core DB address.
+  databaseNamespace: "" # Alternative to databaseCIDR: namespace plus Pod labels.
+  databasePodLabels: {}
+  databasePort: 5432

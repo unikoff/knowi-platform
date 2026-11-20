@@ -97,6 +97,7 @@ export type Lesson = {
   completed?: boolean;
   counts_toward_statistics?: boolean;
   completed_on?: string | null;
+  historical_completion_credit?: boolean;
 };
 
 export type TaskTestResult = {

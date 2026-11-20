@@ -97,15 +97,21 @@
     "test_course_completed_count.py",
     "analytics_delivery/test_admin_offload.py",
     "analytics_delivery/test_bigint_upgrade.py",
+    "analytics_delivery/test_browser_gateway.py",
+    "analytics_delivery/test_browser_query_gateway.py",
     "analytics_delivery/test_delete_flow.py",
     "analytics_delivery/test_http_deadline.py",
     "analytics_delivery/test_integration.py",
+    "analytics_delivery/test_learner_statistics_projection.py",
+    "analytics_delivery/test_learner_statistics_unavailable.py",
+    "analytics_delivery/test_production_collection.py",
     "analytics_delivery/test_publisher.py",
     "analytics_delivery/test_snapshot_export.py",
     "analytics_delivery/test_snapshot_relay.py",
     "analytics_delivery/test_source_watermark.py",
     "analytics_delivery/test_transfer.py",
-    "analytics_delivery/test_worker.py"
+    "analytics_delivery/test_worker.py",
+    "test_analytics_production_catalog.py"
   ],
   "note": "Required PostgreSQL/Redis suites, including isolated Analytics delivery fixtures and the source retirement guard. Service groups require actual disposable databases and explicit integration opt-in."
 }
