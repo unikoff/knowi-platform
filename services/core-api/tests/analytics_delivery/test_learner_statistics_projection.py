@@ -9,12 +9,11 @@ os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://synthetic@127.0.0.1:
 import httpx
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from pymentor_core.adapters.analytics_http.learner_read import LearnerAnalyticsClient
 from pymentor_core.adapters.sql.learner_statistics import read_completions
-from pymentor_core.adapters.sql.models import UserLessonProgress
+from pymentor_core.adapters.sql.models import User, UserLessonProgress
 from pymentor_core.modules.identity.api import learner_analytics
 from pymentor_core.modules.identity.contracts import InvalidSession
 
@@ -31,12 +30,16 @@ def reply(status, value=None):
     return httpx.Response(status, stream=Body(json.dumps(value).encode()))
 
 
-def test_progress_reads_only_the_selected_account_course_and_interval():
-    engine = create_engine("sqlite:///:memory:")
+def test_progress_reads_only_the_selected_account_course_and_interval(synthetic_engine):
+    engine = synthetic_engine
+    User.__table__.create(engine)
     UserLessonProgress.__table__.create(engine)
     start = datetime(2026, 11, 14, tzinfo=timezone.utc)
     end = datetime(2026, 11, 21, tzinfo=timezone.utc)
     with Session(engine) as db:
+        db.add_all([User(id=uid, username=f"student-{uid}", email=f"student-{uid}@example.invalid",
+                         _password_hash="synthetic-test-only") for uid in (1, 2)])
+        db.flush()
         db.add_all([UserLessonProgress(user_id=uid, course_id=course, lesson_id=lesson, completed_at=stamp)
                     for uid, course, lesson, stamp in [
                         (1, "backend", "one", start), (1, "other", "two", start),
@@ -45,7 +48,6 @@ def test_progress_reads_only_the_selected_account_course_and_interval():
         db.commit()
         rows = read_completions(db, SimpleNamespace(user_id=1), "backend", start, end)
         assert len(rows) == 1 and rows[0][:2] == ("backend", "one")
-    engine.dispose()
 
 
 def test_statistics_projection_and_verified_history(monkeypatch):
