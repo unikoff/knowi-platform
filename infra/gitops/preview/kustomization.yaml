@@ -19,7 +19,7 @@
     {
       "name": "pymentor/frontend",
       "newName": "ghcr.io/unikoff/knowi-platform-frontend",
-      "digest": "sha256:a721f0f7cbe842c636593eaa6d546d9f2ac894c56d866ca508eac57aae6bd9be"
+      "digest": "sha256:877f2b0b593c21cace9df7a3baf8f5009d6f5e456f5d18045596129cb09e4f6f"
     },
     {
       "name": "pymentor/preview-pool",

@@ -606,7 +606,7 @@
               "app": "frontend-progressive"
             },
             "annotations": {
-              "pymentor.io/source-revision": "7f37f843724cc76b84695f31fad82f373b507495",
+              "pymentor.io/source-revision": "2867a0f0c36394fe87b074f31c677f7bd1f298a0",
               "pymentor.io/ownership-check": "20261109"
             }
           },
@@ -646,7 +646,7 @@
                 "env": [
                   {
                     "name": "PYMENTOR_RELEASE_REVISION",
-                    "value": "7f37f843724cc76b84695f31fad82f373b507495"
+                    "value": "2867a0f0c36394fe87b074f31c677f7bd1f298a0"
                   }
                 ],
                 "securityContext": {
