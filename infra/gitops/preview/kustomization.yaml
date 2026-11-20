@@ -14,17 +14,17 @@
     {
       "name": "pymentor/core-api",
       "newName": "ghcr.io/unikoff/knowi-platform-core",
-      "digest": "sha256:ecb7152c95e64d54c9b6acba315899aafa0f58a6d0516dbe7edb6ff5b9bd7912"
+      "digest": "sha256:bab41d0c1cca6c129438fb6e6e2b1b150a69c7f4c83168530e9a17c3bde36622"
     },
     {
       "name": "pymentor/frontend",
       "newName": "ghcr.io/unikoff/knowi-platform-frontend",
-      "digest": "sha256:31cf775dd7de44474b64e971b009c385f7a8104c4f88bc5732b575fa3d68aa1c"
+      "digest": "sha256:e44feef7221d4d43b2c33b1c41fb13af878f35119b6ac6704988ee8ede272154"
     },
     {
       "name": "pymentor/preview-pool",
       "newName": "ghcr.io/unikoff/knowi-platform-runner-pool",
-      "digest": "sha256:8572d24f81f0ce4a033a2ca431189ecd2191ee502415cead6768ac17fc872589"
+      "digest": "sha256:b88cc418d44f5134496eaa4e8aeed9ab218f6e456ca1053a1e2813e90afea520"
     }
   ]
 }
