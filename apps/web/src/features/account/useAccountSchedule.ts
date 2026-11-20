@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getActivitySummary, getMeasuredActivity, getBookingContext, getStudentSlots } from "./api";
+import { getActivitySummary, getMeasuredActivity, getBookingContext, getStudentSlots, getLegacyStudentSlots, bookLegacyStudentSlot, cancelLegacyStudentBooking } from "./api";
 import { command } from "../admin/scopedApi";
 import { ApiError } from "../../shared/api/client";
 import type { ActivitySummaryResponse, CalendarMonth, QuotaStatus, StudentSlot } from "../../shared/api/contracts/account";
@@ -9,7 +9,7 @@ const emptyActivityDays = new Set<string>();
 const isActivityUnavailable = (error: unknown) => error instanceof ApiError && error.status === 503;
 export type AccountActivityStatus = "disabled" | "loading" | "unavailable" | "unknown" | "partial" | "complete";
 
-export function useAccountSchedule(userId: number | null, courseId: string, calendarMonth: CalendarMonth, actorRef: string | undefined, authority: string, measured: boolean) {
+export function useAccountSchedule(userId: number | null, courseId: string, calendarMonth: CalendarMonth, actorRef: string | undefined, authority: string, measured: boolean, bookingMode: "legacy" | "scoped" | null) {
   const [activitySummary, setActivitySummary] = useState<{ scope: string; value: ActivitySummaryResponse | null } | null>(null);
   const [measurement, setMeasurement] = useState<{ scope: string; value: Awaited<ReturnType<typeof getMeasuredActivity>> | null } | null>(null);
   const [bookingSlots, setBookingSlots] = useState<StudentSlot[]>([]);
@@ -17,7 +17,15 @@ export function useAccountSchedule(userId: number | null, courseId: string, cale
   const [bookingError, setBookingError] = useState("");
   const [bookingLoading, setBookingLoading] = useState(true);
   const [loadedScope, setLoadedScope] = useState("");
-  const scope = `${userId}:${courseId}:${calendarMonth.year}:${calendarMonth.month}`;
+  const legacy = bookingMode === "legacy" && courseId === "backend";
+  const bookingAvailable = legacy || bookingMode === "scoped";
+  const scope = JSON.stringify([userId, courseId, actorRef, authority, bookingMode, calendarMonth.year, calendarMonth.month]);
+  const currentBookingScope = useRef({ scope, generation: 0 });
+  if (currentBookingScope.current.scope !== scope) {
+    currentBookingScope.current = { scope, generation: currentBookingScope.current.generation + 1 };
+  }
+  const bookingGeneration = currentBookingScope.current.generation;
+  const displayScope = JSON.stringify([scope, bookingGeneration]);
   const activityScope = JSON.stringify([userId, courseId, actorRef, authority, calendarMonth.year, calendarMonth.month, measured]);
   const currentActivityScope = useRef(activityScope);
   currentActivityScope.current = activityScope;
@@ -62,11 +70,23 @@ export function useAccountSchedule(userId: number | null, courseId: string, cale
   const loadBookingSlots = useCallback(async () => {
     const request = ++sequence.current;
     setBookingSlots([]); setBookingQuota(null); setBookingError(""); setBookingLoading(true);
-    if (userId === null) { setBookingLoading(false); return; }
+    bookings.current = new Map(); setOwnerName(null);
+    if (userId === null || !bookingAvailable) {
+      if (bookingMode === "legacy") setBookingError("Для этого курса пока нет расписания.");
+      setLoadedScope(displayScope); setBookingLoading(false); return;
+    }
+    const isCurrent = () => request === sequence.current && currentBookingScope.current.scope === scope && currentBookingScope.current.generation === bookingGeneration;
     try {
+      if (legacy) {
+        const data = await getLegacyStudentSlots(calendarMonth);
+        if (!isCurrent()) return;
+        setBookingSlots(data.slots ?? []); setBookingQuota(data.quota ?? null); setLoadedScope(displayScope);
+        return;
+      }
       const context = await getBookingContext(courseId);
+      if (!isCurrent()) return;
       const data = context.active_owner_id === null ? null : await getStudentSlots(courseId, context.active_owner_id, calendarMonth);
-      if (request !== sequence.current) return;
+      if (!isCurrent()) return;
       setOwnerName(context.active_owner_name);
       bookings.current = new Map(context.my_upcoming_bookings.map((booking) => [booking.slot_id, booking.id]));
       const slots = [...(data?.slots ?? [])];
@@ -80,26 +100,36 @@ export function useAccountSchedule(userId: number | null, courseId: string, cale
         const part = (name: string) => parts.find((item) => item.type === name)?.value ?? "";
         return { id: slot.id, date: `${part("year")}-${part("month")}-${part("day")}`, start_time: `${part("hour")}:${part("minute")}`, duration_minutes: (new Date(slot.ends_at).getTime() - date.getTime()) / 60000, status: slot.status, can_cancel: slot.can_cancel };
       }).filter((slot) => slot.date.startsWith(`${calendarMonth.year}-${String(calendarMonth.month).padStart(2, "0")}`));
-      setBookingSlots(display); setBookingQuota(data?.quota ?? null); setLoadedScope(scope);
+      setBookingSlots(display); setBookingQuota(data?.quota ?? null); setLoadedScope(displayScope);
     } catch (error) {
-      if (request === sequence.current) { setLoadedScope(scope); setBookingError(error instanceof Error ? error.message : "Расписание недоступно"); }
-    } finally { if (request === sequence.current) setBookingLoading(false); }
-  }, [userId, courseId, calendarMonth.year, calendarMonth.month, scope]);
+      if (isCurrent()) { setLoadedScope(displayScope); setBookingError(error instanceof Error ? error.message : "Расписание недоступно"); }
+    } finally { if (isCurrent()) setBookingLoading(false); }
+  }, [userId, courseId, calendarMonth.year, calendarMonth.month, scope, bookingMode, legacy, bookingAvailable, bookingGeneration, displayScope]);
 
   useEffect(() => { void loadBookingSlots(); return () => { sequence.current += 1; }; }, [loadBookingSlots]);
 
   const runCommand = useCallback(async (kind: "book" | "cancel", slotId: number) => {
+    if (currentBookingScope.current.scope !== scope || currentBookingScope.current.generation !== bookingGeneration ||
+        userId === null || !bookingAvailable || loadedScope !== displayScope) {
+      throw new Error("Расписание недоступно. Обновите страницу.");
+    }
+    const request = sequence.current;
+    if (legacy) {
+      await (kind === "book" ? bookLegacyStudentSlot(slotId) : cancelLegacyStudentBooking(slotId));
+      if (currentBookingScope.current.scope === scope && currentBookingScope.current.generation === bookingGeneration && request === sequence.current) await loadBookingSlots();
+      return;
+    }
     const bookingId = bookings.current.get(slotId);
     if (kind === "cancel" && bookingId === undefined) throw new Error("Не удалось найти запись. Обновите расписание.");
     const root = `/courses/${encodeURIComponent(courseId)}/booking`;
     const path = kind === "book" ? `${root}/slots/${slotId}/book` : `${root}/bookings/${bookingId}/cancel`;
     await command(path, undefined, undefined, actorRef, authority);
-    await loadBookingSlots();
-  }, [courseId, actorRef, authority, loadBookingSlots]);
+    if (currentBookingScope.current.scope === scope && currentBookingScope.current.generation === bookingGeneration && request === sequence.current) await loadBookingSlots();
+  }, [userId, courseId, actorRef, authority, legacy, bookingAvailable, loadedScope, scope, bookingGeneration, displayScope, loadBookingSlots]);
   const bookSlot = useCallback((id: number) => runCommand("book", id), [runCommand]);
   const cancelSlotBooking = useCallback((id: number) => runCommand("cancel", id), [runCommand]);
   return { activityDays: currentMeasurement ? new Set(currentMeasurement.days) : emptyActivityDays,
     measurementStatus, currentMeasurement,
     activitySummary: !measured && userId !== null && activitySummary?.scope === activityScope ? activitySummary.value : null,
-    bookingSlots: loadedScope === scope ? bookingSlots : [], bookingQuota: loadedScope === scope ? bookingQuota : null, bookingError: loadedScope === scope ? bookingError : "", bookingLoading: loadedScope !== scope || bookingLoading, ownerName: loadedScope === scope ? ownerName : null, bookSlot, cancelSlotBooking };
+    bookingSlots: loadedScope === displayScope ? bookingSlots : [], bookingQuota: loadedScope === displayScope ? bookingQuota : null, bookingError: loadedScope === displayScope ? bookingError : "", bookingLoading: loadedScope !== displayScope || bookingLoading, ownerName: loadedScope === displayScope ? ownerName : null, bookSlot, cancelSlotBooking };
 }

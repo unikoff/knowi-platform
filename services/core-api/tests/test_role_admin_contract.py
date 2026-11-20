@@ -122,6 +122,7 @@ def test_openapi_bindings_and_generation():
     assert api == generate()
     assert api['security'] == [{'SessionCookie': []}]
     assert '/api/courses/{course_id}/booking/context' in api['paths']
+    assert '/api/user/booking-mode' in api['paths']
     seen = set()
     for methods in api['paths'].values():
         for method, op in methods.items():
@@ -138,7 +139,7 @@ def test_openapi_bindings_and_generation():
                 assert 'X-Auth-Revision' in headers
             ref = op['responses']['200']['content']['application/json']['schema']['$ref']
             assert ref.split('/')[-1] in schema['$defs']
-    assert len(seen) == 27
+    assert len(seen) == 28
     assert '/api/admin-platform/users/{user_id}/admin-role' not in api['paths']
     assert '/api/admin-platform/courses/{course_id}/assignment' not in api['paths']
     assert '/api/admin-platform/courses/{course_id}/assignment/revoke' not in api['paths']

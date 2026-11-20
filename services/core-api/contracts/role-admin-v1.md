@@ -9,6 +9,7 @@ Paths include the `/api` prefix; a reverse-proxy prefix such as `/platform` may 
 | Method and path | Query | Request → success DTO | Allowed |
 | --- | --- | --- | --- |
 | GET `/api/user/me` | — | — → `Me` | authenticated user |
+| GET `/api/user/booking-mode` | — | — → `BookingMode` | authenticated user |
 | GET `/api/admin/courses/{course_id}/overview` | `year`, `month` | — → `CourseOverview` | course staff |
 | GET `/api/admin/courses/{course_id}/study-time` | `X-Actor-Ref`, `X-Auth-Revision` | — → `CourseStudyTime` | course staff |
 | GET `/api/admin/courses/{course_id}/roster` | `cursor`, `limit`, optional `search` and paired `year` + `month` | — → `Roster` | course staff |
@@ -89,6 +90,8 @@ An anonymized audit operation may have `reason=null` alongside redacted actor/ta
 Audit `actor_role` additionally permits `system` for operator/bootstrap automation with no human actor ID; this is an audit actor category, not a fourth assignable user role. The three account roles remain user/leader/admin.
 
 ## Bootstrap and compatibility
+
+`GET /api/user/booking-mode` exposes the current booking cutover state as `legacy` or `scoped` with `Cache-Control: no-store`. A missing cutover record returns 503. In legacy mode the primary `backend` workspace uses the legacy schedule, and platform administrators can use the legacy admin panel there. Clients keep course-scoped authorization in scoped mode. The mode signal does not grant authority or replace the transaction checks on booking writes.
 
 Leader configuration is the optional positive `leader_user_id` in each course manifest. A guarded operator dry-run/apply pins the first valid assignment to its account lifecycle and synchronizes the SQL projection. Missing, unverified, admin, duplicate, conflicting, revoked, deleted or recycled identities fail closed with a reason; an existing matching assignment can be pinned. A changed owner or incompatible future slots requires an operator migration, never an implicit transfer. `kiryukhin_nik@bk.ru` may only be resolved once read-only when preparing a production configuration; email is not runtime authorization.
 

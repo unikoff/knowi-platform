@@ -21,6 +21,10 @@ class Error(DTO):
     code: str
 
 
+class BookingMode(DTO):
+    mode: Literal['legacy', 'scoped']
+
+
 class Period(DTO):
     year: Year
     month: Month
