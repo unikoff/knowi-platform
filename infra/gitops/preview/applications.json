@@ -284,6 +284,10 @@
                     "value": "managed"
                   },
                   {
+                    "name": "KNOWI_COURSE_LEADER_IDS_JSON",
+                    "value": "{\"backend\":10,\"backend_copy\":null}"
+                  },
+                  {
                     "name": "PYTHON_DOTENV_DISABLED",
                     "value": "1"
                   }

@@ -27,6 +27,28 @@ from .packages import CourseManifest, CoursePackageError, load_course, load_regi
 _IMPORT_LOCK = RLock()
 
 
+def _leader_override(raw: str, enabled_courses: set[str]) -> dict[str, int | None]:
+    """Parse a complete deployment-specific mapping without accepting ambiguous JSON."""
+    def unique_pairs(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise CoursePackageError("duplicate course leader configuration key")
+            result[key] = value
+        return result
+
+    try:
+        mapping = json.loads(raw, object_pairs_hook=unique_pairs)
+    except (ValueError, TypeError) as exc:
+        raise CoursePackageError("invalid KNOWI_COURSE_LEADER_IDS_JSON") from exc
+    if not isinstance(mapping, dict) or set(mapping) != enabled_courses:
+        raise CoursePackageError("course leader override must cover exactly the enabled courses")
+    ids = [value for value in mapping.values() if value is not None]
+    if any(type(value) is not int or value < 1 for value in ids) or len(ids) != len(set(ids)):
+        raise CoursePackageError("course leader override IDs must be unique positive integers or null")
+    return mapping
+
+
 def _inside(root: Path, relative: str, *, directory: bool = False) -> Path:
     path = root.joinpath(*relative.split("/"))
     for candidate in (path, *path.parents):
@@ -204,8 +226,12 @@ class CourseRuntime:
 
     def __init__(self, courses_root: str | Path):
         self.registry = load_registry(courses_root)
-        self.leader_user_ids = MappingProxyType({entry.course_id: load_course(self.registry, entry.course_id).leader_user_id
-                                                 for entry in self.registry.entries.values() if entry.enabled})
+        leaders = {entry.course_id: load_course(self.registry, entry.course_id).leader_user_id
+                   for entry in self.registry.entries.values() if entry.enabled}
+        override = os.environ.get("KNOWI_COURSE_LEADER_IDS_JSON")
+        if override is not None:
+            leaders = _leader_override(override, set(leaders))
+        self.leader_user_ids = MappingProxyType(leaders)
         self._contexts: dict[str, CourseContext] = {}
         self._snapshots: dict[str, CourseSnapshot] = {}
 

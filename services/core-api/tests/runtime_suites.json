@@ -78,6 +78,7 @@
     "integration/test_role_admin_selection_redis.py",
     "integration/test_role_admin_booking_http.py",
     "integration/test_role_admin_cutover_pg.py",
+    "integration/test_role_admin_production_cutover_pg.py",
     "integration/test_role_admin_privacy_races.py",
     "integration/test_course_progress_release.py",
     "integration/test_pg02_runtime.py",
