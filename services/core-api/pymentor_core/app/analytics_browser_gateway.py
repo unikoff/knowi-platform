@@ -1,4 +1,4 @@
-"""Opt-in, bounded same-origin transport to the Analytics Collector."""
+"""Wire the public browser route to the private Analytics Collector adapter."""
 import asyncio
 import ipaddress
 import re

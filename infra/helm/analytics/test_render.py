@@ -66,7 +66,8 @@ class RenderTests(unittest.TestCase):
         on = render({**base, "browserCollection.enabled": "true"})
         self.assertEqual(on.returncode, 0, on.stderr)
         self.assertIn('ANALYTICS_COLLECTOR_REAL_COLLECTION: "true"', on.stdout)
-        self.assertIn("location = /api/analytics/events/batch", on.stdout)
+        self.assertIn("location = /api/analytics/events/batch { client_max_body_size 256k;", on.stdout)
+        self.assertIn("location = /internal/analytics/catalog/v1 { client_max_body_size 2m;", on.stdout)
         self.assertIn('ANALYTICS_PROCESSOR_BUCKET_WORKER_ENABLED: "true"', on.stdout)
         self.assertIn('ANALYTICS_PROCESSOR_GENERIC_WORKER_ENABLED: "false"', on.stdout)
         for invalid in ({"catalog.enabled": "false"}, {"roles.privacy.enabled": "false"},

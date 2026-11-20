@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from pymentor_core.app.web import configure_web
-from pymentor_core.modules.analytics_delivery import browser_gateway as gateway
+from pymentor_core.app import analytics_browser_gateway as gateway
 
 
 @pytest.mark.parametrize("origin", ["http://collector.internal", "https://localhost", "https://127.0.0.1",
