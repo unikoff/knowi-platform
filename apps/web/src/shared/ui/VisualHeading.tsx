@@ -33,3 +33,5 @@ export function VisualHeading({ kind, id, className = "", as: Tag = "div" }: {
     <span>{title}</span>
   </Tag>;
 }
+
+// CI scope verification fixture.

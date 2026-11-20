@@ -141,3 +141,5 @@ class IntakeTelemetryMiddleware:
                     self.telemetry.response(status, bytes(body))
             await send(message)
         await self.app(scope, receive, capture)
+
+# CI scope verification fixture.
