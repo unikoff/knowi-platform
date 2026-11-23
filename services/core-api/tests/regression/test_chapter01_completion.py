@@ -205,7 +205,13 @@ class ChapterOneCompletionTests(unittest.IsolatedAsyncioTestCase):
                 self.assertIn(lesson["id"], summary["countable_lesson_ids"])
                 self.assertTrue(service._lesson_completion_status(lesson, set(), {}))
             for lesson in lessons:
-                if "/block_00/" not in lesson["source_file"] and not lesson["tasks"] and not lesson.get("self_check"):
+                if "/block_00/" in lesson["source_file"] or lesson["tasks"] or lesson.get("self_check"):
+                    continue
+                if lesson.get("progress_policy", {}).get("retain_countable"):
+                    self.assertTrue(lesson["source_file"].startswith(("chapter_04/block_15/", "chapter_04/block_16/")))
+                    self.assertIn(lesson["id"], summary["countable_lesson_ids"])
+                    self.assertFalse(service._lesson_completion_status(lesson, set(), {}))
+                else:
                     self.assertNotIn(lesson["id"], summary["countable_lesson_ids"])
 
     async def test_partial_repeat_all_current_revision_and_serialized_response(self):
