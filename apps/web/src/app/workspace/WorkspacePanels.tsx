@@ -105,10 +105,13 @@ function LearningPanel({ kind, ...props }: IDockviewPanelProps & { kind: LessonP
     <p>{material.error}</p><button className="secondary-action" onClick={() => void course.ensureLesson(trackId, lessonId, true)}>Повторить загрузку</button>
   </div>;
   if (!locked && !material?.lesson) return <LessonLoading />;
+  const underRevision = courseId === "backend"
+    && /^chapter_04[\\/](?:block_15|block_16)[\\/]/.test(lesson.source_file ?? "")
+    && !lesson.self_check && !lesson.tasks?.length;
   const nextLesson = entry.lessons[entry.lessons.findIndex((item) => item.id === lessonId) + 1];
   return <article className="lesson-stage dock-lesson" aria-label={`${kind === "theory" ? "Теория" : "Практика"}: ${lesson.title}`}>
     <LessonTransition key={`${kind}:${trackId}:${lessonId}`}>{isLessonUnavailable(lesson) || (lesson.access === "registered" && !user) || (lesson.access === "subscription" && !user?.has_active_subscription) ? <LockedLessonView lesson={lesson} onRequireAuth={onRequireAuth} isGuest={!user} /> :
-      courseId === "backend" && /^chapter_04[\\/](?:block_15|block_16)[\\/]/.test(lesson.source_file ?? "") ?
+      underRevision ?
       <div className="panel-message"><h2>Занятие перерабатывается</h2><p>Теория и практика временно недоступны. Вы можете выбрать другое занятие и вернуться позже.</p></div> :
       kind === "theory" ? <AsyncBoundary key={`theory:${trackId}:${lessonId}`} fallback={<LessonLoading />}><LessonNavigationProvider nextLesson={nextLesson}
         onNextLesson={() => { if (nextLesson) openLesson("theory", { trackId, lessonId: nextLesson.id }); }}>

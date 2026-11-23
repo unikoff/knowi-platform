@@ -14,9 +14,29 @@ TRACK_ID = default_runtime().context("backend").get_authoring("chapter_04").TRAC
 PREFIXES = ("chapter_04/block_15/", "chapter_04/block_16/")
 
 
+def test_ready_lesson_has_three_private_answer_cards():
+    lesson = catalog.find_lesson("lesson-64c9d597a164bbdb4f145d5a")
+    assert lesson["self_check"]
+    assert is_countable_lesson(lesson)
+    visible = next(item for item in catalog.get_public_lessons(TRACK_ID) if item["id"] == lesson["id"])
+    cards = visible["manual_practice"][0]["tasks"]
+    assert len(cards) == 3
+    assert all("answer" not in card for card in cards)
+    for index in range(3):
+        response = service.manual_practice_answer(
+            lesson["id"], 0, index, None, None,
+            principal=SimpleNamespace(id=7, subscription_until=datetime(2099, 1, 1, tzinfo=timezone.utc)),
+            content=catalog,
+        )
+        assert response["answer"]["steps"]
+
+
 def test_placeholders_preserve_existing_completion_and_reject_new_writes(monkeypatch):
-    lessons = [x for x in catalog.find_track(TRACK_ID)["lessons"] if x["source_file"].startswith(PREFIXES)]
-    assert len(lessons) == 18
+    lessons = [
+        item for item in catalog.find_track(TRACK_ID)["lessons"]
+        if item["source_file"].startswith(PREFIXES) and item["id"] != "lesson-64c9d597a164bbdb4f145d5a"
+    ]
+    assert len(lessons) == 17
     monkeypatch.setattr(service, "get_lesson_access", lambda *args: (True, None))
     monkeypatch.setattr(service.progress, "mark_lesson_completed", lambda **kwargs: pytest.fail("unexpected progress write"))
     principal = SimpleNamespace(id=7)
@@ -36,7 +56,10 @@ def test_placeholders_preserve_existing_completion_and_reject_new_writes(monkeyp
 
 
 def test_catalog_and_lesson_list_preserve_completed_receipt(monkeypatch):
-    lesson = next(x for x in catalog.find_track(TRACK_ID)["lessons"] if x["source_file"].startswith(PREFIXES))
+    lesson = next(
+        item for item in catalog.find_track(TRACK_ID)["lessons"]
+        if item["source_file"].startswith(PREFIXES) and not item["self_check"]
+    )
     timestamp = datetime(2026, 11, 20, tzinfo=timezone.utc)
     monkeypatch.setattr(service.progress, "get_completion_facts", lambda *args, **kwargs: ({lesson["id"]: timestamp}, {}))
     monkeypatch.setattr(service.progress, "get_completed_lesson_ids", lambda *args, **kwargs: {lesson["id"]})

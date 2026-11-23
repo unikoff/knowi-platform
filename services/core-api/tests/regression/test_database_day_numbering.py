@@ -70,9 +70,11 @@ class DatabaseDayNumberingTests(unittest.TestCase):
             key = number if "." in number else int(number)
             self.assertEqual(lesson["access"], "subscription")
             self.assertEqual(lesson["tasks"], [])
-            is_placeholder = lesson["source_file"].startswith(("chapter_04/block_15/", "chapter_04/block_16/"))
-            self.assertEqual(len(lesson["manual_practice"]), 0 if is_placeholder else 1)
-            self.assertEqual(len(course.MANUAL_PRACTICE[key]), 1)
+            has_practice = number == "71" or not lesson["source_file"].startswith(
+                ("chapter_04/block_15/", "chapter_04/block_16/")
+            )
+            self.assertEqual(len(lesson["manual_practice"]), int(has_practice))
+            self.assertEqual(len(course.MANUAL_PRACTICE[key]), int(has_practice))
         self.assertEqual(set(course.MANUAL_PRACTICE), {n if "." in n else int(n) for n in NUMBERS})
         self.assertFalse(any(course.CODE_TASKS.values()))
 
@@ -90,10 +92,13 @@ class DatabaseDayNumberingTests(unittest.TestCase):
                 delivered = public[lesson["id"]]
                 self.assertEqual(delivered["theory"], [])
                 self.assertNotIn("theory_markdown", delivered)
-                self.assertEqual(delivered["manual_practice"], [])
-                self.assertEqual(delivered["tasks"], [])
-                self.assertIsNone(delivered["video"])
-                self.assertFalse(delivered["self_check"])
+                if lesson["id"] == "lesson-64c9d597a164bbdb4f145d5a":
+                    self.assertTrue(delivered["self_check"])
+                else:
+                    self.assertEqual(delivered["manual_practice"], [])
+                    self.assertEqual(delivered["tasks"], [])
+                    self.assertIsNone(delivered["video"])
+                    self.assertFalse(delivered["self_check"])
                 self.assertIn(lesson["id"], next(t for t in content.get_tracks_summary() if t["id"] == course.TRACK_ID)["countable_lesson_ids"])
 
     def test_frontend_pages_and_markdown_are_bound_once(self):
@@ -106,7 +111,10 @@ class DatabaseDayNumberingTests(unittest.TestCase):
             page = entries[relative]
             source = (root / f"{page}.tsx").read_text(encoding="utf-8")
             self.assertIn(f"export function {page.split('/')[-1]}", source)
-            self.assertRegex(source, r'<RichHero\b[\s\S]*?\btitle=')
+            if number != "71" and relative.startswith(("block_15/", "block_16/")):
+                self.assertIn("return null;", source)
+            else:
+                self.assertRegex(source, r'<RichHero\b[\s\S]*?\btitle=')
             markdown = (content.COURSE_ROOT / lesson["source_file"]).read_text(encoding="utf-8")
             self.assertTrue(markdown.startswith(f"# {number}. "))
 
@@ -115,9 +123,14 @@ class DatabaseDayNumberingTests(unittest.TestCase):
         for block in range(13, 17):
             text = (self.repo / f"docs/concept/chapter_04/BLOCK_{block}.md").read_text(encoding="utf-8")
             numbers.extend(re.findall(r"^### (\d+(?:\.\d+)*)\. ", text, re.M))
-        self.assertEqual(numbers, NUMBERS)
+        absorbed = {"71.1", "72.2", "73.1", "75.1"}
+        self.assertEqual(numbers, [number for number in NUMBERS if number not in absorbed])
+        block_15 = (self.repo / "docs/concept/chapter_04/BLOCK_15.md").read_text(encoding="utf-8")
+        for number in absorbed:
+            self.assertIn(f"| `{number}`.", block_15)
         text = (self.repo / "docs/concept/chapter_04/COURSE.md").read_text(encoding="utf-8")
-        block_links = re.findall(r"^\| \[\d+\. [^\]]+\]\((BLOCK_\d+\.md)\)", text, re.M)
+        rows = re.findall(r"^\| (?:Пройденный|Перепроектированный) \| .+$", text, re.M)
+        block_links = re.findall(r"\[\d+\]\((BLOCK_\d+\.md)\)", "\n".join(rows))
         self.assertEqual(block_links, [f"BLOCK_{block}.md" for block in range(13, 17)])
         self.assertEqual(list(LESSON_NUMBERS.values()), PREVIOUS_NUMBERS)
 

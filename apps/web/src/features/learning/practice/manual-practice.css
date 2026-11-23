@@ -129,21 +129,6 @@
   line-height: 1.5;
 }
 
-.practice-inline-code {
-  display: inline;
-  max-width: 100%;
-  padding: 0.04em 0.34em;
-  border: 1px solid color-mix(in srgb, var(--border-tint-accent) 20%, var(--line));
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--accent-soft) 34%, var(--surface-2));
-  color: var(--text);
-  box-shadow: none;
-  font: 650 0.9em/1.35 var(--font-code);
-  vertical-align: 0.02em;
-  overflow-wrap: anywhere;
-  white-space: normal;
-}
-
 .practice-code-block {
   box-sizing: border-box;
   min-width: 0;

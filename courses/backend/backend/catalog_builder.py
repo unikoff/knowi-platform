@@ -244,7 +244,8 @@ def _build_lesson(
     ):
         display_number = ".".join(str(part) for part in number_parts)
         title = f"{display_number}. {title}"
-    under_revision = relative.startswith(("chapter_04/block_15/", "chapter_04/block_16/"))
+    chapter_four_rework = relative.startswith(("chapter_04/block_15/", "chapter_04/block_16/"))
+    under_revision = chapter_four_rework and lesson_id != "lesson-64c9d597a164bbdb4f145d5a"
     tasks = _tasks_for_lesson(
         identity_source,
         text,
@@ -282,9 +283,7 @@ def _build_lesson(
         or bool(manual_practice)
     )
     video = None if under_revision else _extract_youtube_video(text, title)
-    tsx_theory_only = relative.startswith(
-        ("chapter_04/block_15/", "chapter_04/block_16/", "chapter_05/block_17/")
-    )
+    tsx_theory_only = chapter_four_rework or relative.startswith("chapter_05/block_17/")
 
     return {
         "id": lesson_id,

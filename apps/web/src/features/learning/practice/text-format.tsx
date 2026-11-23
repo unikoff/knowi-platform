@@ -25,7 +25,7 @@ export function renderPracticeText(text: string): React.ReactNode {
       );
     } else if (match[2] !== undefined) {
       parts.push(
-        <code className="practice-inline-code" key={`inline:${matchIndex}`}>
+        <code className="lesson-token" key={`inline:${matchIndex}`}>
           {match[2]}
         </code>,
       );
