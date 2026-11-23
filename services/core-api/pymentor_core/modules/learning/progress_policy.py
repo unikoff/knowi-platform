@@ -27,7 +27,7 @@ def is_overview_lesson(lesson: dict) -> bool:
 
 
 def is_countable_lesson(lesson: dict) -> bool:
-    return is_overview_lesson(lesson) or bool(
+    return is_overview_lesson(lesson) or lesson_progress_policy(lesson).get("retain_countable") is True or bool(
         lesson.get("tasks") or lesson.get("self_check")
     )
 

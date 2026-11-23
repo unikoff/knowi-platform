@@ -244,6 +244,7 @@ def _build_lesson(
     ):
         display_number = ".".join(str(part) for part in number_parts)
         title = f"{display_number}. {title}"
+    under_revision = relative.startswith(("chapter_04/block_15/", "chapter_04/block_16/"))
     tasks = _tasks_for_lesson(
         identity_source,
         text,
@@ -253,6 +254,8 @@ def _build_lesson(
         path.name,
         source_file=relative,
     )
+    if under_revision:
+        tasks = []
     for task in tasks:
         task["revision"] = build_task_revision(task)
     mixed_practice_lessons = {
@@ -271,13 +274,17 @@ def _build_lesson(
     }
     manual_practice = (
         get_manual_practice(track_id, path.name, source_file=relative)
-        if not tasks or relative in mixed_practice_lessons
+        if not under_revision and (not tasks or relative in mixed_practice_lessons)
         else []
     )
-    self_check = (
-        path.parent.name != "block_00" and identity_source in SELF_CHECK_LESSONS
-    ) or bool(manual_practice)
-    video = _extract_youtube_video(text, title)
+    self_check = not under_revision and (
+        (path.parent.name != "block_00" and identity_source in SELF_CHECK_LESSONS)
+        or bool(manual_practice)
+    )
+    video = None if under_revision else _extract_youtube_video(text, title)
+    tsx_theory_only = relative.startswith(
+        ("chapter_04/block_15/", "chapter_04/block_16/", "chapter_05/block_17/")
+    )
 
     return {
         "id": lesson_id,
@@ -288,16 +295,16 @@ def _build_lesson(
         "duration": _estimate_duration(text, len(tasks)),
         "status": _lesson_status(index, access),
         "access": access,
-        # Block 17 is rendered by its registered TSX lessons. Its Markdown
-        # files are accepted authoring plans, not learner-facing theory.
-        "theory": [] if relative.startswith("chapter_05/block_17/") else _extract_intro_theory(text),
-        "theory_markdown": "" if relative.startswith("chapter_05/block_17/") else _strip_service_fences(text),
+        # These blocks keep the internal authoring plans out of learner payloads.
+        "theory": [] if tsx_theory_only else _extract_intro_theory(text),
+        "theory_markdown": "" if tsx_theory_only else _strip_service_fences(text),
         "self_check": self_check,
         "manual_practice": manual_practice,
         "video": video,
         "tasks": tasks,
         "source_file": relative,
         "progress_policy": {
+            "retain_countable": under_revision,
             "overview": bool(re.fullmatch(r"chapter_\d+/block_00/[^/]+", relative)),
             "revision_tracked": relative.startswith(("foundations/block_03/", "chapter_01/")),
             "completion": "cards" if relative.startswith("chapter_01/") else "lesson",
@@ -307,7 +314,8 @@ def _build_lesson(
                 if lesson_id == "lesson-fa661256326bd13784d1c88d" else {}
             ),
         },
-        "private_manual_answers": relative.startswith(("chapter_02/block_05/", "chapter_05/block_17/"))
+        "private_manual_answers": tsx_theory_only
+        or relative.startswith("chapter_02/block_05/")
         or lesson_id in {"lesson-fa661256326bd13784d1c88d", "lesson-c4878f92ca23a93b777d9fa8"},
     }
 
@@ -432,7 +440,7 @@ def get_content_revision() -> str:
 
 
 def _is_countable(lesson: dict[str, Any]) -> bool:
-    """Учитываем обзор, практику и занятия с ручной отметкой."""
+    """Сохраняем учёт временно недоступных занятий и прежний прогресс."""
     return is_countable_lesson(lesson)
 
 

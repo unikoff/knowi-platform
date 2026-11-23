@@ -1,7 +1,6 @@
-import { Activity, Database, RefreshCw, ShieldCheck } from "lucide-react";
+import { useState } from "react";
 import {
   CodeBlock,
-  Callout,
   Diagram,
   DiagramArrow,
   DiagramFlow,
@@ -9,7 +8,6 @@ import {
   DiagramNote,
   Lead,
   LinkedNotes,
-  MatchPairs,
   QuizCard,
   RichHero,
   RichLesson,
@@ -17,287 +15,728 @@ import {
 } from "../../shared";
 
 const BLOCK_TITLE = "Этап 4 · Блок 16 · Надёжность и приёмка Planner";
+const wrapPath = { overflowWrap: "anywhere", whiteSpace: "normal" } as const;
+
+const WAREHOUSE_DEMO = String.raw`import json
+import os
+import sqlite3
+import subprocess
+import sys
+from contextlib import closing, contextmanager
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from urllib.request import Request, urlopen
+
+
+def summary(db):
+    total, closed = db.execute(
+        "SELECT count(*), coalesce(sum(state = 'closed'), 0) FROM stock"
+    ).fetchone()
+    return {"total": total, "open": total - closed, "closed": closed}
+
+
+def find(db, item_id):
+    row = db.execute(
+        "SELECT id, name, state FROM stock WHERE id = ?", (item_id,)
+    ).fetchone()
+    return dict(zip(("id", "name", "state"), row)) if row else None
+
+
+def serve(database):
+    class StockAPI(BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def reply(self, status, value):
+            body = json.dumps(value, ensure_ascii=False).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):
+            if self.path == "/health":
+                self.reply(200, {"status": "ok"})
+                return
+            with closing(sqlite3.connect(database)) as db:
+                if self.path == "/summary":
+                    self.reply(200, summary(db))
+                elif self.path.startswith("/stock/") and self.path[7:].isdigit():
+                    row = find(db, int(self.path[7:]))
+                    self.reply(200 if row else 404, row)
+                else:
+                    self.reply(404, None)
+
+        def do_POST(self):
+            if self.path != "/stock":
+                self.reply(404, None)
+                return
+            payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            with closing(sqlite3.connect(database)) as db:
+                cursor = db.execute(
+                    "INSERT INTO stock (name, state) VALUES (?, 'open')",
+                    (payload["name"],),
+                )
+                db.commit()
+                self.reply(201, find(db, cursor.lastrowid))
+
+    with HTTPServer(("127.0.0.1", 0), StockAPI) as server:
+        print(server.server_port, flush=True)
+        server.serve_forever()
+
+
+def console(database):
+    for line in sys.stdin:
+        action, *args = line.split()
+        with closing(sqlite3.connect(database)) as db:
+            if action == "lookup":
+                row = find(db, int(args[0]))
+                print("Найдено:", row or "записи нет")
+            elif action == "close":
+                db.execute("UPDATE stock SET state = 'closed' WHERE id = ?", (int(args[0]),))
+                db.commit()
+            elif action == "summary":
+                print("Сводка CLI:", summary(db))
+
+
+def child(mode, database):
+    return [sys.executable, str(Path(__file__).resolve()), mode, str(database)]
+
+
+@contextmanager
+def started_api(database, name):
+    with subprocess.Popen(child("api", database), stdout=subprocess.PIPE, text=True) as proc:
+        try:
+            port = int(proc.stdout.readline())
+            print(f"API {name}: PID={proc.pid}, файл={database.name}")
+            yield f"http://127.0.0.1:{port}"
+        finally:
+            if proc.poll() is None:
+                proc.terminate()
+            proc.wait()
+
+
+def request(base, path, payload=None):
+    data = json.dumps(payload).encode("utf-8") if payload is not None else None
+    req = Request(base + path, data=data, headers={"Content-Type": "application/json"})
+    with urlopen(req, timeout=3) as response:
+        value = json.load(response)
+        method = "POST" if payload is not None else "GET"
+        print(f"{method} {path} → {response.status}", value)
+        return value
+
+
+def demo(use_other):
+    with TemporaryDirectory(prefix="warehouse-") as directory:
+        shared = Path(directory) / "warehouse.sqlite3"
+        other = Path(directory) / "warehouse-other.sqlite3"
+        for database in (shared, other):
+            with closing(sqlite3.connect(database)) as db:
+                db.execute("CREATE TABLE stock (id INTEGER PRIMARY KEY, name TEXT, state TEXT)")
+                db.commit()
+
+        with started_api(shared, "A") as base:
+            request(base, "/health")
+            request(base, "/summary")
+            item_id = request(base, "/stock", {"name": "Набор"})["id"]
+            cli_database = other if use_other else shared
+            commands = f"lookup {item_id}\n"
+            if not use_other:
+                commands += f"close {item_id}\nsummary\n"
+            cli = subprocess.run(
+                child("cli", cli_database),
+                input=commands.encode("utf-8"),
+                stdout=subprocess.PIPE,
+                env={**os.environ, "PYTHONUTF8": "1"},
+                check=True,
+                timeout=5,
+            )
+            print(f"CLI B: файл={cli_database.name}")
+            print(cli.stdout.decode("utf-8"), end="")
+
+        print("API A завершён")
+        if not use_other:
+            with started_api(shared, "C") as base:
+                request(base, f"/stock/{item_id}")
+                request(base, "/summary")
+
+
+if __name__ == "__main__":
+    match sys.argv[1:]:
+        case ["api", database]:
+            serve(database)
+        case ["cli", database]:
+            console(database)
+        case [] | ["--other"]:
+            demo("--other" in sys.argv)
+        case _:
+            sys.exit("Команда: python warehouse_trace.py [--other]")
+`;
+const ACCEPTANCE_LAUNCHER = String.raw`import argparse
+import ast
+import os
+import socket
+import subprocess
+import sys
+import time
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from urllib.error import URLError
+from urllib.request import urlopen
+
+from sqlalchemy.engine import URL
+
+
+ROOT = Path(__file__).resolve().parents[1]
+CONTRACT = "tests/test_planner_acceptance_contract.py"
+DEFAULT_ROLLBACK = "tests/test_write_recovery.py"
+PROJECT_CHECKS = (
+    ("отказ хранилища", "tests/test_storage_availability.py"),
+    ("откат записи", DEFAULT_ROLLBACK),
+    ("наблюдение SQL", "tests/test_sql_selection_observation.py"),
+    ("договор выборки", "tests/test_sql_selection_guard.py"),
+)
+
+
+def environment(database):
+    url = URL.create("sqlite", database=database.as_posix()).render_as_string(
+        hide_password=False
+    )
+    return {**os.environ, "DATABASE_URL": url, "PYTHONDONTWRITEBYTECODE": "1", "PYTHONUTF8": "1"}
+
+
+def command(*args):
+    return [sys.executable, "-m", *args]
+
+
+def rollback_test_path(value):
+    tests_dir = (ROOT / "tests").resolve()
+    candidate = (ROOT / value).resolve()
+    if (
+        not tests_dir.is_relative_to(ROOT)
+        or not candidate.is_relative_to(tests_dir)
+        or candidate.suffix != ".py"
+        or not candidate.name.startswith("test_")
+    ):
+        raise RuntimeError("Путь теста отката должен вести к test_*.py внутри tests/.")
+    return candidate.relative_to(ROOT).as_posix()
+
+
+def has_own_rollback_test(filename):
+    try:
+        tree = ast.parse((ROOT / filename).read_text(encoding="utf-8-sig"), filename=filename)
+    except (OSError, UnicodeError, SyntaxError) as error:
+        raise RuntimeError(f"Проверьте файл отката {filename}: {error}") from error
+    return any(
+        isinstance(node, ast.FunctionDef)
+        and node.name.startswith("test_")
+        and node.name != "test_post_commit_keeps_row"
+        and any(arg.arg == "rollback_sessions" for arg in (*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs))
+        for node in tree.body
+    )
+
+
+def checked_paths(rollback):
+    checks = [(name, rollback if path == DEFAULT_ROLLBACK else path) for name, path in PROJECT_CHECKS]
+    missing = [f"{name}: {path}" for name, path in checks if not (ROOT / path).is_file()]
+    if missing:
+        raise RuntimeError("Восстановите свои проверки:\n" + "\n".join(missing))
+    if not has_own_rollback_test(rollback):
+        raise RuntimeError(f"Добавьте в {rollback} свой тест отката с фикстурой rollback_sessions.")
+    return [path for _, path in checks]
+
+
+def free_port():
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        return probe.getsockname()[1]
+
+
+def stop(process):
+    if process.poll() is None:
+        process.terminate()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+    print(f"API завершён: PID={process.pid}.")
+
+
+def start(database, port, label, log):
+    env = environment(database)
+    origin = f"http://127.0.0.1:{port}"
+    args = command("uvicorn", "app.api:app", "--host", "127.0.0.1", "--port", str(port))
+    with log.open("wb") as output:
+        process = subprocess.Popen(args, cwd=ROOT, env=env, stdout=output, stderr=output)
+    try:
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline and process.poll() is None:
+            # Ждём подтверждения от запущенного нами сервера, затем читаем health.
+            if "Uvicorn running on" in log.read_text(encoding="utf-8", errors="replace"):
+                try:
+                    with urlopen(origin + "/health", timeout=0.4) as response:
+                        if response.status == 200 and process.poll() is None:
+                            print(f"API {label}: PID={process.pid}, GET /health → 200")
+                            print("DATABASE_URL:", env["DATABASE_URL"])
+                            print("Swagger:", origin + "/docs")
+                            return process
+                except (URLError, TimeoutError):
+                    pass
+            time.sleep(0.08)
+        raise RuntimeError("API не поднялся. Журнал запуска:\n" + log.read_text(
+            encoding="utf-8", errors="replace"
+        ))
+    except BaseException:
+        stop(process)
+        raise
+
+
+def run_checks(database, project_checks, include_contract):
+    targets = list(project_checks)
+    if include_contract:
+        if not (ROOT / CONTRACT).is_file():
+            raise RuntimeError("Сохраните готовый файл " + CONTRACT)
+        targets.append(CONTRACT)
+    result = subprocess.run(
+        command("pytest", "-q", "-p", "no:cacheprovider", *targets),
+        cwd=ROOT,
+        env=environment(database),
+        check=False,
+    )
+    print("Проверки прошли." if result.returncode == 0 else "Есть сбой проверки.")
+
+
+def run_cli(database, label):
+    env = environment(database)
+    print(f"CLI ({label}):", env["DATABASE_URL"], flush=True)
+    subprocess.run(command("app.main"), cwd=ROOT, env=env, check=True)
+
+
+MENU = (
+    "\n1. Входные проверки\n"
+    "2. Запустить API\n"
+    "3. Открыть CLI\n"
+    "4. Перезапустить API\n"
+    "5. Открыть CLI с другим файлом\n"
+    "6. Регрессия\n"
+    "0. Завершить\n"
+)
+
+
+def main():
+    if not (ROOT / "app" / "api.py").is_file() or not (ROOT / "tests").is_dir():
+        raise RuntimeError("Сохраните файл в tools/ своего Planner и запустите из его корня.")
+    parser = argparse.ArgumentParser(description="Сквозная проверка своего Planner")
+    parser.add_argument("--rollback-test", default=DEFAULT_ROLLBACK, help="Ваш файл test_*.py внутри tests/")
+    args = parser.parse_args()
+    project_checks = checked_paths(rollback_test_path(args.rollback_test))
+    with TemporaryDirectory(prefix="planner-acceptance-") as temp:
+        directory = Path(temp)
+        shared = directory / "planner.sqlite3"
+        other = directory / "planner-other.sqlite3"
+        log = directory / "api.log"
+        for database in (shared, other):
+            subprocess.run(
+                command("app.DBase.init_db"), cwd=ROOT, env=environment(database), check=True
+            )
+        print("Подготовлены две пустые схемы.")
+        print("Общий файл:", environment(shared)["DATABASE_URL"])
+        print("Другой файл:", environment(other)["DATABASE_URL"])
+        port = free_port()
+        process = None
+        try:
+            while True:
+                print(MENU)
+                choice = input("Действие: ").strip()
+                if choice == "0":
+                    return
+                try:
+                    if choice in {"1", "6"}:
+                        with TemporaryDirectory(dir=directory) as check_dir:
+                            run_checks(Path(check_dir) / "checks.sqlite3", project_checks, choice == "6")
+                    elif choice == "2" and process is None:
+                        process = start(shared, port, "A", log)
+                    elif choice == "3":
+                        run_cli(shared, "общий файл")
+                    elif choice == "4" and process is not None:
+                        stop(process)
+                        process = None
+                        process = start(shared, port, "C", log)
+                    elif choice == "5":
+                        run_cli(other, "другой файл")
+                    else:
+                        print("Выберите действие из меню. Для перезапуска сначала запустите API.")
+                except (RuntimeError, subprocess.CalledProcessError) as error:
+                    print(error)
+        finally:
+            if process is not None:
+                stop(process)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (EOFError, KeyboardInterrupt):
+        print("\nПроверка завершена.")
+    except (RuntimeError, subprocess.CalledProcessError) as error:
+        sys.exit(str(error))
+`;
+const CONTRACT_REGRESSION = String.raw`from contextlib import closing
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy.engine import URL
+
+from app.DBase.models import Base, TaskRow
+from app.DBase.session import create_session_factory
+from app.api import app
+from app.core.engine import make_engine
+
+
+@pytest.fixture
+def planner_contract(tmp_path):
+    database = tmp_path / "planner-contract.sqlite3"
+    url = URL.create("sqlite", database=database.as_posix()).render_as_string(
+        hide_password=False
+    )
+    engine = make_engine(url)
+    previous_factory = app.state.session_factory
+    try:
+        Base.metadata.create_all(engine)
+        factory = create_session_factory(engine)
+        app.state.session_factory = factory
+        with closing(TestClient(app)) as client:
+            yield client, factory
+    finally:
+        app.state.session_factory = previous_factory
+        engine.dispose()
+
+
+def test_current_crud_contract_and_tags(planner_contract):
+    client, factory = planner_contract
+    created = client.post("/tasks", json={"title": "Проверка договора", "priority": 2})
+    assert created.status_code == 201
+    payload = created.json()
+    assert set(payload) == {"id", "title", "priority", "is_done"}
+    assert payload["is_done"] is False
+    item = f"/tasks/{payload['id']}"
+    assert client.get(item).json() == payload
+    assert client.post("/tasks", json={"title": "", "priority": 2}).status_code == 422
+
+    with factory.begin() as db:
+        db.get(TaskRow, payload["id"]).tags = ["contract"]
+
+    replaced = client.put(item, json={"title": "Другой заголовок", "priority": 4, "is_done": True})
+    assert replaced.status_code == 200
+    assert replaced.json() == {
+        "id": payload["id"], "title": "Другой заголовок", "priority": 4, "is_done": True
+    }
+    patched = client.patch(item, json={"is_done": False, "priority": None})
+    assert patched.status_code == 200
+    assert patched.json() == {**replaced.json(), "is_done": False}
+    with factory() as db:
+        assert db.get(TaskRow, payload["id"]).tags == ["contract"]
+
+    deleted = client.delete(item)
+    assert deleted.status_code == 204
+    assert deleted.content == b""
+    assert client.get(item).status_code == 404
+
+
+@pytest.mark.parametrize("headers, view", [({}, "compact"), ({"Cookie": "planner_view=detailed"}, "detailed")])
+def test_health_and_view_contract(planner_contract, headers, view):
+    client, _ = planner_contract
+    health = client.get("/health")
+    assert health.status_code == 200
+    assert health.json() == {"status": "ok"}
+    preferences = client.get("/preferences", headers=headers)
+    assert preferences.status_code == 200
+    assert preferences.json()["view"] == view
+`;
+
+const warehouseTrace = `GET /health → 200 {"status": "ok"}
+GET /summary → 200 {"total": 0, "open": 0, "closed": 0}
+POST /stock → 201 {"id": 1, "name": "Набор", "state": "open"}
+CLI B, lookup 1 → {"id": 1, "name": "Набор", "state": "open"}
+CLI B, close 1; summary → {"total": 1, "open": 0, "closed": 1}
+API A завершён, запущен API C
+GET /stock/1 → 200 {"id": 1, "name": "Набор", "state": "closed"}
+GET /summary → 200 {"total": 1, "open": 0, "closed": 1}`;
+
+const proofOptions = {
+  complete: "Все переходы подтверждены",
+  cli: "CLI читает запись, созданную API",
+  restart: "Новый API читает изменение",
+};
+
+type Proof = keyof typeof proofOptions;
+type ApiProcess = "new" | "old";
+
+const evidenceStyles = {
+  panel: {
+    boxSizing: "border-box",
+    width: "100%",
+    minWidth: 0,
+    margin: "1rem 0",
+    padding: "0.5rem 1rem 1rem",
+    borderRadius: "0.75rem",
+    border: "1px solid var(--line-soft)",
+    background: "var(--surface)",
+  },
+  legend: { padding: "0 0.4rem", fontWeight: 650 },
+  group: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 15rem), 1fr))",
+    gap: "0.85rem",
+    marginBlock: "0.9rem",
+  },
+  label: { display: "grid", gap: "0.3rem", minWidth: 0 },
+  labelText: { fontWeight: 600, fontSize: "0.9rem" },
+  select: {
+    width: "100%",
+    minWidth: 0,
+    padding: "0.5rem 0.65rem",
+    border: "1px solid var(--line-soft)",
+    borderRadius: "0.45rem",
+    background: "var(--surface)",
+    color: "var(--text)",
+    fontSize: "0.95rem",
+  },
+  actions: { display: "flex", flexWrap: "wrap", gap: "0.55rem", marginTop: "0.85rem" },
+  action: {
+    padding: "0.45rem 0.7rem",
+    border: "1px solid var(--line-soft)",
+    borderRadius: "0.45rem",
+    fontWeight: 600,
+    background: "var(--surface)",
+    color: "var(--text)",
+  },
+  feedback: {
+    marginTop: "0.8rem",
+    padding: "0.65rem 0.8rem",
+    borderInlineStart: "3px solid var(--accent)",
+    overflowWrap: "anywhere",
+  },
+} as const;
+
+function WarehouseEvidence() {
+  const [sameFile, setSameFile] = useState(true);
+  const [apiProcess, setApiProcess] = useState<ApiProcess>("new");
+  const [prediction, setPrediction] = useState("");
+  const [revealed, setRevealed] = useState(false);
+  const expected: Proof = !sameFile ? "cli" : apiProcess === "old" ? "restart" : "complete";
+
+  function clearPrediction() {
+    setPrediction("");
+    setRevealed(false);
+  }
+
+  function reset() {
+    setSameFile(true);
+    setApiProcess("new");
+    clearPrediction();
+  }
+
+  return (
+    <fieldset style={evidenceStyles.panel}>
+      <legend style={evidenceStyles.legend}>Где прервётся доказательство?</legend>
+      <p>Модель склада. API A уже записал «Набор» под ID 1 в warehouse.sqlite3. Выберем адрес CLI и запуск API для финального чтения.</p>
+      <div style={evidenceStyles.group}>
+        <label style={evidenceStyles.label}>
+          <span style={evidenceStyles.labelText}>Файл для CLI</span>
+          <select
+            style={evidenceStyles.select}
+            value={sameFile ? "shared" : "other"}
+            onChange={(event) => {
+              setSameFile(event.target.value === "shared");
+              clearPrediction();
+            }}
+          >
+            <option value="shared">Общий файл</option>
+            <option value="other">Другой пустой файл</option>
+          </select>
+        </label>
+        <label style={evidenceStyles.label}>
+          <span style={evidenceStyles.labelText}>API для последнего чтения</span>
+          <select
+            style={evidenceStyles.select}
+            value={apiProcess}
+            onChange={(event) => {
+              setApiProcess(event.target.value === "new" ? "new" : "old");
+              clearPrediction();
+            }}
+          >
+            <option value="new">Новый процесс C</option>
+            <option value="old">Старый процесс A</option>
+          </select>
+        </label>
+      </div>
+      <label style={evidenceStyles.label}>
+        <span style={evidenceStyles.labelText}>Первое неподтверждённое наблюдение</span>
+        <select
+          style={evidenceStyles.select}
+          value={prediction}
+          onChange={(event) => {
+            setPrediction(event.target.value);
+            setRevealed(false);
+          }}
+        >
+          <option value="">Выбрать прогноз</option>
+          <option value="complete">{proofOptions.complete}</option>
+          <option value="cli">{proofOptions.cli}</option>
+          <option value="restart">{proofOptions.restart}</option>
+        </select>
+      </label>
+      <div style={evidenceStyles.actions}>
+        <button
+          style={{ ...evidenceStyles.action, borderColor: "var(--accent)", opacity: prediction ? 1 : 0.55 }}
+          type="button"
+          disabled={!prediction}
+          onClick={() => setRevealed(true)}
+        >
+          Проверить прогноз
+        </button>
+        <button
+          style={evidenceStyles.action}
+          type="button"
+          onClick={reset}
+        >
+          Сбросить
+        </button>
+      </div>
+      <div role="status" aria-live="polite">
+        {revealed && (
+          <div style={evidenceStyles.feedback}>
+            <strong>{prediction === expected ? "Прогноз верен." : "Сверим с наблюдением."}</strong>
+            <p>
+              {expected === "cli"
+                ? "Поиск ID 1 в CLI даёт «записи нет»: CLI открыл warehouse-other.sqlite3. На этом шаге история останавливается."
+                : expected === "restart"
+                  ? "CLI нашёл и закрыл запись. API A может прочитать closed, но в модели так и не появился новый процесс C."
+                  : "CLI нашёл ID 1 и сохранил closed. Новый API C прочитал ID 1 и сводку (1, 0, 1) из общего файла."}
+            </p>
+          </div>
+        )}
+      </div>
+    </fieldset>
+  );
+}
+
+function ReadyPythonFile({ name, source }: { name: string; source: string }) {
+  return (
+    <div style={{ minWidth: 0, borderTop: "1px solid var(--line-soft)", paddingBlock: "0.65rem" }}>
+      <a
+        style={{ ...wrapPath, fontWeight: 600, textDecoration: "underline", textUnderlineOffset: "0.15em" }}
+        href={`data:text/x-python;charset=utf-8,${encodeURIComponent(source)}`}
+        download={name}
+      >
+        Скачать {name}
+      </a>
+      <details style={{ marginTop: "0.35rem" }}>
+        <summary style={{ ...wrapPath, cursor: "pointer" }}>Показать код файла {name}</summary>
+        <CodeBlock code={source} language="python" />
+      </details>
+    </div>
+  );
+}
 
 export function Lesson79({ module }: { module?: string }) {
   return (
     <RichLesson>
       <RichHero
         chip={module ?? BLOCK_TITLE}
-        title={"Сквозная проверка"}
-        intro={"Свяжем API, CLI и новое чтение из SQLite в одной приёмочной истории, сохраняя уже работающие договоры Planner."}
-        tags={[
-          { icon: <Activity size={14} />, label: "одна история" },
-          { icon: <Database size={14} />, label: "общая SQLite" },
-          { icon: <RefreshCw size={14} />, label: "новый процесс" },
-          { icon: <ShieldCheck size={14} />, label: "без fallback" },
-        ]}
+        title="Проверяем одну историю API → CLI → новый процесс"
+        intro="Создадим одну задачу, передадим её ID между интерфейсами и проверим сохранённое состояние после перезапуска."
       />
 
-      <Section number={"00"} title={"От отдельных проверок к одной истории"}>
-        <Lead>
-          {"Мы уже проверяли отдельные операции Planner: запись задачи, изменение, запрос и обработку отказа. Теперь проверим, сходятся ли эти результаты в обычном продукте. Одна задача пройдёт через HTTP API и CLI, останется в той же базе после нового запуска и сохранит прежние правила ответа."}
-        </Lead>
-
-        <LinkedNotes
-          items={[
-            {
-              title: "Точка старта",
-              description: "Один SQL-путь, прежние API/CLI-возможности и отдельная тестовая база. Результаты предыдущих занятий подтверждаем по журналу и checkpoint, а не по номеру урока.",
-            },
-            {
-              title: "Новый вопрос",
-              description: "Видят ли оба интерфейса одно сохранённое состояние после своих коротких Session и после перезапуска?",
-            },
-            {
-              title: "Результат",
-              description: "Собираем проверенную историю продукта, сохраняем прежний договор и записываем только реально полученные результаты.",
-            },
-          ]}
-        />
-
-        <p>
-          {"Приёмка не повторяет реализацию CRUD и не создаёт новый учебный Planner. Мы выбираем один безопасный сценарий и смотрим, как меняется сохранённая задача на каждом переходе. Перед работой сверяем фактический checkpoint: если нет подтверждённых результатов проверки отказа, восстановления и SQL-наблюдения, эти результаты не считаем освоенными и не выдаём зависимые проверки за пройденные. Независимую часть всё равно можно выполнить на подтверждённой точке A."}
-        </p>
+      <Section number="00" title="Одна задача в двух интерфейсах">
+        <Lead>Запись, запрос и отказ хранилища мы уже проверяли по отдельности. Теперь проследим, как одна задача переходит между рабочими интерфейсами Planner.</Lead>
+        <LinkedNotes items={[
+          { title: "Точка старта", description: "Наш SQL Planner умеет читать и менять задачи в API и CLI. Для отказа, отката и выборки есть отдельные проверки." },
+          { title: "Новый вопрос", description: "Как убедиться, что CLI нашёл запись API, а новый API-процесс увидел изменение CLI?" },
+          { title: "Результат", description: "Увидим тот же ID до изменения, после него и после нового запуска API." },
+        ]} />
+        <p>ID связывает наблюдения. Когда интерфейс меняется, мы сверяем адрес файла, ID и состояние строки. При новом запуске к ним добавляется отметка процесса.</p>
       </Section>
 
-      <Section number={"01"} title={"Каждый вид проверки доказывает своё"}>
-        <Lead>
-          {"Unit-тест подтверждает правило небольшой функции. HTTP-тест проверяет маршрут, статус и форму ответа. Сквозная проверка соединяет уже готовые части и показывает, что они работают вместе через настоящую точку входа."}
-        </Lead>
-
-        <p>
-          {"Представим эстафету. На каждом участке можно проверить скорость одного бегуна, но финишная запись зависит ещё и от передачи палочки. В приложении отдельными участками будут API, сервис, репозиторий, CLI и SQLite. Сквозной сценарий проверяет передачу состояния между ними. Граница аналогии проста: задача не движется как предмет между процессами, а читается из одного сохранённого источника после завершения предыдущей операции."}
-        </p>
-
-        <p>
-          {"Успешный POST полезен: он подтверждает создание и ответ конкретного маршрута. Но он сам по себе не показывает, что CLI использует тот же адрес базы, что последующее изменение сохранилось или что другая Session прочитает его. Для этих выводов нужны новые наблюдения, которые проверяют разные границы. Мы заранее формулируем утверждение и подбираем свидетельство именно для него."}
-        </p>
-
-        <QuizCard
-          question={"После ответа 201 от API мы уже доказали, что CLI найдёт эту задачу в общей базе?"}
-          options={[
-            "Да, статус 201 подтверждает оба интерфейса",
-            "Нет, CLI нужно отдельно запустить с тем же адресом и найти тот же id",
-            "Да, если ответ содержит поле id",
-          ]}
-          correctIndex={1}
-          explanation={"Мы подтвердили создание через HTTP. Общий адрес и чтение CLI пока остаются отдельными утверждениями, которые нужно проверить."}
-        />
-
-        <p>
-          {"Сценарий остаётся небольшим: создать временную задачу, найти её через другой интерфейс, изменить, прочитать снова и сопоставить результат с ожидаемым договором. Автоматические тесты расширяют число случаев, а ручной проход помогает увидеть, где именно приложение использует другой процесс, другой адрес или старое состояние."}
-        </p>
-      </Section>
-
-      <Section number={"02"} title={"Начинаем с изолированной базы и обычной сборки"}>
-        <Lead>
-          {"Проверка должна быть безопасной для рабочих задач и одновременно проходить через тот способ запуска, которым пользуется продукт. Поэтому сначала выбираем отдельный SQLite-файл и один DATABASE_URL для API и CLI."}
-        </Lead>
-
-        <p>
-          {"Изоляция означает, что пробные добавления и удаления не затронут рабочие строки. Для ручного сценария это отдельный временный файл базы; для автоматического SQL-теста это обычно файл внутри tmp_path. Мы создаём исходную схему явной командой, если она нужна тесту. Обработчик запроса не должен молча создавать таблицы, переключать backend или стирать строки ради удобства проверки."}
-        </p>
-
-        <p>
-          {"Проверим, откуда каждый обычный процесс получает адрес. Если тест вручную подменяет provider или app.state, он полезен для узкой проверки поведения, но уже не доказывает корректность штатной конфигурации. В приёмке API и CLI запускаются с одним и тем же DATABASE_URL; внутри каждой команды создаётся своя короткая Session. Мы не передаём одну живую Session от HTTP-сервера к терминалу."}
-        </p>
-
-        <p>
-          {"Похожая бытовая картина: два сотрудника пользуются одним журналом склада, но каждый берёт его на время своей операции и закрывает после работы. Общий журнал сохраняет состояние, короткое использование ресурса ограничивает время владения. Аналогия не описывает транзакции буквально: целостность изменения по-прежнему задают правила базы и транзакционная граница приложения."}
-        </p>
-
-        <p>
-          {"Схема ниже показывает порядок проверки, а не устройство всех внутренних функций. Два узла SQLite подписаны одинаково: это один файл по DATABASE_URL, а не копии. Новый запрос использует новую Session, CLI выполняет отдельную команду, а следующий запуск исключает память прежнего процесса."}
-        </p>
-
-        <Diagram caption={"Одна задача проходит через обычные интерфейсы"} orientation={"vertical"}>
-          <DiagramFlow label={"Сохранённая задача между API, CLI и новым запуском"} orientation={"vertical"}>
-            <DiagramNode title={"API: создать задачу"} shape={"process"}>
-              <p>{"Запрос проходит штатный provider и сервис"}</p>
+      <Section number="01" title="Найти общую базу">
+        <Lead>У API и CLI отдельные процессы. Их связывает файл SQLite.</Lead>
+        <p>API выделяет короткую Session на запрос, а CLI выделяет её на команду с данными. Session задаёт границу работы с базой. После <code>commit</code> изменение можно прочитать из другой Session по тому же адресу. Даже в новом процессе строка останется в файле.</p>
+        <p>Переменная <code>DATABASE_URL</code> задаёт адрес SQLite. Например, <code style={wrapPath}>sqlite:///C:/Temp/warehouse/warehouse.sqlite3</code> указывает полный путь к учебному файлу на Windows. Сверим адреса целиком: файлы с одинаковым именем могут лежать в разных каталогах. Инициализация создаёт в выбранном файле пустую схему.</p>
+        <Diagram caption="Создание, изменение и новое чтение одной складской записи" orientation="vertical">
+          <DiagramFlow label="Общий путь записи склада" orientation="vertical">
+            <DiagramNode title="API A создаёт запись">
+              <p>API возвращает ID 1 и состояние <code>open</code>.</p>
             </DiagramNode>
-            <DiagramArrow label={"commit завершён"} />
-            <DiagramNode title={"SQLite по DATABASE_URL"} shape={"database"}>
-              <p>{"Сохранены id и состояние задачи"}</p>
+            <DiagramArrow label="Подтверждённая запись остаётся в файле" />
+            <DiagramNode title="Общий файл warehouse.sqlite3" shape="database">
+              <p>В файле есть запись «Набор» с ID 1.</p>
             </DiagramNode>
-            <DiagramArrow label={"новый ресурс CLI читает тот же путь"} />
-            <DiagramNode title={"CLI: найти и изменить"} shape={"process"}>
-              <p>{"Своя команда и короткая Session"}</p>
+            <DiagramArrow label="CLI открывает этот файл по тому же адресу" />
+            <DiagramNode title="Отдельный CLI B находит и закрывает запись">
+              <p>CLI читает ID 1 и сохраняет <code>closed</code> в общий файл.</p>
             </DiagramNode>
-            <DiagramArrow label={"остановить и снова запустить API"} />
-            <DiagramNode title={"SQLite по DATABASE_URL"} shape={"database"}>
-              <p>{"Тот же файл после смены процесса"}</p>
-            </DiagramNode>
-            <DiagramArrow label={"новая Session читает результат"} />
-            <DiagramNode title={"API: получить задачу и статистику"} shape={"process"}>
-              <p>{"Ответ согласован с изменением CLI"}</p>
+            <DiagramArrow label="API A завершён, API C открывает тот же файл" />
+            <DiagramNode title="Новый API C читает запись">
+              <p>Новый процесс видит ID 1 и сохранённое <code>closed</code>.</p>
             </DiagramNode>
           </DiagramFlow>
-          <DiagramNote title={"Как читать схему"}>
-            <p>{"Повторный узел базы обозначает тот же адрес хранения. Перезапуск меняет процесс и его память, но не должен менять выбранный файл."}</p>
+          <DiagramNote title="Если адрес CLI изменился">
+            В пустом <code>warehouse-other.sqlite3</code> есть таблица склада. Поиск ID 1 сообщает, что записи нет.
           </DiagramNote>
         </Diagram>
-
-        <MatchPairs
-          prompt={"Сопоставим наблюдение с тем, что оно подтверждает."}
-          leftTitle={"Наблюдение"}
-          rightTitle={"Подтверждаем"}
-          pairs={[
-            { left: <code>POST 201</code>, right: "API создал задачу и вернул id" },
-            { left: <code>CLI find того же id</code>, right: "CLI прочитал запись по своему ресурсу" },
-            { left: <code>API GET после CLI done</code>, right: "Изменение видно через API" },
-            { left: <code>GET после перезапуска</code>, right: "Результат не зависит от старого процесса" },
-          ]}
-          explanation={"Мы соединяем каждое утверждение только с тем наблюдением, которое действительно его подтверждает."}
-        />
-
-        <p>
-          {"Если тест подменяет глобальный provider или окружение, после него нужно восстановить исходное состояние. Если запускаем отдельные процессы, передаём им одинаковые настройки явно. Временная база должна быть доступна обоим процессам по одному файловому адресу; SQLite :memory: не подходит для этой истории, потому что отдельные соединения могут увидеть разные базы."}
-        </p>
-      </Section>
-
-      <Section number={"03"} title={"Защищаем прежний договор, а не только happy path"}>
-        <Lead>
-          {"После связанного чтения проверяем, что операции по-прежнему означают то же самое. Статус ответа, состояние строки и дальнейшее чтение связаны, но это разные свидетельства."}
-        </Lead>
-
-        <p>
-          {"Мы используем созданные в тестовой базе задачи, чтобы пройти PUT, PATCH и удаление без риска для рабочих данных. Полная замена сохраняет id и внутренние tags. Частичное обновление применяет переданное False и игнорирует отсутствующие поля и явный null. Пустой объект оставляет состояние прежним; вывод об отсутствии лишней SQL-записи требует SQL-наблюдения и принимается только при подтверждённом checkpoint. Фильтр применяется до порядка и limit, статистика считает исходный набор, а не случайную страницу."}
-        </p>
-
-        <p>
-          {"Для удаления сначала проверим ответ 204 без тела, затем новым GET подтвердим 404. Ответ 204 означает, что маршрут сообщил об успешном удалении; отдельное чтение подтверждает, что записи больше нет. Также проверяем соседа и внутренние поля через разрешённый SQL/CLI путь: публичная схема может намеренно не возвращать tags и технический title_normalized."}
-        </p>
-
         <QuizCard
-          question={"Если DELETE вернул 204, отдельный GET уже ничего не добавит к доказательству удаления."}
-          options={["Правда", "Ложь"]} correctIndex={1}
-          explanation={"Мы проверяем два разных результата: ответ маршрута и отсутствие записи при последующем чтении. GET 404 подтверждает состояние после операции."}
-        />
-
-        <p>
-          {"Сохраняем исходные формы маршрутов и ошибок. Невалидное тело или limit остаётся 422, отсутствующий id остаётся 404, а пустой список после фильтра не становится ошибкой. Мы не добавляем новый HTTP endpoint для поиска, не раскрываем служебные поля и не превращаем тестовый запрос в новую возможность Planner."}
-        </p>
-      </Section>
-
-      <Section number={"04"} title={"Известный отказ проверяем отдельно и безопасно"}>
-        <Lead>
-          {"Связный успешный путь не заменяет отказной, но и отказ не должен повредить приёмочную базу или скрыться под видом пустого результата."}
-        </Lead>
-
-        <p>
-          {"Сначала различаем причину. Отсутствующая задача относится к прежнему 404, недопустимый ввод к 422, заранее распознанная недоступность хранилища может дать безопасный 503 и понятный отказ CLI. Неожиданное внутреннее нарушение нельзя назвать пустым списком или успешной операцией. Путь и параметры SQL, секреты и пользовательские данные не попадают в клиентское сообщение."}
-        </p>
-
-        <p>
-          {"Для направленного отказа используем уже подготовленные проверки отказа и восстановления на отдельной временной базе. Не удаляем рабочий файл, не блокируем реальную таблицу и не ловим исключение шире, чем нужно. После отказа возвращаем корректный тестовый адрес и выполняем новую независимую операцию. Так мы наблюдаем и безопасный отказ, и восстановление."}
-        </p>
-
-        <p>
-          {"В отладочной карточке ниже показан короткий фрагмент на границе списка, а исправление показывает только обработчик для уже существующего FastAPI-маршрута. Мы не выдаём его за целый модуль или готовую новую ручку."}
-        </p>
-
-        <QuizCard orientation="vertical"
-          description={<CodeBlock code={'def list_tasks(planner):\n    try:\n        return planner.list_tasks()\n    except Exception:\n        return []'} />}
-          question={"Что не так с этим обработчиком, если база стала недоступна?"}
-          options={[
-            "Любое исключение превращается в HTTP 200 с пустым списком и скрывает причину отказа",
-            "Пустой список обязательно закрывает Session и тем самым чинит подключение",
-            "Такой обработчик сохраняет прежний 404 для неизвестного id",
-          ]}
+          question="У API и CLI файлы с одинаковым именем warehouse.sqlite3. Что проверим вначале?"
+          options={["Полные адреса обоих файлов", "Совпадение имени файла", "Номер порта API"]}
           correctIndex={0}
-          explanation={"Мы не должны маскировать ошибку хранения как успешную выдачу. Известную StorageError обрабатываем на предусмотренной границе безопасным отказом, а неожиданное исключение не превращаем в фиктивное состояние."}
-          answer={<CodeBlock caption="Исправленный вариант" code={'except StorageError as error:\n    raise HTTPException(status_code=503, detail="Database unavailable") from error'} />}
-        />
-
-        <p>
-          {"Граница commit тоже важна. Ошибка до подтверждения операции допускает rollback и проверку отсутствия частичной записи. Если commit уже завершился, последующее исключение не отменяет сохранённую задачу. Поэтому мы не запускаем POST заново автоматически и не восстанавливаем строки из устаревшего снимка JSON."}
-        </p>
-      </Section>
-
-      <Section number={"05"} title={"Новый процесс отделяет данные от старой памяти"}>
-        <Lead>
-          {"Когда изменения видны в запросах одного запуска, закрываем API и CLI, затем запускаем их снова с теми же настройками. Это проверяет сохранённое состояние после исчезновения старого процесса."}
-        </Lead>
-
-        <p>
-          {"Внутри Session SQLAlchemy ведёт identity map: если мы снова попросим уже загруженную строку тем же ключом в той же Session, ORM может вернуть известный объект. Это нормальная оптимизация в пределах ресурса, а не доказательство долговременного чтения. Новая Session отделяет результат от прежней identity map; новый процесс дополнительно исключает случайную зависимость от переменной или объекта старого приложения."}
-        </p>
-
-        <p>
-          {"Это похоже на заметку, которую один дежурный передал следующей смене через общий журнал. Если следующий человек видит только записку на экране прошлого сотрудника, общий журнал ещё не проверен. Для приложения SQLite-файл играет роль долговременной записи, а новая Session и новый запуск дают независимый путь чтения. Аналогия не означает, что Session является файлом или что перезапуск сам по себе проверяет все правила приложения."}
-        </p>
-
-        <p>
-          {"После запуска сверяем id, title, is_done, статистику и внутренние tags допустимым способом. Проверяем, что задача, созданная через API, находится через CLI, а изменение через CLI видно в API. Старый JSON-backend не должен читаться или создаваться как запасной источник. Отдельный импортёр может остаться, но в этой штатной истории он не запускается."}
-        </p>
-
-        <QuizCard
-          question={"Почему новое чтение после перезапуска сильнее чтения в той же Session?"}
-          options={[
-            "Новая Session получает другую identity map, а новый процесс убирает старые объекты и переменные из проверки",
-            "При каждом запуске SQLite автоматически очищает таблицу и создаёт новую",
-            "Перезапуск доказывает, что README и чистая установка воспроизводимы",
-          ]}
-          correctIndex={0}
-          explanation={"Мы проверяем долговременный источник независимым ресурсом. Полная воспроизводимость чистого checkout относится к следующей передаче и требует отдельной проверки."}
+          explanation="Полный адрес показывает, какой файл открыл каждый процесс. Затем чтение по ID подтверждает, что нужная строка действительно видна."
+          orientation="vertical"
         />
       </Section>
 
-      <Section number={"06"} title={"Health и preferences остаются в своих границах"}>
-        <Lead>
-          {"Финальная история включает прежние endpoints и настройки представления, но не приписывает им новую семантику."}
-        </Lead>
+      <Section number="02" title="Прочитать запись после остановки API">
+        <Lead>Разберём весь маршрут на отдельной учебной базе склада.</Lead>
+        <p>Подготовлены два пустых файла с таблицей записей. API A открывает основной <code>warehouse.sqlite3</code>. Запрос <code>GET /health</code> показывает, что процесс отвечает. Пустую таблицу подтверждает отдельный запрос <code>GET /summary</code>, который читает данные.</p>
+        <p>Отправляем в A <code>POST /stock</code> с телом <code>{'{"name":"Набор"}'}</code>. API сохраняет строку и возвращает 201 с ID 1. В отдельном CLI B используем полученный ID. Команда <code>lookup 1</code> читает открытую запись. Затем <code style={wrapPath}>close 1</code> сохраняет <code>closed</code>, <code>summary</code> считает все, открытые и закрытые записи. Закрылась одна существующая строка, поэтому общее количество осталось прежним.</p>
+        <p>Останавливаем A, запускаем C и оставляем существующий файл по прежнему адресу. Теперь C отвечает на <code>GET /stock/1</code> и <code>GET /summary</code>. Объекты в памяти A уже недоступны, а C получает состояние из файла.</p>
+        <details className="my-3">
+          <summary className="cursor-pointer font-medium">Показать сводный след обычного прогона</summary>
+          <CodeBlock code={warehouseTrace} language="text" />
+        </details>
+        <p>Есть два полезных контраста. CLI на втором подготовленном файле останавливается уже на поиске ID 1. А повторное чтение через старый A может показать <code>closed</code> из новой Session, при этом проверка нового процесса ещё впереди.</p>
+        <WarehouseEvidence />
 
-        <p>
-          {"Health проверяем по его текущему контракту: например, прежний ответ приложения 200 с состоянием ok. Такой ответ не обязательно проверяет каждую таблицу или подтверждает, что все записи можно прочитать. Мы не расширяем endpoint ради этого занятия без причины в плане."}
-        </p>
-
-        <p>
-          {"Preferences проверяем как настройки вида интерфейса и заголовков клиента. Cookie planner_view хранит compact или detailed, но не удостоверяет пользователя и не защищает задачи. TestClient запускаем без автоматического follow_redirects, когда нужно увидеть точный статус и заголовки исходного ответа. Клиентскую тему и health не используем как замену приёмке SQLite."}
-        </p>
-
-        <Callout tone={"success"}>
-          {"Каждое наблюдение поддерживает конкретный вывод: health говорит о прежней доступности приложения, preferences о настройке представления, новая Session о чтении из базы. Не объединяем их в обещание авторизации или production-готовности."}
-        </Callout>
-
-        <p>
-          {"Итоговая запись должна отделять запущенные проверки от тех, которые мы не выполняли. Если проверки отказа, восстановления и SQL-наблюдения ещё не подтверждены журналом и checkpoint, соответствующую часть отказа и query-проверки отмечаем как непринимаемую, а не как успешную. Полный чистый checkout с установкой зависимостей остаётся дальнейшим шагом."}
-        </p>
+        <details className="my-4">
+          <summary className="cursor-pointer font-medium">Повторить опыт склада в терминале</summary>
+          <p>Сохраним готовый файл в отдельном каталоге и выполним <code>python warehouse_trace.py</code>. Для контраста выполним <code>python warehouse_trace.py --other</code>. Скрипт сам создаёт учебные файлы и запускает процессы. Он печатает ответы и удаляет свой временный каталог после завершения.</p>
+          <ReadyPythonFile name="warehouse_trace.py" source={WAREHOUSE_DEMO} />
+        </details>
       </Section>
 
-      <Section number={"07"} title={"Что мы будем делать в практике"}>
-        <Lead>
-          {"Мы пройдём сохранённую историю в существующем Planner на отдельной SQLite-базе и будем привязывать каждый вывод к конкретному наблюдению."}
-        </Lead>
+      <Section number="03" title="Подготовка к проверке">
+        <Lead>Берём собственный Planner с рабочим SQL-хранилищем и результаты отдельных проверок. Для запуска понадобятся два готовых файла и Python из среды Planner.</Lead>
+        <p>Откроем корень своего проекта, где рядом находятся <code>app/</code> и <code>tests/</code>. Сохраним первый файл как <code style={wrapPath}>tools/planner_acceptance.py</code>, при необходимости создадим <code>tools/</code>. Второй сохраним как <code style={wrapPath}>tests/test_planner_acceptance_contract.py</code>. Если файл с этим именем уже есть, сверим его и сохраним свои изменения отдельно. Можно скачать оба файла или раскрыть и скопировать полный код.</p>
+        <ReadyPythonFile name="planner_acceptance.py" source={ACCEPTANCE_LAUNCHER} />
+        <ReadyPythonFile name="test_planner_acceptance_contract.py" source={CONTRACT_REGRESSION} />
+        <p>Из корня запускаем <code style={wrapPath}>python tools/planner_acceptance.py</code> своим интерпретатором проекта. Оснастка покажет два абсолютных адреса и меню. Она подготавливает временные схемы и передаёт общий адрес штатным API и CLI. Для режима с другим файлом адрес CLI меняется. При старте помощник сверяет наличие четырёх файлов с проверками. Если какого-то файла нет, запуск остановится и покажет список отсутствующих файлов. В файле отката должны быть готовый контраст после commit и собственный тест с <code>rollback_sessions</code>. Если упал тест, сначала восстанавливаем этот результат в своём Planner.</p>
+        <p>Если при проверке отката вы выбрали другое имя, укажите свой путь после <code>--rollback-test</code>. Например, <code style={wrapPath}>python tools/planner_acceptance.py --rollback-test tests/test_my_rollback.py</code> выбирает ваш готовый файл в <code>tests/</code>.</p>
+        <p>После запуска API оснастка напечатает отметку процесса, его PID (номер запущенного процесса) и адрес Swagger. В Swagger раскрываем нужный метод и путь, выбираем <strong>Try it out</strong> для ввода, затем <strong>Execute</strong> для запроса. В теле создания <code>title</code> означает название, <code>priority</code> принимает число от 1 до 5. В поле <code>task_id</code> подставляем фактический ID, полученный из ответа. Статус и JSON читаем после каждого запроса.</p>
+        <p>В CLI команды <code>find</code> и <code>done</code> запрашивают ID. <code>find</code> показывает сохранённые поля и состояние, <code>done</code> сохраняет отметку выполнения, а <code>exit</code> возвращает меню. Команда перезапуска дожидается завершения первого API и поднимает новый на том же файле. Сверяем отметки запуска и снова отправляем запрос к задаче.</p>
+        <p>Сводка Planner находится на <code>GET /stats</code>. В ней <code>total</code> означает все задачи, <code>open</code> открытые, <code>done</code> завершённые. Как на складе, выполнение одной существующей записи меняет открытый и завершённый счётчики. Поля <code>id</code>, <code>title</code>, <code>priority</code> и <code>is_done</code> читаем в HTTP-ответе. Внутренние <code>tags</code> проверяет отдельная регрессия.</p>
+        <p>«Входные проверки» запускают тесты отказа, отката, наблюдения SQL и выборки из проекта. «Регрессия» повторяет их и добавляет готовую проверку прежнего договора Planner на отдельных данных. Итог <code>passed</code> означает успешные проверки, а при сбое pytest показывает имя теста. В контрасте со вторым файлом база доступна, просто нужной строки там нет. Известный отказ открытия базы и успешное восстановление проверяет отдельный автоматический сценарий.</p>
+      </Section>
 
-        <LinkedNotes
-          items={[
-            {
-              title: "Подготовим границу",
-              description: "Сверим фактический checkpoint, выберем тестовый файл и подтвердим один DATABASE_URL для обычных API и CLI запусков.",
-            },
-            {
-              title: "Свяжем интерфейсы",
-              description: "Создадим временную задачу через API, найдём и изменим её CLI, затем прочитаем id и статистику новым API запросом.",
-            },
-            {
-              title: "Проверим договор",
-              description: "Сверим PUT, PATCH, фильтр, порядок, limit и удаление с независимым чтением, включая внутренние поля и соседа.",
-            },
-            {
-              title: "Повторим после запуска",
-              description: "Остановим процессы, откроем их снова с прежним адресом и проверим сохранённое состояние новой Session.",
-            },
-            {
-              title: "Примем отказ и результат",
-              description: "Раздельно сверим checkpoint: отказ и восстановление 76–76.1, безопасное SQL-наблюдение 77, запрос 78. Отсутствующую опору отметим как непроверенную.",
-            },
-          ]}
-        />
-
-        <p>
-          {"Порядок идёт от безопасной конфигурации к нормальной истории, затем к повторному чтению и отдельной проверке отказа. В результате останутся id задачи, ответы API, вывод CLI после перезапуска, статистика и точные статусы тестов. Если checkpoint части 76–78 отсутствует, записываем её как пропущенную, не как принятую. Если мы нашли дефект, исправляем только связанный участок и повторяем затронутую проверку; уже работающий продукт не переписываем. После практики следующий шаг сможет проверить тот же результат на чистой копии по README."}
-        </p>
+      <Section number="04" title="Что мы будем делать в практике">
+        <Lead>В своём Planner проведём одну тестовую запись через обычные точки входа и сохраним результаты в локальном листе наблюдений.</Lead>
+        <LinkedNotes items={[
+          { title: "Проведём один ID через интерфейсы", description: "Получим ID из ответа API, найдём эту запись в отдельном CLI и увидим изменение состояния." },
+          { title: "Перезапустим API", description: "В новом процессе прочитаем тот же ID, сохранённое состояние и согласованные счётчики." },
+          { title: "Проверим расхождение и прежний договор", description: "Поймём, какой переход нарушает другой файл. Сверим итог готовой регрессии." },
+        ]} />
+        <p>Если наблюдение расходится с ожиданием, вернёмся к схеме и проверим по порядку: адрес файла, ID, состояние и отметку процесса. Эта запись пригодится, когда будем воспроизводить запуск по собственному README.</p>
       </Section>
     </RichLesson>
   );

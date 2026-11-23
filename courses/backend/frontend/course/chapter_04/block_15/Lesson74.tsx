@@ -1,307 +1,617 @@
-import { Clock3, Database, Terminal } from "lucide-react";
+import { useState } from "react";
 import {
   CodeBlock,
-  Callout,
   Diagram,
   DiagramArrow,
   DiagramFlow,
+  DiagramGroup,
   DiagramNode,
   DiagramNote,
   Lead,
   LinkedNotes,
   QuizCard,
-  RecallCard,
   RichHero,
   RichLesson,
   Section,
-  StepThrough,
 } from "../../shared";
 
 const BLOCK_TITLE = "Этап 4 · Блок 15 · Полный SQL-путь и единое переключение Planner";
+
+const rentalExample = String.raw`from contextlib import contextmanager
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import URL
+from sqlalchemy.orm import sessionmaker
+
+
+@contextmanager
+def visit(factory, label):
+    print(f"{label}: open")
+    try:
+        with factory() as db:
+            yield db
+    finally:
+        print(f"{label}: close")
+
+
+def show_rental(db, rental_id):
+    query = text("SELECT item FROM rentals WHERE id = :id")
+    item = db.execute(query, {"id": rental_id}).scalar_one_or_none()
+    if item is None:
+        raise LookupError("Выдача не найдена")
+    print(item)
+
+
+def example(database):
+    engine = create_engine(URL.create("sqlite", database=str(database)))
+    factory = sessionmaker(bind=engine)
+    try:
+        with engine.begin() as connection:
+            connection.execute(text(
+                "CREATE TABLE rentals (id INTEGER PRIMARY KEY, item TEXT)"
+            ))
+
+        print("внести фонарь")
+        with visit(factory, "C1") as db:
+            with db.begin():
+                db.execute(
+                    text("INSERT INTO rentals VALUES (:id, :item)"),
+                    {"id": 5, "item": "Фонарь"},
+                )
+            print("commit: выдача 5")
+
+        print("показать 5")
+        with visit(factory, "C2") as db:
+            show_rental(db, 5)
+
+        print("показать 9")
+        try:
+            with visit(factory, "C3") as db:
+                show_rental(db, 9)
+        except LookupError as error:
+            print(error)
+
+        command = "покзать"
+        if command not in ("внести", "показать", "выход"):
+            print("Неизвестная команда")
+        print("выход")
+    finally:
+        engine.dispose()
+
+
+with TemporaryDirectory() as directory:
+    example(Path(directory) / "rental.sqlite")`;
+
+const rentalOutput = String.raw`внести фонарь
+C1: open
+commit: выдача 5
+C1: close
+показать 5
+C2: open
+Фонарь
+C2: close
+показать 9
+C3: open
+C3: close
+Выдача не найдена
+Неизвестная команда
+выход`;
+
+const cliStarter = String.raw`def choose_context_factory(service, context_factory):
+    from contextlib import nullcontext
+
+    if context_factory is not None:
+        return context_factory
+    return lambda: nullcontext(service)
+
+
+def execute_command(service, command, read=input, write=print, *, context_factory=None):
+    normalized_command = command.strip().lower()
+    if normalized_command == "exit":
+        return False
+
+    handlers = {
+        "add": handle_add,
+        "list": handle_list,
+        "find": handle_find,
+        "done": handle_done,
+        "delete": handle_delete,
+        "search": handle_search,
+        "stats": handle_stats,
+    }
+    handler = handlers.get(normalized_command)
+    if handler is None:
+        write("Неизвестная команда.")
+        return True
+
+    context_factory = choose_context_factory(service, context_factory)
+    handler(service, read=read, write=write)
+    return True
+
+
+def run(service=None, read=input, write=print, *, context_factory=None):
+    context_factory = choose_context_factory(service, context_factory)
+    with context_factory() as active_service:
+        while True:
+            show_menu(write)
+            command = read("Команда: ")
+            keep_running = execute_command(active_service, command, read=read, write=write)
+            if not keep_running:
+                break`;
+
+const cliCheck = String.raw`import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from sqlalchemy.engine import URL
+from sqlalchemy.orm import Session, sessionmaker
+
+from app.cli import run
+from app.core.engine import make_engine
+from app.DBase.models import Base, TaskRow
+from app.DBase.session import create_session_factory
+from app.main import sql_service_context
+
+TITLE = "Проверить проект"
+ROW = re.compile(r"\[([1-9]\d*)\] " + re.escape(TITLE) + r" \| приоритет: 3 \| .+")
+
+
+class InputFailure(RuntimeError):
+    pass
+
+
+def require(condition, description):
+    print(("OK" if condition else "ОШИБКА") + f": {description}")
+    return bool(condition)
+
+
+def trace(engine, inputs, expected_prompts):
+    events = []
+    output = []
+    active = set()
+    replies = iter(inputs)
+    serial = 0
+
+    class TrackedSession(Session):
+        def __init__(self, **options):
+            super().__init__(**options)
+            nonlocal serial
+            serial += 1
+            self.number = serial
+            active.add(self.number)
+            events.append(f"open C{self.number}")
+
+        def close(self):
+            super().close()
+            active.remove(self.number)
+            events.append(f"close C{self.number}")
+
+    def read(prompt):
+        if prompt == "Команда: ":
+            state = ",".join(f"C{n}" for n in sorted(active)) or "нет"
+            events.append(f"menu: {state}")
+        reply = next(replies)
+        if reply == "{сбой}":
+            if prompt != "Номер задачи: ":
+                raise ValueError("Сбой должен произойти при запросе номера задачи.")
+            raise InputFailure("Контрольный сбой ввода")
+        if reply in ("{id}", "{нет id}"):
+            match = next((ROW.fullmatch(line) for line in output if ROW.fullmatch(line)), None)
+            if match is None:
+                raise ValueError("add не вывел номер созданной задачи.")
+            return str(int(match[1]) + (reply == "{нет id}"))
+        return reply
+
+    factory = sessionmaker(bind=engine, class_=TrackedSession)
+    failed_inside_command = False
+    try:
+        run(read=read, write=output.append, context_factory=lambda: sql_service_context(factory))
+    except InputFailure:
+        failed_inside_command = True
+
+    print(*events, sep="\n")
+    seen_prompts = sum(event.startswith("menu:") for event in events)
+    require(seen_prompts == expected_prompts, "Все ожидаемые приглашения меню показаны.")
+    if seen_prompts != expected_prompts:
+        raise ValueError("Число приглашений отличается от сценария.")
+    return events, output, failed_inside_command
+
+
+def ordinary_json(directory):
+    json_path = directory / "probe.json"
+    sqlite_path = directory / "json-launch.sqlite"
+    url = URL.create("sqlite", database=str(sqlite_path)).render_as_string()
+    env = dict(os.environ, JSON_PATH=str(json_path), DATABASE_URL=url, PYTHONIOENCODING="utf-8")
+    launch = subprocess.run(
+        [sys.executable, "-B", "-m", "app.main"],
+        input=f"add\n{TITLE}\n3\nlist\nexit\n",
+        capture_output=True, encoding="utf-8", env=env, timeout=15,
+    )
+    saved = json.loads(json_path.read_text(encoding="utf-8")) if json_path.exists() else []
+    return require(
+        launch.returncode == 0
+        and launch.stdout.count(TITLE) == 2
+        and len(saved) == 1 and saved[0]["title"] == TITLE
+        and saved[0]["priority"] == 3 and not sqlite_path.exists(),
+        "Обычный запуск сохранил и показал задачу через временный JSON.",
+    )
+
+
+def verify(directory, baseline):
+    engine = make_engine(URL.create("sqlite", database=str(directory / "commands.sqlite")).render_as_string())
+    try:
+        Base.metadata.create_all(engine)
+        if baseline:
+            events, _, _ = trace(engine, ["fiind", "exit"], 2)
+            return require(
+                events == ["open C1", "menu: C1", "menu: C1", "close C1"],
+                "Старт открывает одну Session ещё до первого приглашения.",
+            )
+
+        events, output, _ = trace(
+            engine, ["add", TITLE, "3", " FiNd ", "{id}", "find", "{нет id}", "fiind", "exit"], 5
+        )
+        print(*[line for line in output if not line.startswith("Команды:")], sep="\n")
+        correct_events = require(
+            events == [
+                "menu: нет", "open C1", "close C1", "menu: нет", "open C2", "close C2",
+                "menu: нет", "open C3", "close C3", "menu: нет", "menu: нет",
+            ],
+            "Три распознанные команды получили разные Session, остальные вводы без Session.",
+        )
+
+        matching = [line for line in output if ROW.fullmatch(line)]
+        correct_output = require(
+            len(matching) == 2 and matching[0] == matching[1]
+            and output.count("Задача не найдена.") == 1
+            and output.count("Неизвестная команда.") == 1,
+            "Два одинаковых результата записи и чтения, затем два разных сообщения об ошибке.",
+        )
+        with create_session_factory(engine)() as db:
+            row_id = int(ROW.fullmatch(matching[0])[1]) if matching else 0
+            row = db.get(TaskRow, row_id)
+            saved = require(
+                row is not None and row.title == TITLE and row.priority == 3 and not row.is_done,
+                "После закрытия команд отдельное чтение SQLite видит задачу.",
+            )
+
+        print("Проверка исключения")
+        error_events, error_output, failed = trace(engine, ["find", "{сбой}"], 1)
+        closed_on_error = require(
+            failed and error_events == ["menu: нет", "open C1", "close C1"]
+            and not any(ROW.fullmatch(line) for line in error_output),
+            "Контролируемое исключение вышло наружу после закрытия Session.",
+        )
+        json_ok = ordinary_json(directory)
+        return all((correct_events, correct_output, saved, closed_on_error, json_ok))
+    finally:
+        engine.dispose()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--baseline", action="store_true")
+    args = parser.parse_args()
+    with TemporaryDirectory() as scratch:
+        if not verify(Path(scratch), args.baseline):
+            raise SystemExit(1)`;
+
+const rentalSteps = [
+  {
+    input: "покзать",
+    session: null,
+    outcome: "Неизвестная команда",
+    reason: "По опечатке прокат не нашёл действие. Меню продолжило работу, ресурс не понадобился.",
+  },
+  {
+    input: "показать 9",
+    session: "C1",
+    outcome: "Выдача не найдена",
+    reason: "Поиск распознан. Отсутствие записи обнаружили только внутри действия, а контекст освободил Session при исключении.",
+  },
+  {
+    input: "список",
+    session: "C2",
+    outcome: "[5] Фонарь",
+    reason: "Список открыл отдельную Session к той же базе. Она прочитала существующую выдачу и закрылась до нового меню.",
+  },
+  {
+    input: "выход",
+    session: null,
+    outcome: "Работа завершена",
+    reason: "Выход останавливает цикл ещё до вызова действия. Новая Session не создана.",
+  },
+];
+
+function CopyableCode({ code, caption }: { code: string; caption: string }) {
+  const [feedback, setFeedback] = useState("");
+
+  async function copyCode() {
+    try {
+      await navigator.clipboard.writeText(code);
+      setFeedback("Код скопирован.");
+    } catch {
+      setFeedback("Выделите код в блоке и скопируйте его вручную.");
+    }
+  }
+
+  return (
+    <div style={{ minWidth: 0, display: "grid", gap: "var(--space-2)" }}>
+      <div className="interactive-actions">
+        <button type="button" className="interactive-secondary" onClick={copyCode}>
+          Скопировать код
+        </button>
+        <span role="status">{feedback}</span>
+      </div>
+      <CodeBlock code={code} caption={caption} />
+    </div>
+  );
+}
+
+function RentalTrace() {
+  const [position, setPosition] = useState(0);
+  const [prediction, setPrediction] = useState<boolean | null>(null);
+  const [lastPrediction, setLastPrediction] = useState<boolean | null>(null);
+  const current = rentalSteps[position];
+  const played = rentalSteps.slice(0, position);
+  const last = played.at(-1);
+  const completedSessions = played.filter((step) => step.session).length;
+
+  function advance() {
+    if (!current || prediction === null) return;
+    setLastPrediction(prediction);
+    setPrediction(null);
+    setPosition(position + 1);
+  }
+
+  function reset() {
+    setPosition(0);
+    setPrediction(null);
+    setLastPrediction(null);
+  }
+
+  return (
+    <div className="quiz-card">
+      <h3>Откроется ли Session?</h3>
+      <p>Модель проката. В базе уже есть выдача № 5 «Фонарь». Для каждой команды выберем прогноз и сверим журнал.</p>
+      {current && (
+        <>
+          <p>Следующая команда ({position + 1} из {rentalSteps.length}) <code>{current.input}</code></p>
+          <div className="interactive-actions" role="group" aria-label="Прогноз открытия Session">
+            <button
+              type="button"
+              aria-pressed={prediction === true}
+              onClick={() => setPrediction(true)}
+              className={prediction === true ? "interactive-primary" : "interactive-secondary"}
+            >
+              Откроется{prediction === true && <span aria-hidden="true">✓</span>}
+            </button>
+            <button
+              type="button"
+              aria-pressed={prediction === false}
+              onClick={() => setPrediction(false)}
+              className={prediction === false ? "interactive-primary" : "interactive-secondary"}
+            >
+              Останется закрытой{prediction === false && <span aria-hidden="true">✓</span>}
+            </button>
+          </div>
+        </>
+      )}
+      <div className="interactive-actions">
+        <button
+          type="button"
+          onClick={advance}
+          disabled={!current || prediction === null}
+          className="interactive-primary"
+        >
+          Следующая команда
+        </button>
+        <button
+          type="button"
+          onClick={reset}
+          className="interactive-secondary"
+        >
+          Сбросить
+        </button>
+      </div>
+      <div className="quiz-description" aria-live="polite" aria-atomic="true">
+        <p>Открыто: {completedSessions}. Закрыто: {completedSessions}. Активных Session: 0.</p>
+        {last && (
+          <p>
+            <strong>{lastPrediction === Boolean(last.session) ? "Прогноз совпал." : "Прогноз разошёлся с журналом."}</strong>{" "}
+            {last.reason}
+          </p>
+        )}
+      </div>
+      {played.length > 0 && (
+        <ol className="lesson-content-list">
+          {played.map((step) => (
+            <li key={step.input}>
+              <code>{step.input}</code>{" · "}
+              {step.session
+                ? `open ${step.session} → действие «${step.outcome}» → close ${step.session}`
+                : `${step.outcome}. Без Session.`}
+            </li>
+          ))}
+        </ol>
+      )}
+      {!current && <p>Сценарий завершён. Для нового эксперимента нажмите «Сбросить».</p>}
+    </div>
+  );
+}
 
 export function Lesson74({ module }: { module?: string }) {
   return (
     <RichLesson>
       <RichHero
         chip={module ?? BLOCK_TITLE}
-        title={"CLI и ресурс команды"}
-        intro={"Передадим привычному циклу CLI способ получить ресурс на одну распознанную команду. Команды и обычный запуск Planner пока сохранят JSON."}
-        tags={[
-          { icon: <Terminal size={14} />, label: "существующие команды" },
-          { icon: <Database size={14} />, label: "Session для действия" },
-          { icon: <Clock3 size={14} />, label: "короткая область" },
-        ]}
+        title="Открываем Session на одну команду CLI"
+        intro="Распознанная команда получит свою Session. Следующая команда прочитает подтверждённую запись через новую."
       />
 
-      <Section number="00" title={"От SQL-сервиса к владельцу CLI-ресурса"}>
-        <Lead>
-          {"В теме SQL-контекста для одного вызова мы уже подготовили короткий ресурсный путь. Но run в CLI живёт дольше одной команды: он снова показывает меню и ждёт новый ввод. Как дать SQL-сервису Session только для работы выбранной команды, не удерживая её между кругами меню?"}
-        </Lead>
-
+      <Section number="00" title="Почему Session живёт меньше меню">
+        <Lead>После каждой команды Planner показывает меню и ждёт ввода. Иногда ждать приходится долго, хотя предыдущая работа с базой уже закончилась.</Lead>
         <LinkedNotes
           items={[
             {
               title: "Точка старта",
-              description: "Существующий run получает готовый PlannerService и передаёт его execute_command. Контекст SQL для одного вызова уже умеет ограничить ресурс; темы SQL CRUD и поиска подготовили полный SQL-сервис для CLI.",
+              description: "Знакомые команды уже вызывают PlannerService. SQL-репозиторий умеет выполнять операции Planner.",
             },
             {
               title: "Новый вопрос",
-              description: "Как запросить свежий сервис для одной распознанной команды и освободить его после действия, а не после завершения всей программы?",
+              description: "В какой момент дать команде Session и где закончить работу с ней?",
             },
             {
               title: "Результат",
-              description: "Существующий диспетчер команд будет открывать ресурсный контекст на действие. SQL-проверка пройдёт на отдельной базе, а штатный запуск пока останется на JSON.",
+              description: "Каждая распознанная команда получает свой ресурс. Следующая команда читает сохранённую запись через новую Session.",
             },
           ]}
         />
-
-        <p>
-          {"Сначала отделим долгий цикл меню от короткого действия и вспомним, кто отвечает за Session, а кто за транзакцию. Затем проследим работу контекстной фабрики и найдём момент, до которого CLI ещё не должен обращаться к базе. В конце свяжем эти границы с существующими run и execute_command."}
-        </p>
+        <p>Мы сохраним привычные команды. Чтобы выбрать границу ресурса, проследим момент от распознавания ввода до возвращения в меню.</p>
       </Section>
 
-      <Section number="01" title={"Долгий цикл CLI и короткое действие"}>
-        <Lead>
-          {"Интерактивная программа может ждать ввод сколько угодно. SQL-сессии для этого ожидания не нужны: они принадлежат действию, которое уже выбрано, а не всему процессу CLI."}
-        </Lead>
-
+      <Section number="01" title="От открытия до следующего меню">
+        <Lead>Меню может ждать следующего ввода сколько угодно. Дадим доступ к базе только той команде, у которой уже есть работа.</Lead>
         <p>
-          {"В run повторяются простые шаги: показать меню, прочитать команду, передать её диспетчеру и решить, продолжается ли цикл. Если создать SQL-сервис до цикла и связать его с одной Session, объект будет оставаться в памяти, пока человек читает меню или решает, что ввести дальше. Следующая команда может обратиться к давно неиспользованному ресурсу. А если первая команда уже закрыла Session, тот же сервис может сохранить ссылку на неё."}
+          Фабрика контекста хранит способ получить ресурс. Переданное имя функции можно вызвать позже.
+          В записи <code>with visit(factory, "C1") as db:</code> вызов создаёт контекст, а вход в него даёт новую Session.
+          <code>as db</code> задаёт имя этой Session для тела блока. Отступ показывает, какая работа ещё пользуется ею.
+          Когда тело заканчивается, контекст закрывает Session. Этот выход выполняется и при исключении.
         </p>
-
         <p>
-          {"Долгоживущими остаются Engine и фабрика Session. Engine управляет подключением к адресу базы, а SessionFactory хранит настройки создания Session. Каждый вызов фабрики создаёт отдельную Session для конкретного действия. На этой Session строится SqlTaskRepository, а затем привычный PlannerService. После команды контекст освобождает Session; следующая команда получит новую."}
+          В примере проката команда «внести фонарь» должна сохранить выдачу, а следующая команда «показать 5» должна найти её.
+          Для записи внутри Session есть отдельная область транзакции, <code>with db.begin()</code>.
+          При успешном выходе из неё база подтверждает запись, то есть делает commit. Закрытие Session освобождает ресурс.
+          Следующая Session видит запись, потому что она уже подтверждена в том же SQLite-файле.
         </p>
-
-        <p>
-          {"Здесь полезна аналогия с библиотекой. Здание и общий каталог похожи на Engine, стойка выдачи читательских карточек похожа на SessionFactory, а карточка одного посещения напоминает Session с временным состоянием текущей работы. Решение принять изменения каталога вместе относится к транзакции. Возврат карточки освобождает ресурсы, но не подтверждает изменения. В приложении эти объекты не буквальные копии: аналогия лишь помогает не путать их сроки жизни и обязанности."}
-        </p>
-
-        <p>
-          {"Session и транзакция связаны, но не равны. Session представляет единицу работы с ORM и удерживает её состояние. Транзакция определяет, какие изменения базы подтверждаются вместе или отменяются вместе. Сервис управляет предметным сценарием записи, включая подтверждение; менеджер ресурса гарантирует закрытие Session. Поэтому закрывающий finally не должен тайком делать commit, а репозиторий не должен самостоятельно закрывать чужую Session."}
-        </p>
-
-        <QuizCard
-          question={"Какой объект можно переиспользовать между командами, а какой создаём для каждой SQL-команды?"}
-          options={[
-            "Engine и SessionFactory общие, Session отдельная для текущего действия.",
-            "Session одна на весь run, а Engine создаётся заново после каждой команды.",
-            "PlannerService хранится в CLI, а Session создаётся только при запуске программы.",
-          ]}
-          correctIndex={0}
-          explanation={"Engine и фабрика дают общую инфраструктуру. Session хранит состояние конкретной работы, поэтому SQL-путь получает новую Session для отдельного действия и закрывает её при выходе из области."}
-        />
-      </Section>
-
-      <Section number="02" title={"Фабрика контекста выдаёт новый сервис"}>
-        <Lead>
-          {"Для CLI нужна не одна заранее созданная служба, а вызываемый способ открыть и закрыть ресурсную область."}
-        </Lead>
-
-        <p>
-          {"Контекстная фабрика вызывается тогда, когда диспетчер уже выбрал предметную команду. Её результат используют через with: код до yield создаёт Session и сервис, yield передаёт сервис handler, а finally закрывает Session при обычном завершении и при исключении. После выхода сервис больше не используется. Сам контекст не превращает одну Session в новую и не должен держать Session в общей переменной."}
-        </p>
-
-        <p>
-          {"Мы уже видели этот механизм в коротком контексте. Здесь меняется частота входа: не один вход вокруг всего run, а повторный вход вокруг каждой распознанной команды. Можно представить камеру хранения: сотрудник выдаёт жетон на одну операцию, а после неё принимает его обратно. Новый жетон нужен для следующей операции; хранить выданный жетон с утра до закрытия не нужно. И эта аналогия описывает только границу ресурса, она ничего не говорит о том, подтверждена ли запись."}
-        </p>
-
-        <p>
-          {"В независимом опыте ниже мы выдаём номер каждому посещению и записываем его закрытие. Это не Session и не подключение к SQLite, а маленькая трассировка порядка работы менеджера контекста. Перед запуском сравним номера двух отдельных входов и проверим, что каждое открытие получает закрытие."}
-        </p>
-
-        <StepThrough
-          code={"from contextlib import contextmanager\n\nopened = []\nclosed = []\n\n@contextmanager\ndef visit():\n    visit_id = len(opened) + 1\n    opened.append(visit_id)\n    try:\n        yield visit_id\n    finally:\n        closed.append(visit_id)\n\nwith visit() as first:\n    print(f\"work-{first}\")\n\nwith visit() as second:\n    print(f\"work-{second}\")\n\nprint(opened, closed)"}
-          steps={[
-            {
-              line: 5,
-              note: "Мы входим в первый with. Декоратор запускает генератор и выполняет подготовку ресурса.",
-              vars: { opened: "[]", closed: "[]" },
-            },
-            {
-              line: 10,
-              note: "Первый visit_id передаётся наружу через yield, а генератор ждёт завершения тела with.",
-              vars: { visit_id: "1", opened: "[1]" },
-            },
-            {
-              line: 12,
-              note: "После тела первого with мы продолжаем генератор и попадаем в finally.",
-              vars: { first: "1", opened: "[1]", closed: "[]" },
-            },
-            {
-              line: 17,
-              note: "Второй вызов visit создаёт новый вход и новый номер, а не возвращает первый ресурс.",
-              vars: { second: "2", opened: "[1, 2]", closed: "[1]" },
-            },
-            {
-              line: 20,
-              note: "Оба входа закрыты в порядке завершения. Числа показывают события опыта, не реальные SQL-сессии.",
-              vars: { opened: "[1, 2]", closed: "[1, 2]" },
-            },
-          ]}
-        />
-
-        <p>
-          {"В рабочей сборке SessionFactory вызовет конструктор Session, затем SqlTaskRepository получит эту Session, а build_service соберёт поверх него PlannerService. Контекст выдаст только сервис. Его предметные методы вернут обычные Task и данные, которые нужны CLI; ORM-строки не должны переживать границу закрытой Session."}
-        </p>
-
-        <p>
-          {"Исключение внутри тела with проходит наружу после выполнения finally. Контекст освобождает ресурс, но не скрывает отказ и не превращает его в успешный ответ. Решение о commit или rollback остаётся у согласованного транзакционного сценария сервиса. На этом шаге не добавляем широкий except для всех ошибок SQL: отдельная классификация отказов запланирована позже."}
-        </p>
-      </Section>
-
-      <Section number="03" title={"Сначала распознаём команду, потом открываем Session"}>
-        <Lead>
-          {"Общий контекст нужен только тому вводу, который ведёт к предметной команде. Exit и неизвестная команда заканчиваются до обращения к базе."}
-        </Lead>
-
-        <p>
-          {"execute_command уже нормализует введённый текст и ищет handler в COMMAND_HANDLERS. Этот порядок сохраняет одну таблицу команд и знакомое поведение CLI. После проверки exit и неизвестного имени диспетчер может войти в контекст и передать полученный сервис выбранному handler. Новую систему маршрутизации или второй набор обработчиков для SQL добавлять не нужно."}
-        </p>
-
-        <p>
-          {"Аргументы команды по-прежнему запрашивает существующий handler. Поэтому Session может быть создана для распознанной команды до того, как handler закончит собирать её ввод. Это не означает, что транзакция уже открыта на всё ожидание меню: работа с данными начинается внутри вызова метода сервиса. Важно не растягивать область на следующий показ меню и следующий ввод команды."}
-        </p>
-
-        <Diagram caption={"Путь одной распознанной CLI-команды"} orientation="vertical">
-          <DiagramFlow label={"От ввода к короткой области ресурса и следующему меню"} orientation="vertical">
-            <DiagramNode title={"run показывает меню"} shape="terminator">
-              <p>{"Цикл ждёт строку команды. Session здесь не удерживается."}</p>
-            </DiagramNode>
-            <DiagramArrow label={"ввод передан диспетчеру"} />
-            <DiagramNode title={"execute_command распознаёт ввод"}>
-              <p>{"strip, lower и поиск handler в COMMAND_HANDLERS"}</p>
-            </DiagramNode>
-            <DiagramArrow label={"найден handler предметной команды"} />
-            <DiagramNode title={"контекст выдаёт PlannerService"} shape="subprocess">
-              <p>{"Новая Session и SQL-репозиторий для этого действия"}</p>
-            </DiagramNode>
-            <DiagramArrow label={"handler завершился или выбросил ошибку"} />
-            <DiagramNode title={"finally освобождает Session"}>
-              <p>{"Ошибку не скрываем, commit здесь не добавляем"}</p>
-            </DiagramNode>
-            <DiagramArrow label={"run переходит к следующему кругу"} />
-            <DiagramNode title={"следующее меню"} shape="terminator">
-              <p>{"Новая команда получит новый контекст"}</p>
-            </DiagramNode>
+        <Diagram caption="Три команды на одной SQLite" orientation="vertical">
+          <DiagramFlow label="От меню до коротких областей Session" orientation="vertical">
+            <DiagramNode title="Меню проката" shape="terminator">Сначала определяем, нужна ли команда для работы с данными.</DiagramNode>
+            <DiagramArrow label="внести фонарь" />
+            <DiagramGroup title="C1 · Session для записи">
+              <DiagramNode title="Сохраняем выдачу 5">Запись подтверждается внутри области транзакции. Затем C1 закрывается.</DiagramNode>
+            </DiagramGroup>
+            <DiagramArrow label="новый ввод · показать 5" />
+            <DiagramGroup title="C2 · новая Session для чтения">
+              <DiagramNode title="Читаем «Фонарь»">Строка уже в SQLite. После чтения C2 закрывается.</DiagramNode>
+            </DiagramGroup>
+            <DiagramArrow label="новый ввод · показать 9" />
+            <DiagramGroup title="C3 · новая Session для чтения">
+              <DiagramNode title="Выдача не найдена">Поиск завершается исключением. Контекст закрывает C3 до сообщения об ошибке.</DiagramNode>
+            </DiagramGroup>
           </DiagramFlow>
-          <DiagramNote title={"Два пути без базы"}>
-            <p>{"exit завершает цикл, а неизвестное имя показывает прежнее сообщение. Оба решения выполняются до входа в ресурсный контекст."}</p>
-          </DiagramNote>
+          <DiagramNote title="Опечатка и выход">Ввод не запускает работу с данными, поэтому новой рамки Session нет.</DiagramNote>
         </Diagram>
-
-        <QuizCard orientation="vertical"
-          description={<CodeBlock code={"from contextlib import contextmanager\n\nclosed = []\n\n@contextmanager\ndef item_scope():\n    try:\n        yield \"report\"\n    except Exception:\n        return\n    finally:\n        closed.append(True)\n\ntry:\n    with item_scope():\n        raise ValueError(\"broken\")\nexcept ValueError:\n    print(\"error reached caller\")\nelse:\n    print(\"error disappeared\")\n\nprint(closed)"} />}
-          question={"Какой дефект мешает этому менеджеру контекста безопасно оборачивать действие?"}
+        <p>
+          Ниже весь пример для запуска. Он создаёт отдельный временный <code>rental.sqlite</code> с пустой таблицей.
+          Одна фабрика направляет все три Session к этому файлу. Рабочая база Planner в примере не используется.
+          Можно прочитать вывод или скопировать пример в свободный файл <code>lantern_rental_session.py</code> рядом с каталогом
+          <code>app</code>. Из <code>project/</code> запустим <code>python lantern_rental_session.py</code> тем же интерпретатором, что и Planner.
+        </p>
+        <details className="quiz-card">
+          <summary style={{ cursor: "pointer", fontWeight: 600 }}>Полный пример проката</summary>
+          <CopyableCode code={rentalExample} caption="lantern_rental_session.py" />
+        </details>
+        <CodeBlock code={rentalOutput} caption="Терминал проката" language="text" />
+        <p>
+          В строках <code>open</code> и <code>close</code> одна и та же метка обозначает вход и выход одного ресурса.
+          У второй команды метка C2. При поиске выдачи 9 сначала происходит <code>close</code>, затем внешний обработчик ошибки выводит сообщение.
+        </p>
+        <QuizCard
+          question="Почему команда «показать 5» видит фонарь после закрытия C1?"
           options={[
-            "Ветка except возвращает управление из генератора и подавляет исходную ошибку.",
-            "Список closed нельзя изменить внутри finally.",
-            "finally запускается только после успешного тела with.",
+            "Транзакция записала строку в SQLite до закрытия C1. C2 читает тот же файл.",
+            "Закрытие C1 само записало строку в SQLite.",
+            "C2 унаследовала объект выдачи из памяти C1.",
           ]}
           correctIndex={0}
-          explanation={"Ошибка попадает в генератор в точке yield. return завершает генератор обычным образом, поэтому вызывающая сторона может не получить ValueError. Для очистки оставляем try/finally без подавления исключения."}
-          answer={<CodeBlock caption="Исправленный вариант" code={"@contextmanager\ndef item_scope():\n    try:\n        yield \"report\"\n    finally:\n        closed.append(True)"} />}
+          explanation="Commit произошёл внутри первой команды. На выходе из C1 освободили Session. Новая Session не использует прежний объект и читает подтверждённую строку из того же файла."
         />
+      </Section>
 
+      <Section number="02" title="Какие команды доходят до ресурса">
+        <Lead>Опечатку можно заметить по введённой строке. Отсутствующую выдачу узнаем только после обращения к базе.</Lead>
+        <RentalTrace />
         <p>
-          {"При таком исправлении finally выполняется после нормального выхода и во время раскрутки исключения, а сама ошибка продолжает путь к вызывающему коду. В продукте сохраняем существующую обработку известных ошибок и тексты команд. Незнакомую ошибку базы не маскируем сообщением о выполненном действии."}
+          В Planner при <code>exit</code> диспетчер возвращает <code>False</code>. Цикл <code>run</code> на этом заканчивается.
+          Неизвестная команда даёт <code>True</code>: меню появится снова. Распознанный <code>find</code> уже выбрал действие.
+          Ввод номера задачи относится к этому действию, поэтому он может происходить внутри ресурса.
+          К следующему приглашению меню эта Session уже должна быть закрыта.
+        </p>
+        <p>
+          В SQL-сборке <code>sql_service_context</code> выдаёт PlannerService с SQL-репозиторием.
+          При записи сервис использует собственную область <code>write_scope</code>, как область транзакции в прокате.
+          Граница команды отвечает за доступ к сервису и освобождение Session. Обычный HTTP-путь выдаёт ресурсы через
+          <code>Depends</code>, а здесь точка входа в контекст находится в Python-коде CLI.
         </p>
       </Section>
 
-      <Section number="04" title={"Новая область меняет контракт run, но не команды"}>
-        <Lead>
-          {"Сервис, который подходит для повторного использования, больше нельзя возвращать из run, если его Session уже закрыта."}
-        </Lead>
-
+      <Section number="03" title="Готовые материалы">
+        <Lead>Работаем в своём Planner с полным SQL-репозиторием и готовым <code>sql_service_context</code>. Для наблюдения используем отдельную учебную SQLite.</Lead>
         <p>
-          {"Раньше run принимал готовый PlannerService, использовал его во всех командах и возвращал тот же объект после выхода из цикла. Для JSON это сохраняет ссылку на сервис с тем же настроенным файловым хранилищем. Для SQL этот контракт ошибочен: последний сервис связан с Session последней команды, а контекст уже закрыл её. Следующий код мог бы получить объект, который больше не соответствует завершённой ресурсной области."}
+          В <code>project/app/cli.py</code> заменим участок от <code>def execute_command(</code> до конца файла первым блоком.
+          Меню и обработчики выше этого участка остаются на месте. Если в заменяемом участке есть свои правки, сохраним его копию в черновике редактора.
+          Во втором блоке готовая самопроверка. Сохраним её как <code>check_cli_session.py</code> рядом с каталогом <code>app</code>.
+          Если имя занято, используем свободное и подставим его в команды запуска.
         </p>
-
         <p>
-          {"Теперь run принимает вызываемую фабрику контекста. Каждый вызов execute_command для известной команды получает новый контекст, использует сервис внутри with и выходит до следующего меню. При exit цикл просто завершается. run больше не возвращает SQL-сервис с закрытой Session; его вызывающий код и тесты обновляются к новому контракту. Отдельный legacy-run с прежней передачей сервиса рядом не оставляем."}
+          В стартовых сигнатурах <code>*</code> оставляет <code>context_factory</code> именованным аргументом.
+          При SQL-запуске готового сервиса ещё нет, поэтому <code>service</code> может быть <code>None</code>.
+          Готовый <code>choose_context_factory</code> возвращает переданную фабрику.
+          При прежнем <code>run(service)</code> он даёт контекст, который выдаёт уже собранный JSON-сервис.
+          Сам выбор фабрики Session не открывает. <code>read</code> и <code>write</code> обозначают функции ввода и вывода.
+          В самопроверке эти функции подают заготовленные ответы и записывают вывод.
         </p>
-
+        <details className="quiz-card">
+          <summary style={{ cursor: "pointer", fontWeight: 600 }}>Стартовый фрагмент для app/cli.py</summary>
+          <CopyableCode code={cliStarter} caption="Замена от def execute_command( до конца файла" />
+        </details>
+        <details className="quiz-card">
+          <summary style={{ cursor: "pointer", fontWeight: 600 }}>Файл check_cli_session.py</summary>
+          <CopyableCode code={cliCheck} caption="check_cli_session.py" />
+        </details>
         <p>
-          {"Обычный запуск приложения до переключения backend остаётся на JSON. Для него контекст может выдать сервис, созданный прежней build_service с теми же Settings и тем же путём. Эта оболочка не выбирает backend флагом и не создаёт второй JSON-файл. SQL-фабрика используется для изолированных проверок; она не переключает основной main и не меняет рабочий DATABASE_URL."}
+          Из каталога <code>project/</code> выполним <code>python check_cli_session.py --baseline</code>.
+          <code>--baseline</code> запускает только исходный опыт: опечатку <code>fiind</code> и <code>exit</code>.
+          Найдём в стартере <code>with</code> и предскажем, что журнал увидит на первом приглашении меню.
         </p>
-
-        <Callout tone="success">
-          {"Владелец ресурса отвечает за закрытие Session. Сервис отвечает за подтверждение предметного изменения. Закрытие контекста не является поздним commit."}
-        </Callout>
-
-        <RecallCard
-          question={"Почему после новой схемы run не возвращает последний PlannerService?"}
-          hint={"Проследим, в каком состоянии Session находится после выхода из with."}
-          answer={
-            <p>
-              {"Последний SQL-сервис связан с Session текущей команды. При выходе из контекста эта Session закрывается, поэтому возвращать такой сервис для последующего использования нельзя. run завершает цикл и не передаёт наружу объект с истёкшей ресурсной областью."}
-            </p>
-          }
+        <CodeBlock
+          caption="Стартовый результат"
+          language="text"
+          code={"open C1\nmenu: C1\nmenu: C1\nclose C1"}
         />
-
         <p>
-          {"Изменение касается способа получить сервис, а не его предметного договора. add, list, find, done, delete, search и stats продолжают использовать прежние обработчики и PlannerService. Валидация ввода, сообщения, правила повторного done, ошибки отсутствующей задачи и внутренние tags сохраняются. Не добавляем PUT или PATCH-команды в CLI."}
+          <code>menu: C1</code> говорит, что при приглашении к вводу Session уже открыта. Она закрывается один раз после выхода из всего цикла.
+          После своей правки запустим <code>python check_cli_session.py</code> без флага. Этот режим запишет задачу, прочитает её через другую Session,
+          проверит два различающихся сообщения и закрытие при исключении. Строка <code>menu: нет</code> означает, что на этот момент Session нет.
+          Проверка сама создаёт временные файлы SQLite и JSON. Рабочие настройки менять не нужно.
         </p>
       </Section>
 
-      <Section number="05" title={"Изолированная проверка доказывает срок жизни и данные"}>
-        <Lead>
-          {"Один правильный вывод CLI не доказывает ни сохранение строки, ни создание новой Session для следующей команды."}
-        </Lead>
-
-        <p>
-          {"SQL-сценарий запускаем на отдельной файловой SQLite, созданной для теста. Мы проводим add, list, find, done, stats, search и delete через существующий ввод и обработчики. Следующая команда должна прочитать подтверждённое состояние новой Session. Например, list после add показывает строку, а search после изменения продолжает находить её по прежнему правилу поиска."}
-        </p>
-
-        <p>
-          {"Учёт фабрики показывает, что для каждой распознанной команды ресурсный контекст открыт и завершён. Для exit и неизвестной команды не создаётся Session. Для ошибки внутри handler ресурс освобождается, но сообщение об успехе не появляется. Проверяем также неверный ввод, неизвестный id и повторный done: прежние правила CLI не должны меняться вместе с владельцем Session."}
-        </p>
-
-        <p>
-          {"Отдельно прогоняем JSON-вариант через тот же внешний договор контекста. В тесте используется прежний временный путь, а обычный main всё ещё собирает JSON-сервис. Так мы проверяем совместимость интерфейса и не создаём второй источник данных. Фактический commit и чтение после него подтверждаем через уже принятую SQL-реализацию, не заменяя базу подготовленным списком в тесте."}
-        </p>
-
-        <p>
-          {"К этой точке полный SQL-сервис уже подготовлен: доступны операции CRUD и поиск. Перед изменением CLI сверим их наличие и тестовую сборку с текущим checkpoint. Если проверка обнаружит пропуск, мы вернёмся к соответствующему SQL-разделу, а не будем незаметно достраивать CRUD в теме о жизненном цикле CLI."}
-        </p>
-      </Section>
-
-      <Section number="06" title={"Что мы будем делать в практике"}>
-        <Lead>
-          {"Мы изменим границу получения сервиса в существующем Planner и проверим действие CLI на ресурсе, который заканчивается вместе с командой."}
-        </Lead>
-
+      <Section number="04" title="Что мы будем делать в практике">
         <LinkedNotes
           items={[
             {
-              title: "Сверим входной SQL-путь",
-              description: "Убедимся, что операции SQL-сервиса из 71–73.1 доступны для привычных handlers. Наблюдаемый результат: известны checkpoint и используемые методы, а сам план не принимается за доказательство реализации.",
+              title: "Ограничим ресурс одной командой",
+              description: "В существующем CLI проведём фабрику от цикла к выбранному действию. Опечатка и выход перестанут открывать Session.",
             },
             {
-              title: "Передадим фабрику контекста",
-              description: "Свяжем main с фабрикой SQL-контекста для теста и с прежним JSON-контекстом для обычного запуска. Наблюдаемый результат: у обоих режимов общий вход run, а default остаётся JSON.",
-            },
-            {
-              title: "Откроем ресурс после распознавания",
-              description: "Сохраним нормализацию, COMMAND_HANDLERS и execute_command; откроем контекст только для найденного handler. Наблюдаемый результат: exit и неизвестная команда завершаются без Session.",
-            },
-            {
-              title: "Пройдём SQL-команды на временной базе",
-              description: "Выполним add, list, find, done, stats, search и delete через новые контексты. Наблюдаемый результат: новая Session читает сохранённое предыдущей командой, а учёт ресурсов показывает закрытие после каждого действия.",
-            },
-            {
-              title: "Проверим ошибку и JSON-путь",
-              description: "Сверим известные ошибки, отсутствие ложного успеха и привычный запуск через временный JSON. Наблюдаемый результат: сообщения и данные сохранены, а рабочий backend не переключён.",
+              title: "Проверим следующий ресурс",
+              description: "Добавим задачу на учебной SQLite и прочитаем тот же id в новой Session. Журнал покажет закрытие до следующего меню и при исключении.",
             },
           ]}
         />
-
         <p>
-          {"Мы опираемся на существующие app/cli.py и app/main.py, уже знакомые COMMAND_HANDLERS и execute_command, контекстный менеджер SQL-ресурса и полный SQL-договор CRUD и поиска. Итогом станет один маршрут команд и разные ресурсные области, а не отдельный SQL CLI. Проверяем результат реальными SQL-строками и независимым чтением."}
-        </p>
-
-        <p>
-          {"До переключения backend обычные API и CLI продолжают использовать один JSON. Тестовые SQL-команды живут в отдельной базе и не смешиваются с пользовательскими данными. Когда область ресурса и прежний JSON-путь проверены, для общей приёмки на одной SQLite доступны подготовленные интерфейсы."}
+          Сверим запись и журнал вместе: вывод подтверждает результат операции, метки показывают срок жизни Session.
+          Для выбора границы вернёмся к схеме проката, а для запуска к разделу «Готовые материалы».
+          Проверенный учебный CLI пригодится для репетиции с API на общей тестовой базе.
         </p>
       </Section>
     </RichLesson>
