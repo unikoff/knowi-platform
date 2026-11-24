@@ -28,15 +28,28 @@ with open_journal() as second:
 
 const INTERRUPTED_REPORT = `from io import StringIO
 
-journal = StringIO("8: Кабель")
+observations = []
+
+def signal_failure(journal):
+    observations.append((journal, journal.closed))
+    raise RuntimeError("Отчёт прерван")
+
+def make_report(journal):
+    print(journal.read())
+    signal_failure(journal)
+
+with StringIO("9: Микрофон") as first:
+    print(first.read())
 
 try:
-    with journal:
-        print(journal.read())
-        raise RuntimeError("Отчёт прерван")
+    with StringIO("8: Кабель") as second:
+        make_report(second)
 except RuntimeError as error:
+    observed, was_closed = observations[0]
     print(error)
-    print("Этот журнал закрыт:", journal.closed)`;
+    print("Первый закрыт:", first.closed)
+    print("Сохранён второй:", observed is second)
+    print("Второй закрыт до и после сбоя:", was_closed, observed.closed)`;
 
 export function Lesson74({ module }: { module?: string }) {
   return (
@@ -75,13 +88,13 @@ export function Lesson74({ module }: { module?: string }) {
           correctIndex={1}
           explanation="Отсутствие заявки выясняется при чтении. Вопрос о правилах и уход обходятся без журнала."
         />
-        <p>В Planner <code>run</code> получает ввод, а <code>execute_command</code> выясняет, какой обработчик запускать. <code>read</code> отвечает на запросы ввода, <code>write</code> получает текст, который CLI собирается вывести. В своей проверке можно задавать команды через <code>read</code> и наблюдать ответы через <code>write</code>, как в знакомой практике CLI.</p>
+        <p>В Planner <code>run</code> получает ввод, а <code>execute_command</code> выясняет, какой обработчик запускать. <code>read</code> отвечает на запросы ввода, <code>write</code> получает текст, который CLI собирается вывести. Состояние на следующем приглашении можно снять внутри <code>read</code>, когда он получил <code>Команда:</code> и ещё не вернул новый ввод. Запрос номера относится к работе уже выбранного поиска.</p>
       </Section>
 
       <Section number="02" title="Как доказать закрытие при исключении">
-        <p><strong>Исключение</strong> прерывает работу и передаёт причину вызывающему коду. На стойке сотрудник уже взял журнал заявки 8, но не смог составить отчёт. Мы узнаём об этом по сообщению о сбое. Судьбу самого журнала проверяем отдельно.</p>
+        <p><strong>Исключение</strong> прерывает работу и передаёт причину вызывающему коду. На стойке журнал «Микрофон» уже вернули. Для отчёта о кабеле взяли другой журнал. Когда из подготовки отчёта приходит сигнал о сбое, отметим, какой журнал сейчас у сотрудника и закрыт ли он.</p>
         <CodeBlock code={INTERRUPTED_REPORT} />
-        <p>Сначала видны строка про кабель и сообщение «Отчёт прерван». Затем <code>journal.closed</code> даёт <code>True</code>: Python вышел из <code>with</code> и закрыл этот объект до внешнего <code>except</code>. Если выполнить ту же работу вне <code>with</code> и оставить журнал открытым, сообщение о сбое будет тем же.</p>
+        <p><code>make_report</code> передаёт свой журнал во вложенный вызов <code>signal_failure</code>. Перед исключением тот сохраняет ссылку и отдельное значение <code>closed</code>. Снаружи <code>with</code> выражение <code>observed is second</code> подтверждает, что сохранили второй объект. У него <code>False</code> до сбоя и <code>True</code> после перехвата. Первый журнал был закрыт ещё до отчёта. Если второй оставить открытым, сообщение «Отчёт прерван» всё равно появится.</p>
 
         <Diagram caption="Между открытием журнала и завершением работы">
           <DiagramTrack label="Успешный поиск" items={["Взяли журнал", "Нашли заявку", "Вернули журнал"]} />
@@ -94,7 +107,7 @@ export function Lesson74({ module }: { module?: string }) {
           rows={[
             { id: "error", label: <code>RuntimeError</code>, values: ["Отчёт прервался."] },
             { id: "other", label: "Предыдущий журнал вернули", values: ["Завершилась работа с предыдущим журналом."] },
-            { id: "current", label: <code>journal.closed</code>, values: ["Состояние именно того журнала, который использовал этот отчёт."] },
+            { id: "current", label: <><code>observed is second</code> и состояние до и после</>, values: ["Тот же журнал отчёта был открыт в момент сбоя и закрылся при выходе."] },
           ]}
         />
 
@@ -111,7 +124,7 @@ export function Lesson74({ module }: { module?: string }) {
           explanation="Нужен журнал отчёта о шлеме. Сообщение описывает исключение, а закрытие журнала поиска относится к предыдущей работе."
         />
 
-        <p>В SQL-проверке Planner наблюдайте закрытие конкретной Session тем способом, который уже использовали в проверке контекста одного запроса: найдите её экземпляр и прочитайте его отметку о закрытии. <code>closed</code> в примере относится к файловому объекту. Функция вывода <code>write</code> выполняется внутри обработчика. Если она прервёт работу исключением, можно проверить освобождение ресурса при выходе из обработчика через диспетчер. В практике до этого успеет завершиться другой поиск.</p>
+        <p>В Planner обработчик вызывает <code>write</code> и передаёт туда текст. Экземпляры Session уже фиксирует наблюдатель из прежней проверки. В момент сбоя найдите в нём Session текущей команды и сравните её отметку до исключения и после выхода из <code>run</code>. Свойство <code>closed</code> относится к файловому примеру.</p>
       </Section>
 
       <Section number="03" title="Что мы будем делать в практике">

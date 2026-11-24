@@ -3,21 +3,35 @@ import {
   InteractiveTable, Lead, LinkedNotes, QuizCard, RichHero, RichLesson, Section,
 } from "../../shared";
 
-const tableNames = `from sqlite3 import connect
+const tableNames = `from contextlib import closing
+from pathlib import Path
+from sqlite3 import connect
+from tempfile import TemporaryDirectory
 
-db = connect(":memory:")
-db.execute("CREATE TABLE requests (id INTEGER)")
-names = db.execute(
-    "SELECT name FROM sqlite_master WHERE type = 'table'"
-).fetchall()
-print(names)
-db.close()`;
+with TemporaryDirectory() as folder:
+    path = Path(folder) / "register.sqlite3"
+    with closing(connect(path)) as writer:
+        writer.execute("CREATE TABLE requests (id INTEGER)")
+        writer.commit()
 
-const oneField = `original = {7: "доступ", 9: "склад"}
-copy = {9: "", 7: "доступ"}
+    uri = path.as_uri() + "?mode=ro"
+    with closing(connect(uri, uri=True)) as reader:
+        names = reader.execute("SELECT name FROM sqlite_master").fetchall()
+        print(names)`;
 
-print(original.keys() - copy.keys())
-print(original[9] == copy[9])`;
+const recordNumbers = `snapshot_ids = {7, 9}
+copy_ids = {9, 7}
+print(snapshot_ids - copy_ids)`;
+
+const cameraTags = `from json import loads
+
+expected = ["чехол"]
+sqlite_text = '["чехол"]'
+another_copy = '[]'
+
+print(expected == sqlite_text)
+print(expected == loads(sqlite_text))
+print(expected == loads(another_copy))`;
 
 const differentReaders = `yesterday = {9: "Заявка на склад"}
 today = {9: "Заявка на склад", 10: "Заявка на склад"}
@@ -54,8 +68,10 @@ export function Lesson74_1({ module }: { module?: string }) {
       <Section number="01" title="Источник, адрес и пустая цель">
         <Lead>Снимок показывает исходные данные в момент переноса. Цель принимает их в отдельную таблицу.</Lead>
         <p>Представьте ведомость с заявками и новую картотеку. Сначала ищем отделение для заявок, затем считаем карточки в нём. У пустого отделения уже есть имя. Если отделение ещё не сделали, считать карточки в нём рано.</p>
-        <CodeBlock caption="Смотрим, какие таблицы есть в реестре" code={tableNames} />
-        <p>Видим <code>[('requests',)]</code>. SQLite хранит имена таблиц в <code>sqlite_master</code>. Этот запрос подтверждает, что отделение есть. Количество строк получаем отдельным <code>SELECT COUNT(*)</code> к найденной таблице. <code>fetchone()</code> вернёт строку с одним значением.</p>
+        <p>Уже заведённую картотеку открываем для чтения. В примере сначала готовим отдельный файл во временном каталоге и закрываем запись. Затем открываем тот же файл, чтобы узнать, какие таблицы в нём есть.</p>
+        <CodeBlock caption="Открываем существующий файл только для чтения" code={tableNames} />
+        <p><code>Path.as_uri()</code> даёт файловый URI. Добавка <code>?mode=ro</code> и <code>uri=True</code> включают режим чтения. Если имя файла указано неверно, SQLite сообщит об ошибке открытия. Новый файл при этом не появится.</p>
+        <p>Видим <code>[('requests',)]</code>. SQLite хранит имена таблиц в <code>sqlite_master</code>. Для числа строк нужен отдельный <code>SELECT COUNT(*)</code> к найденной таблице. <code>fetchone()</code> вернёт строку с одним значением. Здесь ожидаем ноль, потому что создали только таблицу.</p>
         <QuizCard
           question="Какую картотеку можно заполнить из ведомости?"
           description="Сравните показания трёх отдельных файлов после проверки таблиц."
@@ -64,8 +80,8 @@ export function Lesson74_1({ module }: { module?: string }) {
           explanation="Пустая цель даёт два наблюдения: нужная таблица существует, а её счётчик равен нулю. Заполненная таблица или отсутствие структуры требуют остановки."
           orientation="vertical"
         />
-        <p>В Planner явный <code>init</code> получает адрес из <code>DATABASE_URL</code>. У SQLite URL для движка выглядит, например, как <code>sqlite:///C:/Lab/cards.sqlite3</code>. У изученного импортёра <code>--source</code> и <code>--database</code> принимают файловые пути. В кавычках путь с пробелами остаётся одним аргументом.</p>
-        <p>Для чтения существующей SQLite к URI абсолютного пути из <code>Path.as_uri()</code> добавляем <code>?mode=ro</code> и передаём <code>uri=True</code> в <code>sqlite3.connect</code>. Так выбор ошибочного пути не создаст новый файл. При выборе нового адреса проверяем отдельно, что его ещё не заняли. Для обоих обычных запусков заранее записываем абсолютный учебный <code>JSON_PATH</code> и номер заявки, которая есть только в обычной ведомости.</p>
+        <p>В Planner явный <code>init</code> получает адрес из <code>DATABASE_URL</code>. Например, <code>sqlite:///C:/Lab/cards.sqlite3</code> указывает движку на учебный файл. В команде импорта из курса <code>--source</code> получает путь к JSON, а <code>--target</code> получает SQLite URL. В исторических версиях StudyHub цель может передаваться в <code>--database</code> как путь к файлу. Выполните <code>python -m app.DBase.import_tasks --help</code> и выберите предусмотренную вашим импортёром форму. Путь с пробелами возьмите в кавычки.</p>
+        <p>Перед <code>init</code> убеждаемся, что имя новой цели свободно. Для обоих обычных запусков записываем абсолютный учебный <code>JSON_PATH</code> и контрольный номер из обычного JSON.</p>
         <Diagram caption="Куда идут данные во время репетиции">
           <DiagramLane title="Пробный перенос">
             <DiagramFlow orientation="vertical">
@@ -88,13 +104,15 @@ export function Lesson74_1({ module }: { module?: string }) {
 
       <Section number="02" title="Сверка по id перед первой записью">
         <Lead>Сверка связывает запись из снимка с её копией по номеру и проверяет значения этой пары.</Lead>
-        <p>В двух картотеках по две заявки. У копии заявки 9 потеряли наклейку «склад». Счётчики совпали. Номер помогает найти нужную пару, даже если карточки разложили в другом порядке.</p>
-        <CodeBlock caption="Ищем пропавшие номера и проверяем одну метку" code={oneField} />
-        <p><code>set()</code> означает, что в копии есть все исходные номера. При обратном вычитании получим номера, которые появились только в копии. Для номера <code>9</code> сравнение возвращает <code>False</code>: пустая метка отличается от «склад».</p>
-        <InteractiveTable title="Что показала сверка двух картотек" columns={["Признак", "Ведомость", "Копия"]} rows={[
-          { id: "count", label: "Сколько заявок", values: [<code>2</code>, <code>2</code>] },
-          { id: "numbers", label: "Какие номера", values: [<code>7, 9</code>, <code>7, 9</code>] },
-          { id: "tag", label: "Метка заявки 9", values: ["склад", "пусто"] },
+        <p>В реестре выдали камеру по заявке 9. Вторая заявка имеет номер 7. При копировании можно переставить карточки. Сначала проверим номера, чтобы найти пары для сравнения.</p>
+        <CodeBlock caption="Проверяем, не потерялся ли номер" code={recordNumbers} />
+        <p><code>set()</code> означает, что в копии есть все исходные номера. Если вычесть в обратном порядке, получим номера, которые появились только в копии. Теперь посмотрим на одну ячейку заявки 9.</p>
+        <p>В ведомости у камеры записан список принадлежностей с чехлом. При прямом чтении SQLite та же ячейка приходит строкой с текстом JSON. Сначала сравним строку со списком, затем разберём текст и сравним списки. Для сравнения возьмём ещё одну ведомость, в которой список оставили пустым.</p>
+        <CodeBlock caption="Сравниваем одну ячейку комплектации камеры" code={cameraTags} />
+        <p>Первое <code>False</code> относится к сравнению списка со строкой. Сами данные ещё не сверены. <code>loads()</code> читает JSON-текст и возвращает список. Во второй строке получаем <code>True</code>: чехол на месте. В третьей строке снова <code>False</code>: после декодирования виден пустой список. Эта копия потеряла чехол.</p>
+        <InteractiveTable title="Что показала сверка ведомостей" columns={["Признак", "Исходник", "Совпавшая копия", "Копия с потерей"]} rows={[
+          { id: "count", label: "Количество заявок", values: [<code>2</code>, <code>2</code>, <code>2</code>] },
+          { id: "camera", label: "Комплектация камеры после чтения", values: [<code>{'["чехол"]'}</code>, <code>{'["чехол"]'}</code>, <code>[]</code>] },
         ]} />
         <QuizCard
           question="Что решим перед новой записью?"
@@ -104,7 +122,7 @@ export function Lesson74_1({ module }: { module?: string }) {
           explanation="Равный состав позволяет сопоставить записи. Изменившееся состояние означает, что копия пока расходится с источником."
           orientation="vertical"
         />
-        <p>В Planner сравниваем <code>id</code> и отдельно значения <code>title</code>, <code>priority</code>, <code>is_done</code>, <code>tags</code> и <code>title_normalized</code>. При прямом чтении из SQLite <code>is_done</code> приходит как <code>0</code> или <code>1</code>, а <code>tags</code> хранится как JSON-текст. <code>json.loads()</code> вернёт список. У старой записи без ключа <code>tags</code> ожидаем <code>[]</code>. Для технического названия ожидаем <code>title.lower()</code>.</p>
+        <p>В Planner сравниваем <code>id</code> и отдельно значения <code>title</code>, <code>priority</code>, <code>is_done</code>, <code>tags</code> и <code>title_normalized</code>. При прямом чтении из SQLite <code>is_done</code> приходит как <code>0</code> или <code>1</code>, а <code>tags</code> хранится как JSON-текст. Как в примере с камерой, разбираем его через <code>json.loads()</code> и сравниваем списки. У старой записи без ключа <code>tags</code> ожидаем <code>[]</code>. Для технического названия ожидаем <code>title.lower()</code>.</p>
         <p>Допуск к записи даёт совпадение состава и полей. При расхождении запишем номер, поле и оба значения, проверим выбранные файлы и при необходимости повторим перенос на новой пустой цели.</p>
       </Section>
 

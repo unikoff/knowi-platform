@@ -40,6 +40,11 @@ const COUNT_EXAMPLE = `statement = text("""
 with Session(engine) as session:
     print(tuple(session.execute(statement).one()))`;
 
+const ORM_COUNT_EXAMPLE = `statement = select(func.count(ticket))
+
+with Session(engine) as session:
+    print(session.execute(statement).one()[0])`;
+
 const NAMED_EXAMPLE = `statement = select(
     func.count(cols.shelf_code).label("with_shelf"),
     func.count(cols.id).label("registered"),
@@ -98,6 +103,9 @@ export function Lesson73_2() {
           Получаем <code>(2, 3, 3)</code>. Первый счётчик видит номера 9 и 10, общий <code>COUNT(id)</code> видит все три.
           Третий счётчик тоже даёт 3: мы положили в пустую ячейку число 0, а число 0 считается заполненным значением.
         </p>
+        <p>В SQLAlchemy тот же условный подсчёт строим из уже знакомого <code>ticket</code>. Передадим всё выражение в <code>func.count()</code> и выберем этот счётчик через <code>select()</code>.</p>
+        <CodeBlock code={ORM_COUNT_EXAMPLE} caption="Передаём готовое условное выражение в func.count()" />
+        <p>Получаем <code>2</code>. В строке результата одно число, читаем его через <code>[0]</code>. Номера 9 и 10 учитываются, а <code>NULL</code> для заявки 8 пропускается.</p>
         <p>
           Теперь держим рядом две колонки, для открытых и для завершённых. В статусном фильтре <code>False</code> означает
           открытую задачу, <code>True</code> завершённую. Эти же условия можно использовать для условного значения.

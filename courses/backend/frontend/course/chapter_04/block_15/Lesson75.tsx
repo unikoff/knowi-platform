@@ -38,8 +38,12 @@ from contextlib import closing
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-cards = [(8, "Штатив", ["выдача"]), (11, "Кабель", [])]
-expected = {i: (item, labels, item.lower()) for i, item, labels in cards}
+cards = [
+    {"id": 8, "item": "Штатив", "labels": ["выдача"]},
+    {"id": 11, "item": "Кабель"},
+]
+expected = {row["id"]: (row["item"], row.get("labels", []), row["item"].lower())
+            for row in cards}
 
 with TemporaryDirectory() as folder:
     file = Path(folder) / "loans.db"
@@ -84,26 +88,32 @@ with TemporaryDirectory() as folder:
             engine.dispose()`;
 
 const COUNTER_LIFETIME = `from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from io import StringIO
+from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
 @asynccontextmanager
-async def counter_hours(_app):
-    print("Открыли стойку")
-    try:
+async def counter_hours(app):
+    with StringIO("Журнал выдачи") as journal:
+        app.state.journal = journal
+        print("Журнал открыт")
         yield
-    finally:
-        print("Закрыли стойку")
+    print("Журнал закрыт:", journal.closed)
 
 counter = FastAPI(lifespan=counter_hours)
 
-@counter.get("/counter")
-def counter_status():
-    return "Работаем"
+@counter.get("/counter/{number}")
+def counter_status(number: int, request: Request):
+    with StringIO(f"Талон {number}") as ticket:
+        print(f"Талон {number} открыт")
+        journal = request.app.state.journal
+        reply = f"{journal.getvalue()} · {ticket.getvalue()}"
+    print(f"Талон {number} закрыт:", ticket.closed)
+    return reply
 
 with TestClient(counter) as client:
-    print(client.get("/counter").json())
-    print(client.get("/counter").json())`;
+    for number in (1, 2):
+        print(client.get(f"/counter/{number}").json())`;
 
 const SAVE_AND_READ = `import sqlite3
 import subprocess
@@ -170,6 +180,26 @@ with TemporaryDirectory() as folder:
     print("Старый читатель:", inspect_old_export(archive))
     print("Недоступная база:", counter_view(root))`;
 
+const SHARED_TEST_RESOURCE = `import sqlite3
+from contextlib import closing
+
+import pytest
+
+
+@pytest.fixture
+def loan_book(tmp_path):
+    path = tmp_path / "loans.sqlite3"
+    with closing(sqlite3.connect(path)) as db, db:
+        db.execute("CREATE TABLE loans (number INTEGER)")
+    return path
+
+
+def test_two_counters_share_book(loan_book):
+    with closing(sqlite3.connect(loan_book)) as writer, writer:
+        writer.execute("INSERT INTO loans VALUES (8)")
+    with closing(sqlite3.connect(loan_book)) as reader:
+        assert reader.execute("SELECT number FROM loans").fetchall() == [(8,)]`;
+
 export function Lesson75() {
   return (
     <RichLesson>
@@ -199,7 +229,8 @@ export function Lesson75() {
         <Lead>После копирования мы знаем, что архив точный. После импорта проверяем уже другое: сохранилось ли каждое значение в новом хранилище.</Lead>
         <p>Бумажную ведомость можно отсканировать без потерь, а при переносе в журнал пропустить пометку «выдача». Построим ожидаемые карточки из ведомости. В примере картотека уже заполнена во временном файле. <code>mode=ro</code> открывает этот файл только для чтения, <code>json.loads()</code> возвращает список меток. Затем <code>&amp;</code> оставляет общие номера, а <code>zip()</code> ставит рядом название поля и оба его значения.</p>
         <CodeBlock code={IMPORT_COMPARE} caption="Журнал выдачи · сравнение двух представлений" />
-        <p>Получаем <code>Номера совпали: True</code> и расхождение <code>8 labels ['выдача'] → []</code>. Значит, перенос ещё нельзя считать точным. Если пропал сам номер, это покажет уже первая строка.</p>
+        <p>Получаем <code>Номера совпали: True</code> и расхождение <code>8 labels ['выдача'] → []</code>. Значит, перенос ещё нельзя считать точным. У старой карточки №11 нет ключа <code>labels</code>. Значение по умолчанию <code>[]</code> совпадает с пустым списком в SQLite. Если пропал сам номер, это покажет первая строка.</p>
+        <p>В Planner так же сравниваем предметные поля через знакомый <code>Task.from_dict()</code>. Старая задача без <code>tags</code> и та же задача с <code>tags: []</code> имеют одинаковые метки. Побайтовое равенство отдельно подтверждает, что свежий архив точно копирует остановленный JSON и остаётся в исходном виде.</p>
         <p>В репетиции мы уже проверяли пустую <code>tasks</code> и сравнивали шесть полей по <code>id</code>. Применим свой способ сверки к новому файлу и свежему архиву. Для небольшого набора можно выписать строки по <code>id</code> и пройти каждое поле по тому же принципу. Теперь результат сверки определяет, можно ли открыть эту SQLite в обоих обычных запусках.</p>
       </Section>
 
@@ -221,8 +252,10 @@ export function Lesson75() {
         />
         <p>Временный вывод в Planner можно добавить у обычного чтения, пока его Session открыта. Уберите этот вывод до прикладной записи.</p>
         <p>У стойки есть часы работы, а каждое обращение посетителя занимает только несколько минут. Так же Engine работает весь срок запуска, а Session закрывается по окончании запроса или команды. У FastAPI границы работы приложения задаёт <code>lifespan</code>.</p>
-        <CodeBlock caption="Два обращения за одно открытие стойки" code={COUNTER_LIFETIME} />
-        <p><code>asynccontextmanager</code> превращает функцию с <code>yield</code> в асинхронный контекст. До <code>yield</code> стойка открывается один раз. Два запроса печатают «Работаем». При выходе из <code>with TestClient(...)</code> блок <code>finally</code> закрывает стойку один раз. В Planner в такой границе можно освободить ресурсы Engine через <code>dispose()</code> после завершения запросов. Session по-прежнему закрывает её поставщик после каждого обращения. В CLI знакомый контекст сохраняет границу одной команды.</p>
+        <p><code>StringIO</code> ведёт себя как файл в памяти. Приложение хранит общий журнал в <code>app.state</code>. Каждый запрос открывает свой талон и берёт текст из того же журнала.</p>
+        <CodeBlock caption="Один журнал и два талона" code={COUNTER_LIFETIME} />
+        <p><code>asynccontextmanager</code> позволяет открыть журнал до <code>yield</code> и держать его открытым, пока приложение принимает запросы. В выводе сначала идёт <code>Журнал открыт</code>. Затем открывается талон 1, закрывается с отметкой <code>True</code> и приходит ответ <code>Журнал выдачи · Талон 1</code>. Для талона 2 порядок такой же. Последней появляется строка <code>Журнал закрыт: True</code>, потому что оба запроса завершились до выхода из <code>with TestClient(...)</code>.</p>
+        <p>В Planner Engine живёт как журнал. <code>dispose()</code> освобождает его ресурсы при завершении приложения. Session живёт как талон. Её закрывает поставщик запроса или контекст одной команды CLI.</p>
         <Diagram caption="Какие свидетельства нужны до первой записи">
           <DiagramLane title="Подготовка данных">
             <DiagramTrack label="Источник → SQLite" items={["Оба писателя остановлены", "Архив совпал в байтах", "Импорт совпал по полям"]} />
@@ -264,6 +297,16 @@ export function Lesson75() {
           explanation="Подложим старый экспорт по прежнему адресу, сохраняя сбой основной базы. Тогда успешное чтение узнаваемой записи выдаст переход к экспорту, а отказ покажет, что обычное чтение остановилось."
           orientation="vertical"
         />
+        <h3>Как заменить ресурс в общей фикстуре</h3>
+        <p>Фикстура готовит ресурс до теста. Она тоже собирает приложение или его часть. Если обычный API уже читает SQLite, а общая фикстура всё ещё передаёт файловое хранилище в старую сборку, ошибка возникнет ещё до запроса.</p>
+        <p>Двум учебным стойкам дадим один пустой журнал для проверки. <code>tmp_path</code> от pytest выделяет каталог для отдельного теста. Фикстура готовит таблицу и передаёт один путь обоим обращениям.</p>
+        <CodeBlock caption="Отдельный журнал для проверки двух стоек" code={SHARED_TEST_RESOURCE} />
+        <p>Если сохранить пример как <code>test_loan_book.py</code> в учебном каталоге, <code>python -m pytest -q test_loan_book.py</code> покажет <code>1 passed</code>. Первая стойка записала выдачу №8. После закрытия её соединения вторая открыла свой ресурс на том же пути и увидела запись. Для проверки чтения старого экспорта нужен отдельный JSON и прямой вызов адаптера.</p>
+        <ol>
+          <li>В корне учебного Planner запустите <code>python -m pytest -q -x tests/test_api.py</code>. <code>-x</code> останавливает прогон на первом сбое. Если traceback ведёт к <code>tests/conftest.py</code>, сначала проверьте сборку фикстуры, которая должна открыть ресурс для запроса.</li>
+          <li>Подготовьте отдельную SQLite со схемой для каждого теста. HTTP-клиент и обычный запуск CLI должны получить тот же учебный адрес, когда тест проверяет оба. Проверьте настройки до запуска и фактический адрес после <code>lifespan</code>. Закройте ресурсы и восстановите изменённые параметры после теста. Тесты чтения и сохранения старого JSON обращаются к своему адаптеру напрямую.</li>
+          <li>Повторите первый прогон. Затем проверьте прежние HTTP-статусы и поля, ответы CLI и настройки, включая выбор <code>DATABASE_URL</code>. В конце запустите весь набор через <code>python -m pytest -q</code>.</li>
+        </ol>
       </Section>
 
       <Section number="06" title="Что мы будем делать в практике">
