@@ -30,7 +30,7 @@
 }
 
 /* Keep the editor and terminal close to the reading surface during long practice. */
-.practice-dashboard {
+.practice-dashboard :is(.task-code-panel, .task-examples) {
   --code-bg: color-mix(in srgb, var(--surface) 48%, var(--bg));
   --code-text: #c8c8c8;
   --code-surface-start: var(--code-bg);
@@ -38,7 +38,7 @@
   --syntax-comment: #a0a0a0;
 }
 
-:root[data-color-scheme="light"] .practice-dashboard {
+:root[data-color-scheme="light"] .practice-dashboard :is(.task-code-panel, .task-examples) {
   --code-bg: var(--surface-2);
   --code-text: var(--reading);
   --syntax-comment: var(--muted);

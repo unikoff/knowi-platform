@@ -4,6 +4,7 @@ import {
   DiagramArrow,
   DiagramFlow,
   DiagramNode,
+  InteractiveTable,
   Lead,
   LinkedNotes,
   QuizCard,
@@ -11,6 +12,38 @@ import {
   RichLesson,
   Section,
 } from "../../shared";
+
+const EQUIPMENT_ROWS = [
+  { id: 10, title: "Лампа", closed: true },
+  { id: 9, title: "Крепёж AX", closed: false },
+  { id: 11, title: "Крепёж 'X'", closed: false },
+  { id: 8, title: "КРЕПЁЖ_%", closed: true },
+];
+
+const EQUIPMENT_SETUP = `from sqlalchemy import create_engine
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+
+class Base(DeclarativeBase):
+    pass
+
+class EquipmentRequest(Base):
+    __tablename__ = "equipment_requests"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    caption_lower: Mapped[str]
+    is_closed: Mapped[bool]
+
+engine = create_engine("sqlite://")
+Base.metadata.create_all(engine)
+session = Session(engine)
+rows = [
+${EQUIPMENT_ROWS.map(({ id, title, closed }) =>
+  `    (${id}, ${JSON.stringify(title)}, ${closed ? "True" : "False"}),`).join("\n")}
+]
+session.add_all(
+    EquipmentRequest(id=number, caption_lower=title.lower(), is_closed=closed)
+    for number, title, closed in rows
+)
+session.commit()`;
 
 const FILTER_EXAMPLE = `from sqlalchemy import select
 
@@ -28,50 +61,12 @@ print(session.scalars(newest_first.limit(1)).all())`;
 const INPUT_EXAMPLE = `for note in ("  ЛАМПА  ", "   ", "  КРЕПЁЖ_%  "):
     print(repr(note.strip().lower()))`;
 
-const BADGE_EXAMPLE = `def label_for_request(number):
-    if number < 1:
-        return "Номер должен быть положительным"
-    return f"Заявка {number}"
-
-print(label_for_request(0))`;
-
 const POSITION_EXAMPLE = `from sqlalchemy import func
 
 position = func.instr(EquipmentRequest.caption_lower, "'x'")
 found = position > 0
 diagnosis = select(EquipmentRequest.id, position, found).order_by(EquipmentRequest.id)
 print(session.execute(diagnosis).all())`;
-
-const PRACTICE_DATA = `from importlib import reload
-
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-
-from app.DBase import repositories
-from app.DBase.models import Base, TaskRow
-
-sample = [
-    (42, "Отчёт 10X", True),
-    (35, "Отчёт 10% ноябрь", False),
-    (12, "План 'А'", True),
-    (27, "План_Б", False),
-    (53, "План Б", False),
-]
-engine = create_engine("sqlite://")
-Base.metadata.create_all(engine)
-lab_session = Session(engine)
-lab_session.add_all([
-    TaskRow(
-        id=task_id, title=title, is_done=is_done,
-        priority=2, tags=[], title_normalized=title.lower(),
-    )
-    for task_id, title, is_done in sample
-])
-lab_session.commit()
-engine.echo = True`;
-
-const PRACTICE_RELOAD = `repo = reload(repositories).SqlTaskRepository(lab_session)
-print([task.id for task in repo.list()])`;
 
 export function Lesson73({ module }: { module?: string } = {}) {
   return (
@@ -95,21 +90,22 @@ export function Lesson73({ module }: { module?: string } = {}) {
       <Section number="01" title="Как условие оставляет нужные строки">
         <Lead>Фильтр отвечает на вопрос о каждой строке. Если нам нужны открытые заявки, SQLite оставит строки, где отметка о закрытии равна <code>False</code>.</Lead>
         <p>Представим четыре карточки на стойке склада. Когда просят показать открытые заявки, сотрудник смотрит на отметку каждой карточки.</p>
-        <table>
-          <caption>Реестр заявок на оборудование</caption>
-          <thead><tr><th scope="col">id</th><th scope="col">Название</th><th scope="col">Закрыта</th></tr></thead>
-          <tbody>
-            <tr><th scope="row">10</th><td>Лампа</td><td>Да</td></tr>
-            <tr><th scope="row">9</th><td>Крепёж AX</td><td>Нет</td></tr>
-            <tr><th scope="row">11</th><td>Крепёж 'X'</td><td>Нет</td></tr>
-            <tr><th scope="row">8</th><td>КРЕПЁЖ_%</td><td>Да</td></tr>
-          </tbody>
-        </table>
+        <InteractiveTable
+          title="Реестр заявок на оборудование"
+          columns={["id", "Название", "Закрыта"]}
+          rows={EQUIPMENT_ROWS.map(({ id, title, closed }) => ({
+            id: String(id),
+            label: <code>{id}</code>,
+            values: [title, closed ? "Да" : "Нет"],
+          }))}
+        />
         <p>
-          В примерах <code>EquipmentRequest</code> обозначает ORM-модель этого реестра, <code>is_closed</code> хранит
-          отметку о закрытии, а открытая <code>session</code> читает подготовленные строки. Разберём запросы прямо на
-          странице. В проекте возьмём вашу модель <code>TaskRow</code> и знакомую Session репозитория.
+          Для примеров соберём эти четыре строки в SQLite в памяти. <code>EquipmentRequest</code> описывает
+          номер, название в нижнем регистре и отметку о закрытии. После подготовки <code>session</code> может
+          читать эти строки. Фрагменты ниже выполняем в той же консоли Python. Пустая строка после каждого класса
+          завершает его определение в консоли.
         </p>
+        <CodeBlock code={EQUIPMENT_SETUP} caption="Готовим четыре заявки для примеров" />
         <p>
           <code>select</code> указывает, что читаем. Здесь это только номера заявок. <code>where</code> добавляет
           условие для SQLite. Сравнение ORM-колонки через <code>==</code> описывает вопрос к строке. Вызов
@@ -126,12 +122,15 @@ export function Lesson73({ module }: { module?: string } = {}) {
           Если сотруднику сказали «только открытые», значение <code>False</code> передаёт точное пожелание. Если
           про статус вообще не спрашивали, аргумент будет <code>None</code>. Для <code>False</code> проверка
           {" "}<code>if value</code> тоже не сработает. Чтобы отличить эти случаи, сравниваем само значение с
-          {" "}<code>None</code>. Предположите, какие номера останутся, если поменять отметку в условии на <code>True</code>.
+          {" "}<code>None</code>.
         </p>
-        <details>
-          <summary>Сверить прогноз для закрытых карточек</summary>
-          <p>Пройдут заявки 8 и 10. У обеих есть отметка о закрытии.</p>
-        </details>
+        <QuizCard
+          question={<>Какие номера получим, если в прежнем условии поставить <code>True</code>?</>}
+          description="Сверьте отметки в реестре и выберите список номеров."
+          options={["[9, 11]", "[8, 10]", "[8, 9, 10, 11]"]}
+          correctIndex={1}
+          explanation="Пройдут 8 и 10. У обеих заявок есть отметка о закрытии, поэтому сравнение с True выполняется для этих строк."
+        />
         <p>
           В Planner список собирается из ORM-строк. В имеющемся <code>list()</code> уже видны
           {" "}<code>select(TaskRow)</code> и преобразование <code>task_from_row</code>. Для настройки статуса пригодится
@@ -152,14 +151,16 @@ export function Lesson73({ module }: { module?: string } = {}) {
         </p>
         <CodeBlock code={ORDER_EXAMPLE} caption="Из открытых заявок берём одну с наибольшим номером" />
         <p>
-          Получаем <code>[11, 9]</code> без предела и <code>[11]</code> с пределом. Какой номер станет первым, если передать в <code>order_by</code> выражение
-          {" "}<code>EquipmentRequest.id.asc()</code>? Если же начать с минимального номера всего реестра,
-          попадётся закрытая 8.
+          Получаем <code>[11, 9]</code> без предела и <code>[11]</code> с пределом. Смена направления
+          меняет порядок только тех строк, которые уже подходят по статусу.
         </p>
-        <details>
-          <summary>Сверить прогноз для возрастания</summary>
-          <p>Первой станет 9. С пределом 1 получим <code>[9]</code>.</p>
-        </details>
+        <QuizCard
+          question={<>Что напечатается, если заменить <code>desc()</code> на <code>asc()</code> и оставить <code>limit(1)</code>?</>}
+          description="Сначала отметьте подходящие заявки, затем расположите их в новом порядке."
+          options={["[8]", "[9, 11]", "[9]"]}
+          correctIndex={2}
+          explanation="Из открытых подходят 9 и 11. При возрастании первой идёт 9, а предел оставляет только одну строку. Закрытая 8 отсеялась раньше."
+        />
         <Diagram caption="Как из реестра получилась одна открытая заявка">
           <DiagramFlow label="От исходных заявок к первому номеру в выдаче">
             <DiagramNode title="Все заявки" shape="database"><p>10, 9, 11, 8</p></DiagramNode>
@@ -187,9 +188,9 @@ export function Lesson73({ module }: { module?: string } = {}) {
       <Section number="03" title="От ввода к буквальному совпадению">
         <h3>Подготовка строки поиска</h3>
         <p>
-          Нормализовать ввод значит привести его к одному виду перед сравнением. При поиске по записке складской
+          Подготовка ввода уже знакома по JSON-поиску. При поиске по записке складской
           сотрудник пропускает зазоры по краям и читает слово независимо от регистра букв. В Python
-          {" "}<code>strip()</code> снимает крайние пробелы, а <code>lower()</code> переводит буквы в нижний регистр.
+          {" "}<code>strip()</code> убирает пробельные символы по краям, а <code>lower()</code> переводит буквы в нижний регистр.
         </p>
         <CodeBlock code={INPUT_EXAMPLE} caption="Смотрим на записки отдельно, до запроса к таблице" />
         <p>
@@ -197,12 +198,10 @@ export function Lesson73({ module }: { module?: string } = {}) {
           {" "}<code>''</code> и <code>'крепёж_%'</code>. Видно, что у пустой записки нет фрагмента, а знаки
           {" "}<code>_</code> и <code>%</code> остались на месте. Пробелы внутри слова или фразы тоже сохраняются.
         </p>
-        <p>Иногда решение уже известно по входу. Кладовщик отклоняет номер 0 сразу, без обращения к реестру.</p>
-        <CodeBlock code={BADGE_EXAMPLE} caption="Ранний return завершает обработку заявки с недопустимым номером" />
         <p>
-          Видим «Номер должен быть положительным». После первого <code>return</code> функция не формирует подпись заявки.
-          В Planner решение об остановке принимаем по подготовленному тексту. Когда фрагмент пуст, поиск возвращает
-          пустой список до SELECT.
+          В JSON-поиске пустой фрагмент уже давал <code>[]</code> до чтения данных. Кладовщик поступит так же:
+          для пустой записки он вообще не открывает реестр. В SQL-репозитории это видно по следу. Для непустой
+          записки «молоток» также можно получить <code>[]</code>, но сначала SQLite выполнит <code>SELECT</code>.
         </p>
 
         <h3>Буквальный фрагмент в запросе</h3>
@@ -248,42 +247,18 @@ export function Lesson73({ module }: { module?: string } = {}) {
           explanation="После обработки первой записки останется знак _. Он есть в названии 8, поэтому позиция только там положительная. Из второй записки получится пустая строка. Поиск завершается до SELECT."
         />
         <p>
-          Для непустой записки без совпадений ответ тоже может быть пустым. В этом случае след содержит SELECT.
-          Для пустой записки его нет. Так мы видим, на каком шаге получился результат.
+          Если результат выглядит одинаково, сравним след. Так узнаем, выполнялся ли <code>SELECT</code>.
         </p>
       </Section>
 
       <Section number="04" title="Что мы будем делать в практике">
-        <Lead>Вернёмся в SQL-репозиторий собственного Planner. По одному смешанному набору будет видно, что изменилось после каждой правки.</Lead>
         <LinkedNotes items={[
           { title: "Отберём по статусу", description: "Сравним открытые задачи со всеми задачами при отсутствии фильтра." },
           { title: "Упорядочим и ограничим", description: "С пределом увидим первые id в каждом направлении, а в следе SQL найдём ORDER BY и LIMIT." },
-          { title: "Подготовим поисковый ввод", description: "Одинаковые по смыслу записки дадут одну строку. Для пробелов поиск закончится до SELECT." },
+          { title: "Проверим границу поиска", description: "Увидим два пустых результата. Только непустой запрос без совпадений дойдёт до SELECT." },
           { title: "Найдём буквальный фрагмент", description: "Из двух похожих названий останется то, где действительно напечатан нужный знак." },
         ]} />
-        <p>Сначала проверим каждый результат вызовом репозитория. Так будет понятно, где искать причину, если пользовательская выдача отличается от ожидаемой.</p>
-        <h3>Проверка в одной сессии Python</h3>
-        <p>
-          Откроем <code>python</code> из каталога <code>project/</code> в вашем обычном окружении Planner.
-          Подготовим данные для всех четырёх карточек один раз. Адрес <code>sqlite://</code> держит базу в
-          памяти этого процесса. Здесь используется знакомая ORM-модель Planner. После наполнения включим
-          {" "}<code>engine.echo</code>, чтобы видеть SQL во время проверки.
-        </p>
-        <CodeBlock code={PRACTICE_DATA} caption="Учебные строки для проверки методов в Python" />
-        <p>
-          Перед первой задачей вызовем существующий <code>list()</code>. Строка <code>print</code> покажет
-          знакомый список номеров <code>[12, 27, 35, 42, 53]</code>. Сообщения перед ним показывают SQL
-          и отдельно параметры. Если список другой, проверим, какой проект открыт и все ли строки
-          подготовлены.
-        </p>
-        <CodeBlock code={PRACTICE_RELOAD} caption="Получаем репозиторий и проверяем готовые данные" />
-        <p>
-          После правки файла снова выполним первую строку этого фрагмента. <code>reload</code> перечитает
-          сохранённый модуль, а новый репозиторий получит ту же учебную Session. Дальше выполним вызовы из
-          текущей карточки. В них список в квадратных скобках показывает номера возвращённых Task.
-          После последней карточки закроем проверку командами <code>lab_session.close()</code> и
-          {" "}<code>engine.dispose()</code>.
-        </p>
+        <p>В первой карточке подготовим один учебный набор Planner для всех четырёх шагов.</p>
       </Section>
     </RichLesson>
   );

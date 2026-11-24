@@ -40,6 +40,8 @@
 /* Короткий код внутри текста; полноценные фрагменты кода сюда не входят. */
 :where(.rich-lesson, .markdown-body) code:where(:not(pre code, .code-block > code)),
 .lesson-token {
+  display: inline;
+  max-width: 100%;
   padding: 0.08em 0.3em;
   border: 0;
   border-radius: 4px;
@@ -48,8 +50,11 @@
   font-family: var(--font-code);
   font-size: 0.88em;
   font-weight: 400;
+  box-shadow: none;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 /* Подсветка значений в примерах подстановки использует акцент темы. */
@@ -59,15 +64,6 @@
   background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
   color: var(--text);
   font-weight: 650;
-}
-
-/* Совместимость с уже размеченными inline-токенами. */
-.lesson-token {
-  display: inline;
-  max-width: 100%;
-  box-shadow: none;
-  overflow-wrap: anywhere;
-  white-space: normal;
 }
 
 .lesson-token--danger,

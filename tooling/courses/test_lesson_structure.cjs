@@ -43,9 +43,57 @@ test('dynamic practice notes do not establish a verified practice section', () =
   assert.equal(statuses(lesson(body, intro, practiceSection('<LinkedNotes items={dynamic}/>')))[1], 'UNKNOWN');
   assert.equal(statuses(lesson(body, intro, practiceSection('{showSteps && ' + practiceNotes + '}')))[1], 'UNKNOWN');
 });
+test('a practice plan cannot also contain code blocks, tests, disclosures or subsections', () => {
+  const forbidden = [
+    '<CodeBlock code="print(result)"/>',
+    '<pre><code>print(result)</code></pre>',
+    '<details><summary>Сверить ответ</summary><p>Результат</p></details>',
+    '<QuizCard/>',
+    '<Checklist points={["Запустим проверку"]}/>',
+    '<h3>Проверочная консоль</h3>',
+    '<div role="heading" aria-level={3}>Проверочная консоль</div>',
+    '<section aria-label="Проверочная консоль"><p>Запустим проверку</p></section>',
+    practiceSection(practiceNotes),
+  ];
+  for (const content of forbidden) {
+    assert.equal(statuses(lesson(body, intro, practiceSection(practiceNotes + content)))[1], 'FAIL', content);
+  }
+});
+test('practice plan validation follows explicitly rendered fragments and content props', () => {
+  const withConstant = lesson(body, intro, practiceSection(practiceNotes + '{blocks}'))
+    .replace('return <>', 'const blocks = [<p>Проверим результат.</p>, <><CodeBlock code="print(result)"/></>]; return <>');
+  assert.equal(statuses(withConstant)[1], 'FAIL');
+  const withAlias = `import { CodeBlock as Example } from '@course-ui'; ${lesson(body, intro, practiceSection(practiceNotes + '<div children={<Example code="print(result)"/>}/>'))}`;
+  assert.equal(statuses(withAlias)[1], 'FAIL');
+  const insideNotes = '<LinkedNotes items={[{title:"Сверим", description:<pre>print(result)</pre>}]}/>';
+  assert.equal(statuses(lesson(body, intro, practiceSection(insideNotes)))[1], 'FAIL');
+  assert.equal(statuses(lesson(body, intro, practiceSection(practiceNotes + '{true && <h3>Проверка</h3>}')))[1], 'FAIL');
+});
+test('a short practice explanation can use inline code and multiple notes', () => {
+  const explanation = '<Lead>Проверим результат вызовом <code>get()</code>.</Lead><p>Увидим существующую запись.</p>';
+  const theory = body.replace('</Section>', '<details><summary>Как читать схему</summary><p>Слева направо.</p></details></Section>');
+  assert.deepEqual(statuses(lesson(theory, intro, practiceSection(explanation + practiceNotes + practiceNotes))), ['PASS','PASS','PASS','PASS','PASS']);
+  assert.equal(statuses(lesson(body, intro, practiceSection(practiceNotes + '{false && <h3>Проверка</h3>}')))[1], 'PASS');
+});
+test('unknown practice content stays UNKNOWN even with valid notes', () => {
+  for (const content of ['{showExample && <CodeBlock code="print(result)"/>}', '<CustomPracticePreview/>', '<div dangerouslySetInnerHTML={markup}/>', '<p>{renderExplanation()}</p>']) {
+    assert.equal(statuses(lesson(body, intro, practiceSection(practiceNotes + content)))[1], 'UNKNOWN', content);
+  }
+  assert.equal(statuses(lesson(body, intro, practiceSection(practiceNotes + '<CustomPracticePreview/><h3>Проверка</h3>')))[1], 'FAIL');
+});
 test('code and decoys do not satisfy visual or interactive', () => {
   const source = `import { Diagram, QuizCard } from './shared'; // <Diagram/><QuizCard/>\nconst unused = <Diagram/>; function Helper(){ return <QuizCard/> }\n` + lesson('<Section><CodeBlock code="<Diagram/>"/><LinkedNotes/><Callout/><MethodGrid/></Section>');
   assert.deepEqual(statuses(source).slice(2,4), ['FAIL','FAIL']);
+});
+test('a rendered InteractiveTable counts only as a visual', () => {
+  const table = '<InteractiveTable title="Результаты" columns={["Вход", "Выход"]} rows={[{id:"a", label:"A", values:["B"]}]}/>';
+  assert.deepEqual(statuses(lesson(`<Section>${table}</Section>`)).slice(2, 4), ['PASS','FAIL']);
+  const alias = table.replace('InteractiveTable', 'Outcomes').replace('rows={[{id:"a", label:"A", values:["B"]}]}', 'rows={names.map(name => ({id:name, label:name, values:["B"]}))}');
+  const source = `import { InteractiveTable as Outcomes } from '../../shared'; const names = ["A"]; ${lesson(`<Section>${alias}</Section>`)}`;
+  assert.deepEqual(statuses(source).slice(2, 4), ['PASS','FAIL']);
+  assert.deepEqual(statuses(lesson(`<Section>${table.replace('rows={[{id:"a", label:"A", values:["B"]}]}', 'rows={[]}')}</Section>`)).slice(2, 4), ['FAIL','FAIL']);
+  assert.deepEqual(statuses(lesson(`<Section>${table.replace('rows={[{id:"a", label:"A", values:["B"]}]}', 'rows={fromApi}')}</Section>`)).slice(2, 4), ['UNKNOWN','FAIL']);
+  assert.deepEqual(statuses(lesson(`<Section>${table.replace('/>', '{...props}/>')}</Section>`)).slice(2, 4), ['UNKNOWN','FAIL']);
 });
 test('no interactive and interactive in intro', () => {
   assert.equal(statuses(lesson('<Section><svg/></Section>'))[3], 'FAIL');

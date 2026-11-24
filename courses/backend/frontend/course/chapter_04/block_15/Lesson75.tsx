@@ -1,10 +1,9 @@
-import { useState } from "react";
 import {
-  Callout,
   CodeBlock,
   Diagram,
   DiagramLane,
   DiagramTrack,
+  InteractiveTable,
   Lead,
   LinkedNotes,
   QuizCard,
@@ -33,51 +32,78 @@ with TemporaryDirectory() as folder:
     for candidate in (rehearsal, archive):
         print(candidate.name, candidate.read_bytes() == desk.read_bytes())`;
 
-const IMPORT_COMPARE = `expected = {
-    8: {"item": "Штатив", "labels": ["выдача"], "key": "штатив"},
-    11: {"item": "Кабель", "labels": [], "key": "кабель"},
-}
-# Эти строки прочитаны из нового журнала после переноса.
-actual = {
-    8: {"item": "Штатив", "labels": [], "key": "штатив"},
-    11: {"item": "Кабель", "labels": [], "key": "кабель"},
-}
-
-print("Номера совпали:", expected.keys() == actual.keys())
-for number in expected.keys() & actual.keys():
-    for field, value in expected[number].items():
-        observed = actual[number][field]
-        if observed != value:
-            print(number, field, value, "→", observed)`;
-
-const OPENED_DATABASE = `import sqlite3
+const IMPORT_COMPARE = `import json
+import sqlite3
 from contextlib import closing
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-def read_loan(file, number):
-    with closing(sqlite3.connect(file)) as connection:
-        listing = connection.execute("PRAGMA database_list")
-        opened = next((name for _, schema, name in listing
-                       if schema == "main"), "")
-        loan = connection.execute(
-            "SELECT item FROM loans WHERE id = ?", (number,)
-        ).fetchone()
-        return Path(opened).resolve() if opened else None, loan
+cards = [(8, "Штатив", ["выдача"]), (11, "Кабель", [])]
+expected = {i: (item, labels, item.lower()) for i, item, labels in cards}
 
 with TemporaryDirectory() as folder:
-    selected = Path(folder) / "open.db"
-    mirror = Path(folder) / "mirror.db"
-    for path in (selected, mirror):
-        with closing(sqlite3.connect(path)) as db, db:
-            db.execute("CREATE TABLE loans (id INTEGER, item TEXT)")
-            db.execute("INSERT INTO loans VALUES (11, 'Кабель')")
+    file = Path(folder) / "loans.db"
+    with closing(sqlite3.connect(file)) as db, db:
+        db.execute("CREATE TABLE loans (id INTEGER, item TEXT, labels TEXT, key TEXT)")
+        db.execute("INSERT INTO loans VALUES (8, 'Штатив', '[]', 'штатив')")
+        db.execute("INSERT INTO loans VALUES (11, 'Кабель', '[]', 'кабель')")
 
-    opened_a, row_a = read_loan(selected, 11)
-    opened_b, row_b = read_loan(mirror, 11)
-    print("Выдача:", row_a == row_b)
-    print("Выбранный файл:", opened_a == selected.resolve(),
-          opened_b == selected.resolve())`;
+    address = file.resolve().as_uri() + "?mode=ro"
+    with closing(sqlite3.connect(address, uri=True)) as reader:
+        query = "SELECT id, item, labels, key FROM loans"
+        actual = {i: (item, json.loads(labels), key)
+                  for i, item, labels, key in reader.execute(query)}
+
+print("Номера совпали:", expected.keys() == actual.keys())
+for i in sorted(expected.keys() & actual.keys()):
+    for field, old, new in zip(("item", "labels", "key"), expected[i], actual[i]):
+        if new != old:
+            print(i, field, old, "→", new)`;
+
+const OPENED_DATABASE = `from pathlib import Path
+from tempfile import TemporaryDirectory
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import Session
+
+with TemporaryDirectory() as folder:
+    target = Path(folder) / "open.db"
+    for name in ("open.db", "mirror.db"):
+        file = Path(folder) / name
+        engine = create_engine(f"sqlite:///{file.as_posix()}")
+        try:
+            with engine.begin() as db:
+                db.execute(text("CREATE TABLE loans (id INTEGER, item TEXT)"))
+                db.execute(text("INSERT INTO loans VALUES (11, 'Кабель')"))
+            with Session(engine) as reader:
+                loan = reader.execute(text("SELECT item FROM loans WHERE id = 11")).scalar_one()
+                for _, schema, opened in reader.execute(text("PRAGMA database_list")):
+                    if schema == "main":
+                        actual = Path(opened).resolve() if opened else None
+                        print(loan, actual == target.resolve())
+        finally:
+            engine.dispose()`;
+
+const COUNTER_LIFETIME = `from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+@asynccontextmanager
+async def counter_hours(_app):
+    print("Открыли стойку")
+    try:
+        yield
+    finally:
+        print("Закрыли стойку")
+
+counter = FastAPI(lifespan=counter_hours)
+
+@counter.get("/counter")
+def counter_status():
+    return "Работаем"
+
+with TestClient(counter) as client:
+    print(client.get("/counter").json())
+    print(client.get("/counter").json())`;
 
 const SAVE_AND_READ = `import sqlite3
 import subprocess
@@ -144,110 +170,7 @@ with TemporaryDirectory() as folder:
     print("Старый читатель:", inspect_old_export(archive))
     print("Недоступная база:", counter_view(root))`;
 
-const WORKING_FIXTURE = `[
-  {"id": 34, "title": "Купить бумагу", "priority": 4, "is_done": false, "tags": ["офис"]},
-  {"id": 52, "title": "Уточнить срок", "priority": 1, "is_done": true, "tags": ["звонок"]}
-]`;
-
-const RUN_SETTINGS = `$env:JSON_PATH = "data/tasks.json"
-$env:DATABASE_URL = "sqlite:///data/cutover.sqlite3"
-
-# Терминал API
-python -m uvicorn app.api:app --host 127.0.0.1 --port 8765
-
-# Другой терминал: те же переменные, затем CLI
-python -m app.main`;
-
-const SOURCE_OBSERVATION = `python -c "from app.core.config import load_settings; print(load_settings().json_path.resolve())"
-python -c "from pathlib import Path; import sys; print(Path(sys.argv[1]).read_bytes() == Path(sys.argv[2]).read_bytes())" <источник> <архив>`;
-
-const IMPORT_COMMANDS = `python -m app.DBase.init_db
-python -m app.DBase.import_tasks --source "<подтверждённый архив>" --database "<путь SQLite>"`;
-
-const COMPARE_ROWS = `import json
-import sqlite3
-from contextlib import closing
-from pathlib import Path
-
-def inspect_import(database, snapshot=None):
-    location = Path(database).resolve().as_uri() + "?mode=ro"
-    fields = ("id", "title", "priority", "is_done", "tags", "title_normalized")
-    with closing(sqlite3.connect(location, uri=True)) as db:
-        rows = db.execute("SELECT " + ", ".join(fields) + " FROM tasks")
-        actual = {
-            i: (i, title, priority, bool(done), json.loads(tags), key)
-            for i, title, priority, done, tags, key in rows
-        }
-    print("Строк в tasks:", len(actual))
-    if snapshot is None:
-        return
-    records = json.loads(Path(snapshot).read_text(encoding="utf-8"))
-    expected = {
-        r["id"]: (r["id"], r["title"], r["priority"], r["is_done"],
-                  r.get("tags", []), r["title"].lower())
-        for r in records
-    }
-    print("Только в архиве:", sorted(expected.keys() - actual.keys()))
-    print("Только в SQLite:", sorted(actual.keys() - expected.keys()))
-    differences = 0
-    for i in sorted(expected.keys() & actual.keys()):
-        for field, old, new in zip(fields, expected[i], actual[i]):
-            if old != new:
-                print(i, field, repr(old), "→", repr(new))
-                differences += 1
-    print("Различий в полях:", differences)`;
-
-const OBSERVE_OPEN = `from pathlib import Path
-from sqlalchemy import event
-from sqlalchemy.orm import Session
-
-@event.listens_for(Session, "after_begin")
-def show_open_file(session, transaction, connection):
-    for _, schema, filename in connection.exec_driver_sql("PRAGMA database_list"):
-        if schema == "main":
-            print("main =", Path(filename).resolve() if filename else "(без файла)")
-`;
-
-const PROBE_START = `# В оболочке Python в терминале API, после кода наблюдателя
-from app.api import app
-from uvicorn import run
-run(app, host="127.0.0.1", port=8765)
-
-# В отдельной оболочке Python для CLI, после того же наблюдателя
-from app.main import main
-main()`;
-
-const cases = [
-  {
-    label: "Старый снимок",
-    question: "Последняя заявка совпадает. Что ещё удерживает переход?",
-    description: "В рабочем реестре №8 выдан на 4 дня, в архиве на 2. №11 совпадает.",
-    correctIndex: 0,
-    explanation: "Архив хранит старую версию №8. Полная сверка с остановленным источником заметит различие до импорта.",
-    observation: "№8 · срок 4 дня → 2 дня",
-  },
-  {
-    label: "Два файла",
-    question: "Пункты видят заявку №11. Можно ли начать новую запись?",
-    description: "Первый пункт открыл open.db, второй открыл mirror.db. Целью выбрали open.db.",
-    correctIndex: 1,
-    explanation: "Оба видят прежнюю заявку, потому что импорт совпал. Сверка открытых путей задерживает запись до исправления второго пункта.",
-    observation: "Цель · open.db · второй пункт · mirror.db",
-  },
-  {
-    label: "Недоступный журнал",
-    question: "Какой результат подтверждает выход старого пути?",
-    description: "SQLite указывает на каталог. Старый экспорт по привычному адресу читается и содержит выдачу №90.",
-    correctIndex: 2,
-    explanation: "Рабочая операция должна сообщить об отказе. Появление архивной выдачи №90 означало бы, что приложение перешло к старому экспорту.",
-    observation: "Отказ операции · выдача №90 отсутствует",
-  },
-];
-
 export function Lesson75() {
-  const [caseIndex, setCaseIndex] = useState(0);
-  const scenario = cases[caseIndex];
-
   return (
     <RichLesson>
       <RichHero
@@ -255,9 +178,9 @@ export function Lesson75() {
         intro="Перенесём актуальные задачи, затем проверим, что API и CLI работают с одной базой и обходятся без старого хранилища."
       />
       <Section number="00" title="Вступление">
-        <Lead>Во время репетиции отдельная SQLite приняла задачи из JSON. После репетиции обычный Planner снова читает JSON. За это время задачи могли измениться.</Lead>
+        <Lead>На этапе «Возврат к обычному JSON» вы восстановили оба запуска. В обычном учебном JSON они находят прежнюю задачу. Номер пробной записи остаётся в отдельной SQLite.</Lead>
         <LinkedNotes items={[
-          { title: "Точка старта", description: "Пробный перенос проверен, обычные API и CLI снова используют JSON." },
+          { title: "Точка старта", description: "Пробная база осталась отдельной. В заметке сохранены параметры обычных API и CLI." },
           { title: "Новый вопрос", description: "Как перевести обе точки на одну SQLite и проверить их поведение при недоступной базе?" },
           { title: "Результат", description: "Свежий процесс увидит новое изменение. При недоступной SQLite обе точки сообщат об отказе, даже если старый файл читается." },
         ]} />
@@ -269,30 +192,43 @@ export function Lesson75() {
         <p>На репетиции штатив №8 был выдан на два дня. Второй пункт продлил его до четырёх дней уже после репетиции. Последняя запись о кабеле №11 осталась прежней.</p>
         <p>Возьмём текущий журнал после ухода обоих сотрудников. <code>copyfile</code> переносит содержимое в отдельный файл, а <code>read_bytes()</code> читает файл целиком, как последовательность байтов. В примере временный каталог сам готовит и убирает файлы.</p>
         <CodeBlock code={SNAPSHOT} caption="Журнал выдачи · старые и свежие байты" />
-        <p>На экране <code>rehearsal.json False</code> и <code>archive.json True</code>. Пробный файл устарел из-за №8. Новый архив совпал байт в байт, включая форматирование. В Planner сначала выясним, какой JSON реально открывали обычные процессы. После их завершения выберем для архива свободное имя. Свежий снимок сохранится отдельно от пробного.</p>
+        <p>На экране <code>rehearsal.json False</code> и <code>archive.json True</code>. Пробный файл устарел из-за №8. Новый архив совпал байт в байт, включая форматирование. В Planner возьмём действующий адрес из заметки о возврате к JSON. Прежнюю и свежую копии сравним способом из примера.</p>
       </Section>
 
       <Section number="02" title="Сверяем содержимое после импорта">
         <Lead>После копирования мы знаем, что архив точный. После импорта проверяем уже другое: сохранилось ли каждое значение в новом хранилище.</Lead>
-        <p>Бумажную ведомость можно отсканировать без потерь, а при переносе в журнал пропустить пометку «выдача». Сначала сравним номера. Затем <code>&amp;</code> оставит общие ключи, и у каждого номера сравним значения по полям. При расхождении в номерах или значениях остановимся до переключения.</p>
+        <p>Бумажную ведомость можно отсканировать без потерь, а при переносе в журнал пропустить пометку «выдача». Построим ожидаемые карточки из ведомости. В примере картотека уже заполнена во временном файле. <code>mode=ro</code> открывает этот файл только для чтения, <code>json.loads()</code> возвращает список меток. Затем <code>&amp;</code> оставляет общие номера, а <code>zip()</code> ставит рядом название поля и оба его значения.</p>
         <CodeBlock code={IMPORT_COMPARE} caption="Журнал выдачи · сравнение двух представлений" />
         <p>Получаем <code>Номера совпали: True</code> и расхождение <code>8 labels ['выдача'] → []</code>. Значит, перенос ещё нельзя считать точным. Если пропал сам номер, это покажет уже первая строка.</p>
-        <p>В Planner вернёмся к подготовленной в репетиции пустой <code>tasks</code> и явному импорту. Свежим чтением сравним <code>id</code>, <code>title</code>, <code>priority</code>, <code>is_done</code>, <code>tags</code> и вычисленное поле <code>title_normalized</code>. Для последнего импортёр берёт сохранённое название и вызывает <code>.lower()</code>.</p>
+        <p>В репетиции мы уже проверяли пустую <code>tasks</code> и сравнивали шесть полей по <code>id</code>. Применим свой способ сверки к новому файлу и свежему архиву. Для небольшого набора можно выписать строки по <code>id</code> и пройти каждое поле по тому же принципу. Теперь результат сверки определяет, можно ли открыть эту SQLite в обоих обычных запусках.</p>
       </Section>
 
       <Section number="03" title="Подключаем оба входа и проверяем открытый файл">
         <Lead>Два пункта могут открыть два журнала с одинаковыми заявками. Для новой записи им нужен один и тот же физический файл.</Lead>
-        <p>У выбранного адреса есть владелец. Точка запуска принимает адрес, открывает через него ресурс и передаёт ресурс операции. В примере каждого пункта <code>read_loan</code> получает выбранный файл и открывает его. <code>closing</code> закрывает соединение после запроса. Обе операции читают №11.</p>
-        <p><code>PRAGMA database_list</code> спрашивает текущее соединение, какие базы оно открыло. В каждой строке есть порядковый номер, имя базы и имя файла. Нас интересует <code>main</code>, основная база. Пустое имя файла бывает у базы в памяти. <code>Path.resolve()</code> приводит найденное имя и выбранный путь к абсолютному виду.</p>
-        <CodeBlock code={OPENED_DATABASE} caption="Два файла, одна и та же заявка №11" />
-        <p><code>Выдача: True</code> сообщает, что строки совпали. <code>Выбранный файл: True False</code> показывает, что второй пункт открыл зеркало. Тот же id пригоден для проверки данных. Для допуска записи сравним оба открытых пути с одной заранее выбранной целью.</p>
-        <p>В Planner адрес приходит из <code>DATABASE_URL</code>. Engine и фабрика Session обслуживают срок жизни запуска. Поставщик сервиса API берёт Session на запрос, а SQL-контекст CLI берёт Session на команду. Репозиторий и уже знакомая область записи получают одну Session. Проследим существующие связи от каждой точки входа, сохраняя её способ закрыть ресурс.</p>
+        <p><code>PRAGMA database_list</code> показывает базы, которые открыла текущая Session. В строках идут порядковый номер, имя базы и путь файла. Для <code>main</code> сравниваем путь с выбранной целью. <code>Path.resolve()</code> приводит оба пути к абсолютному виду. Пустой путь означает, что файлового адреса для сравнения нет.</p>
+        <p><code>text()</code> помечает строку как SQL-команду для <code>Session.execute()</code>. В примере запрос к таблице и проверка файла выполняются в одной открытой Session.</p>
+        <CodeBlock code={OPENED_DATABASE} caption="Одна заявка в двух картотеках" />
+        <QuizCard
+          question="Что покажут два чтения о заявке и открытом файле?"
+          options={[
+            "Оба чтения найдут заявку, и оба откроют выбранный файл",
+            "Оба чтения найдут заявку, и только первое откроет выбранный файл",
+            "Только первое чтение найдёт заявку и откроет выбранный файл",
+          ]}
+          correctIndex={1}
+          explanation="Программа печатает «Кабель True», затем «Кабель False». Обе Session находят заявку №11. В первом чтении PRAGMA возвращает путь open.db, совпадающий с целью. Во втором чтении открыт mirror.db, поэтому сравнение с целью даёт False."
+          orientation="vertical"
+        />
+        <p>Временный вывод в Planner можно добавить у обычного чтения, пока его Session открыта. Уберите этот вывод до прикладной записи.</p>
+        <p>У стойки есть часы работы, а каждое обращение посетителя занимает только несколько минут. Так же Engine работает весь срок запуска, а Session закрывается по окончании запроса или команды. У FastAPI границы работы приложения задаёт <code>lifespan</code>.</p>
+        <CodeBlock caption="Два обращения за одно открытие стойки" code={COUNTER_LIFETIME} />
+        <p><code>asynccontextmanager</code> превращает функцию с <code>yield</code> в асинхронный контекст. До <code>yield</code> стойка открывается один раз. Два запроса печатают «Работаем». При выходе из <code>with TestClient(...)</code> блок <code>finally</code> закрывает стойку один раз. В Planner в такой границе можно освободить ресурсы Engine через <code>dispose()</code> после завершения запросов. Session по-прежнему закрывает её поставщик после каждого обращения. В CLI знакомый контекст сохраняет границу одной команды.</p>
         <Diagram caption="Какие свидетельства нужны до первой записи">
           <DiagramLane title="Подготовка данных">
             <DiagramTrack label="Источник → SQLite" items={["Оба писателя остановлены", "Архив совпал в байтах", "Импорт совпал по полям"]} />
           </DiagramLane>
           <DiagramLane title="Проверка открытых файлов">
-            <DiagramTrack label="Штатные входы" items={["API main = цель", "CLI main = цель", "Можно записать"]} />
+            <DiagramTrack label="Штатные входы" items={["Файл API совпал с целью", "Файл CLI совпал с целью", "Можно записать"]} />
           </DiagramLane>
         </Diagram>
       </Section>
@@ -312,63 +248,31 @@ export function Lesson75() {
         <CodeBlock code={ARCHIVE_PROBE} caption="Обычный просмотр журнала и явное чтение экспорта" />
         <p>В <code>counter_with_old_sign</code> чтение экспорта прерывается ещё до запроса к журналу. В обычном <code>counter_view</code> этого обращения уже нет, поэтому получаем <code>Без архива: Кабель</code>. Явный читатель выдаёт <code>АРХИВНАЯ ВЫДАЧА 90</code>, а обычный просмотр завершает опыт сообщением <code>Недоступная база: Журнал недоступен</code>. Если бы просмотр вернул архивную выдачу, это был бы fallback: после сбоя он продолжил работу со старым источником.</p>
         <p>В Planner пройдите от запуска API и CLI по настройкам, сборке сервиса и репозиторию. Отдельно проследите явный запуск импортёра и способы превращения объекта Task в данные и обратно. Они принадлежат другим путям вызова. В опыте с недоступной SQLite проверяйте операцию чтения задачи. <code>/health</code> отвечает за живой процесс, через него файл задач не открывается.</p>
-        <Diagram caption="Разные опыты после вывода файловой сборки">
-          <DiagramLane title="Исправная SQLite">
-            <DiagramTrack label="Архив отсутствует" items={["Открываем задачу", "Читаем из SQLite"]} />
-          </DiagramLane>
-          <DiagramLane title="Недоступная SQLite">
-            <DiagramTrack label="Архив доступен" items={["Открываем задачу", "Получаем отказ без архивного значения"]} />
-          </DiagramLane>
-        </Diagram>
-        <h3>Где остановится переход?</h3>
-        <p>Выберите состояние журнала. Сначала решите, какое свидетельство потребует остановки. Затем сравните прогноз с результатом.</p>
-        <div role="group" aria-label="Состояние журнала" className="answer-options">
-          {cases.map((item, index) => (
-            <button key={item.label} type="button" className="answer-option" aria-pressed={index === caseIndex}
-              onClick={() => setCaseIndex(index)}>
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <InteractiveTable
+          title="Что подтверждают два запуска"
+          columns={["Учебная копия", "Условия", "Что увидим"]}
+          rows={[
+            { id: "normal", label: "Обычный запуск", values: ["SQLite исправна, старого файла нет", "Оба интерфейса возвращают актуальную запись"] },
+            { id: "failure", label: "Отказ SQLite", values: ["Главная база недоступна, архив по старому пути читается", "Чтение завершается ошибкой, архивный маркер отсутствует"] },
+          ]}
+        />
         <QuizCard
-          key={scenario.label}
-          question={scenario.question}
-          description={scenario.description}
-          options={["Сверка полного архива", "Сверка открытых файлов", "Отказ операции без архивной записи"]}
-          correctIndex={scenario.correctIndex}
-          explanation={scenario.explanation}
-          answer={<p>{scenario.observation}</p>}
+          question="Что добавить к опыту, чтобы проверить поведение при сбое?"
+          description="Картотека недоступна, старый экспорт тоже отсутствует. Обычное чтение сообщило об ошибке."
+          options={["Оставить оба файла недоступными", "Вернуть читаемый экспорт с узнаваемой записью", "Повторить проверку на исправной картотеке без экспорта"]}
+          correctIndex={1}
+          explanation="Подложим старый экспорт по прежнему адресу, сохраняя сбой основной базы. Тогда успешное чтение узнаваемой записи выдаст переход к экспорту, а отказ покажет, что обычное чтение остановилось."
           orientation="vertical"
         />
       </Section>
 
       <Section number="06" title="Что мы будем делать в практике">
-        <Lead>Продолжим собственный Planner в отдельной учебной копии проекта. Из репетиции возьмём запуск, пустую схему и команды переноса.</Lead>
         <LinkedNotes items={[
-          { title: "Сохраним и перенесём данные", description: "Получим точный архив остановленного JSON и отдельно подтвердим строки, которые приняла SQLite." },
-          { title: "Переведём оба входа", description: "Сверим открытые файлы до записи и увидим новое значение у того же id из отдельного процесса." },
-          { title: "Проверим независимость", description: "В одной копии увидим рабочее чтение без старого файла, в другой получим отказ при доступном архивном маркере." },
+          { title: "Сохраним и перенесём данные", description: "Снимем архив остановленного JSON и проверим SQLite по свежему снимку." },
+          { title: "Переведём оба входа", description: "Сверим открытые файлы до записи и прочитаем новое значение из другого процесса." },
+          { title: "Проверим независимость", description: "Запустим SQLite без архива и проверим отказ при читаемом архиве." },
         ]} />
-        <p>Записывайте наблюдения по ходу работы. Каждый полезный результат станет входом следующей карточки.</p>
-        <details>
-          <summary>Данные и команды учебного запуска</summary>
-          <p>Откройте терминалы из корня отдельной копии <code>project/</code>. Убедитесь, что оба адреса ведут внутрь этой копии и что порт 8765 свободен. Поместите данные в <code>data/tasks.json</code>. Для старого кандидата используйте <code>data/rehearsal/tasks.json</code> с теми же строками и приоритетом 2 у №34. Эти пути относятся к учебной копии. Настройки задаются в каждом терминале.</p>
-          <CodeBlock code={WORKING_FIXTURE} caption="Две синтетические задачи" language="text" />
-          <CodeBlock code={RUN_SETTINGS} caption="PowerShell · адреса и обычные запуски" language="text" />
-          <p>После запуска запрос <code>GET http://127.0.0.1:8765/tasks/52</code> и команда CLI <code>find</code> с номером <code>52</code> показывают контрольную задачу. Для паузы завершите CLI командой <code>exit</code>, а учебный сервер остановите через Ctrl+C. Запущенный сервер получает настройки на старте, поэтому диагностическую команду запускайте из того же окружения. Значения в угловых скобках заменяются своими путями в кавычках.</p>
-          <CodeBlock code={SOURCE_OBSERVATION} caption="Эффективный JSON-путь и сравнение двух файлов" language="text" />
-          <p>В командах схемы и импорта <code>DATABASE_URL</code> относится к init. У импортёра <code>--source</code> принимает путь архива, а <code>--database</code> принимает путь SQLite как файла.</p>
-          <CodeBlock code={IMPORT_COMMANDS} caption="Из репетиции · подготовка SQLite и явный импорт" language="text" />
-          <p>Для сверки откройте <code>python</code> и выполните блок ниже. Вызов <code>inspect_import("data/cutover.sqlite3")</code> печатает число строк. Второй аргумент с путём архива добавляет сравнение. Чтение идёт в режиме <code>mode=ro</code>, поэтому ошибочный адрес не создаст новый файл. Сравните оба списка отсутствующих id и число различий, а при расхождении прочитайте строку поля.</p>
-          <CodeBlock code={COMPARE_ROWS} caption="Оснастка · полный отчёт по импорту" />
-        </details>
-        <details>
-          <summary>Смотрим путь в штатной Session</summary>
-          <p>После правок запуска откройте оболочку <code>python</code> в каждом из двух подготовленных терминалов. Выполните определение наблюдателя и завершите его пустой строкой. Декоратор подписывает функцию на начало транзакции. <code>connection</code> уже получено штатной Session для запроса или команды, в нём и читается <code>main</code>. Этот временный вызов остаётся в оболочке Python.</p>
-          <CodeBlock code={OBSERVE_OPEN} caption="Оснастка · какой файл открыла штатная Session" />
-          <CodeBlock code={PROBE_START} caption="Запустите по своему блоку в каждом терминале" />
-          <p>Выполните обычные GET и CLI find. Сравните напечатанные абсолютные пути с <code>Path(путь_цели).resolve()</code>. Для проверки зеркала используйте отдельную копию сверенной SQLite, сделанную при закрытых процессах. В обоих запусках читайте №52. Перед новой записью закройте пробные процессы и верните обоим терминалам выбранную цель.</p>
-        </details>
+        <p>Записывайте путь и результат каждого шага, чтобы использовать их в следующей карточке.</p>
       </Section>
     </RichLesson>
   );

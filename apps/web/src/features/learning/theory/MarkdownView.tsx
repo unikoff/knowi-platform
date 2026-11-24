@@ -4,8 +4,7 @@ import { getLessonTheory as fetchLessonTheory } from "../api";
 import { NextLessonLink } from "../navigation/LessonNavigation";
 import { getLessonHeadingTitle } from "../course";
 import { loadCoursePages, type CourseId, type LoadedCoursePages } from "../../../course-runtime/course-registry";
-import { LessonMetadataProvider } from "@course-ui";
-import { RichHero } from "@course-ui";
+import { CodeBlock, LessonMetadataProvider, RichHero } from "@course-ui";
 import { LessonLoading } from "../LessonLoading";
 import { LessonPageBoundary } from "./LessonPageBoundary";
 import type { Lesson, LessonTheoryResponse, LessonVideo } from "../types";
@@ -146,9 +145,13 @@ export function MarkdownView({ source }: { source: string }) {
 
         if (block.type === "code") {
           return (
-            <pre className="markdown-code" data-lang={block.lang || "code"} key={key}>
-              <code>{block.text}</code>
-            </pre>
+            <CodeBlock
+              key={key}
+              code={block.text}
+              language={block.lang || "text"}
+              showLanguage={Boolean(block.lang)}
+              preserveWhitespace
+            />
           );
         }
         if (block.type === "heading") {

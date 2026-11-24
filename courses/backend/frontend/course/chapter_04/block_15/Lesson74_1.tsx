@@ -1,172 +1,36 @@
 import {
-  BranchExplorer, CodeBlock, Diagram, DiagramArrow, DiagramFlow, DiagramLane, DiagramNode,
-  Lead, LinkedNotes, QuizCard, RichHero, RichLesson, Section,
+  CodeBlock, Diagram, DiagramArrow, DiagramFlow, DiagramLane, DiagramNode,
+  InteractiveTable, Lead, LinkedNotes, QuizCard, RichHero, RichLesson, Section,
 } from "../../shared";
 
-const schemaExample = `from contextlib import closing
-from pathlib import Path
-from sqlite3 import connect
-from tempfile import TemporaryDirectory
+const tableNames = `from sqlite3 import connect
 
-with TemporaryDirectory() as folder:
-    root = Path(folder)
-    snapshot = root / "requests.json"
-    snapshot.write_text('[4, 9]', encoding="utf-8")
+db = connect(":memory:")
+db.execute("CREATE TABLE requests (id INTEGER)")
+names = db.execute(
+    "SELECT name FROM sqlite_master WHERE type = 'table'"
+).fetchall()
+print(names)
+db.close()`;
 
-    goal = root / "cards.sqlite3"
-    with closing(connect(goal)) as db:
-        db.execute("CREATE TABLE requests (id INTEGER PRIMARY KEY)")
-        db.commit()
+const oneField = `original = {7: "доступ", 9: "склад"}
+copy = {9: "", 7: "доступ"}
 
-    uri = goal.as_uri() + "?mode=ro"
-    with closing(connect(uri, uri=True)) as db:
-        table = db.execute(
-            "SELECT name FROM sqlite_master WHERE name = 'requests'"
-        ).fetchone()
-        count = db.execute("SELECT COUNT(*) FROM requests").fetchone()[0]
-        print(snapshot.name, goal.name, table[0], count)`;
+print(original.keys() - copy.keys())
+print(original[9] == copy[9])`;
 
-const targetExample = `if not has_table:
-    print("Стоп: таблица отсутствует")
-elif count != 0:
-    print("Стоп: в цели есть строки")
-else:
-    print("Таблица есть, строк 0")`;
+const differentReaders = `yesterday = {9: "Заявка на склад"}
+today = {9: "Заявка на склад", 10: "Заявка на склад"}
 
-const compareExample = `register = {
-    4: ("Проверить вход", "доступ", False),
-    9: ("Заявка на СКЛАД", "склад", True),
-}
-copied = {
-    9: ("Заявка на СКЛАД", "", True),
-    4: ("Проверить вход", "доступ", False),
-}
+number_from_receipt = 10
+print(today.get(number_from_receipt))
+print(yesterday.get(number_from_receipt))`;
 
-print(len(register), len(copied))
-print(register.keys() == copied.keys())
-if register.keys() == copied.keys():
-    for number in sorted(register):
-        for field, expected, actual in zip(
-            ("название", "категория", "закрыта"),
-            register[number], copied[number],
-        ):
-            if expected != actual:
-                print(number, field, repr(expected), repr(actual))`;
+const compareBytes = `label = "склад".encode("utf-8")
+edited = "СКЛАД".encode("utf-8")
 
-const crossReadExample = `from contextlib import closing
-from pathlib import Path
-from sqlite3 import connect
-from tempfile import TemporaryDirectory
-
-def find_card(path, number):
-    with closing(connect(path.as_uri() + "?mode=ro", uri=True)) as reader:
-        return reader.execute(
-            "SELECT id, title FROM requests WHERE id = ?", (number,)
-        ).fetchone()
-
-with TemporaryDirectory() as folder:
-    chosen = Path(folder) / "chosen.sqlite3"
-    copy = Path(folder) / "copy.sqlite3"
-    for path in (chosen, copy):
-        with closing(connect(path)) as db:
-            db.execute("CREATE TABLE requests (id INTEGER PRIMARY KEY, title TEXT)")
-            db.executemany(
-                "INSERT INTO requests VALUES (?, ?)",
-                [(4, "Проверить вход"), (9, "Заявка на СКЛАД")],
-            )
-            db.commit()
-
-    with closing(connect(chosen)) as dispatcher:
-        saved = dispatcher.execute(
-            "INSERT INTO requests (title) VALUES (?)", ("Заявка на СКЛАД",)
-        )
-        new_number = saved.lastrowid
-        dispatcher.commit()
-
-    print(find_card(chosen, new_number))
-    print(find_card(copy, 9))
-    print(find_card(copy, new_number))`;
-
-const restoreExample = `register = {4: "Проверить вход", 9: "Заявка на СКЛАД"}
-trial = {**register, 10: "Заявка на СКЛАД"}
-
-def report(desk, terminal):
-    for reader in (desk, terminal):
-        print(9 in reader, 10 in reader)
-
-report(trial, trial)
-print("После возврата")
-report(register, register)
-print("Терминал остался в пробном режиме")
-report(register, trial)`;
-
-const inspectSchema = `$inspect = @'
-from contextlib import closing
-from pathlib import Path
-from sqlite3 import connect
-import sys
-
-file = Path(sys.argv[1]).resolve(strict=True)
-with closing(connect(file.as_uri() + "?mode=ro", uri=True)) as db:
-    table = db.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='tasks'"
-    ).fetchone()
-    print(file)
-    if table is None:
-        print("tasks отсутствует")
-    else:
-        print("tasks", db.execute("SELECT COUNT(*) FROM tasks").fetchone()[0])
-'@
-python -c $inspect "$target"`;
-
-const compareSnapshots = `$compare = @'
-from contextlib import closing
-from pathlib import Path
-from sqlite3 import connect
-import json
-import sys
-
-from app.models import Task
-
-source, target = (Path(value).resolve(strict=True) for value in sys.argv[1:3])
-snapshot = json.loads(source.read_text(encoding="utf-8"))
-expected = {}
-for item in snapshot:
-    task = Task.from_dict(item)
-    expected[task.id] = (task.title, task.priority, task.is_done,
-                         task.tags, task.title.lower())
-
-with closing(connect(target.as_uri() + "?mode=ro", uri=True)) as db:
-    sql = "SELECT id, title, priority, is_done, tags, title_normalized FROM tasks"
-    actual = {i: (title, priority, bool(done), json.loads(tags), normalized)
-              for i, title, priority, done, tags, normalized in db.execute(sql)}
-
-print("JSON / SQLite", len(expected), len(actual))
-print("id только в JSON", sorted(expected.keys() - actual.keys()))
-print("id только в SQLite", sorted(actual.keys() - expected.keys()))
-fields = ("title", "priority", "is_done", "tags", "title_normalized")
-for number in sorted(expected.keys() & actual.keys()):
-    if expected[number] == actual[number]:
-        print("id", number, "совпадает по всем полям")
-    for field, left, right in zip(fields, expected[number], actual[number]):
-        if left != right:
-            print("id", number, field, repr(left), "!=", repr(right))
-'@
-python -c $compare "$source" "$target"`;
-
-const inspectJson = `$readJson = @'
-from pathlib import Path
-import json
-import sys
-
-file = Path(sys.argv[1])
-number = int(sys.argv[2])
-baseline = Path(sys.argv[3])
-records = json.loads(file.read_bytes())
-print("id присутствует:", any(row["id"] == number for row in records))
-print("байты совпадают:", file.read_bytes() == baseline.read_bytes())
-'@
-python -c $readJson "$file" "$number" "$baseline"`;
+print(len(label) == len(edited))
+print(label == edited)`;
 
 export function Lesson74_1({ module }: { module?: string }) {
   return (
@@ -188,15 +52,24 @@ export function Lesson74_1({ module }: { module?: string }) {
       </Section>
 
       <Section number="01" title="Источник, адрес и пустая цель">
-        <Lead>Снимок хранит данные в том виде, в каком их взяли для переноса. Цель принимает их в отдельную таблицу.</Lead>
-        <p>Представьте ведомость с заявками 4 и 9. Для копий завели новую картотеку с подписанными полями. Ведомость заполнена, а в картотеке уже есть место для карточек. Самих карточек там пока ноль.</p>
-        <CodeBlock caption="Два учебных файла и пустая таблица" code={schemaExample} />
-        <p>Программа выводит <code>requests.json cards.sqlite3 requests 0</code>. Первые два имени указывают на разные файлы. Команда <code>CREATE TABLE</code> подготовила таблицу. Запрос к <code>sqlite_master</code> подтвердил её имя, а <code>COUNT(*)</code> посчитал строки. Соединение с <code>mode=ro</code> только читает уже существующий файл.</p>
-        <p>В Planner таблицу создаёт изученный <code>python -m app.DBase.init_db</code>. Настройка <code>DATABASE_URL</code> содержит URL SQLite, например <code>sqlite:///C:/Lab/cards.sqlite3</code>. В <code>python -m app.DBase.import_tasks --source … --database …</code> оба флага получают обычные файловые пути. Первый ведёт к JSON, второй к SQLite. Путь с пробелами берём в кавычки.</p>
+        <Lead>Снимок показывает исходные данные в момент переноса. Цель принимает их в отдельную таблицу.</Lead>
+        <p>Представьте ведомость с заявками и новую картотеку. Сначала ищем отделение для заявок, затем считаем карточки в нём. У пустого отделения уже есть имя. Если отделение ещё не сделали, считать карточки в нём рано.</p>
+        <CodeBlock caption="Смотрим, какие таблицы есть в реестре" code={tableNames} />
+        <p>Видим <code>[('requests',)]</code>. SQLite хранит имена таблиц в <code>sqlite_master</code>. Этот запрос подтверждает, что отделение есть. Количество строк получаем отдельным <code>SELECT COUNT(*)</code> к найденной таблице. <code>fetchone()</code> вернёт строку с одним значением.</p>
+        <QuizCard
+          question="Какую картотеку можно заполнить из ведомости?"
+          description="Сравните показания трёх отдельных файлов после проверки таблиц."
+          options={["Таблица заявок отсутствует", "Таблица заявок есть, в ней две карточки", "Таблица заявок есть, в ней ноль карточек"]}
+          correctIndex={2}
+          explanation="Пустая цель даёт два наблюдения: нужная таблица существует, а её счётчик равен нулю. Заполненная таблица или отсутствие структуры требуют остановки."
+          orientation="vertical"
+        />
+        <p>В Planner явный <code>init</code> получает адрес из <code>DATABASE_URL</code>. У SQLite URL для движка выглядит, например, как <code>sqlite:///C:/Lab/cards.sqlite3</code>. У изученного импортёра <code>--source</code> и <code>--database</code> принимают файловые пути. В кавычках путь с пробелами остаётся одним аргументом.</p>
+        <p>Для чтения существующей SQLite к URI абсолютного пути из <code>Path.as_uri()</code> добавляем <code>?mode=ro</code> и передаём <code>uri=True</code> в <code>sqlite3.connect</code>. Так выбор ошибочного пути не создаст новый файл. При выборе нового адреса проверяем отдельно, что его ещё не заняли. Для обоих обычных запусков заранее записываем абсолютный учебный <code>JSON_PATH</code> и номер заявки, которая есть только в обычной ведомости.</p>
         <Diagram caption="Куда идут данные во время репетиции">
           <DiagramLane title="Пробный перенос">
             <DiagramFlow orientation="vertical">
-              <DiagramNode title="Снимок JSON" shape="database">Заявки 4 и 9</DiagramNode>
+              <DiagramNode title="Снимок JSON" shape="database">Заявки 7 и 9</DiagramNode>
               <DiagramArrow label="Перенос после проверки цели" />
               <DiagramNode title="Пробная SQLite" shape="database">До импорта таблица есть, строк 0</DiagramNode>
               <DiagramArrow label="Сверка перед первой новой записью" />
@@ -205,69 +78,66 @@ export function Lesson74_1({ module }: { module?: string }) {
           </DiagramLane>
           <DiagramLane title="Обычный режим">
             <DiagramFlow orientation="vertical">
-              <DiagramNode title="Обычная ведомость JSON" shape="database">Контрольная заявка 9</DiagramNode>
+              <DiagramNode title="Обычная ведомость JSON" shape="database">Контрольная заявка 4</DiagramNode>
               <DiagramArrow label="Читают после возврата" />
               <DiagramNode title="Два обычных читателя">Заявки из привычного источника</DiagramNode>
             </DiagramFlow>
           </DiagramLane>
         </Diagram>
-        <p>Выберите состояние картотеки после init. Сравните пустую таблицу с заполненной, а затем с файлом без таблицы. Счётчик помогает принять решение только для уже найденной таблицы.</p>
-        <BranchExplorer code={targetExample} scenarios={[
-          { label: "Таблица есть, 0 строк", activeLine: 5, output: "Цель подготовлена. В ней есть место для заявок и ещё нет карточек." },
-          { label: "Таблица есть, 2 строки", activeLine: 3, output: "Остановитесь: в картотеке уже есть чужие карточки." },
-          { label: "Файл без нужной таблицы", activeLine: 1, output: "Остановитесь: проверка пустоты ещё невозможна без таблицы." },
-        ]} />
-        <p>Для практики работаем из корня Planner в PowerShell. В готовой проверке <code>$target</code> означает выбранный абсолютный путь к уже созданной SQLite. Сначала убедитесь, что место свободно, затем запустите init на этом учебном адресе. Команда ниже откроет SQLite для чтения и покажет путь, таблицу и число строк.</p>
-        <CodeBlock caption="Проверка выбранной цели в PowerShell" code={inspectSchema} language="text" />
-        <p>Если файла ещё нет, <code>resolve(strict=True)</code> остановит чтение. Если файл есть, а <code>tasks</code> отсутствует, структуру ещё предстоит проверить. Значение <code>tasks 0</code> подтверждает и наличие нужной таблицы, и её пустоту.</p>
       </Section>
 
       <Section number="02" title="Сверка по id перед первой записью">
-        <Lead>Сверить перенос значит найти в копии каждую исходную запись и проверить её значения.</Lead>
-        <p>Две картотеки содержат по две заявки. У копии заявки 9 потерялась наклейка «склад». Номер заявки остался прежним, а порядок карточек поменялся. Если сопоставить карточки по номеру, разница станет видна.</p>
-        <CodeBlock caption="Сопоставление заявок по номеру и полям" code={compareExample} />
-        <p>В первой строке видно <code>2 2</code>, затем <code>True</code>, потому что набор номеров совпал. В третьей строке видно <code>9 категория 'склад' ''</code>. <code>zip</code> сопоставляет название поля и оба значения из этой пары. Разное положение карточек не влияет на сравнение по номеру.</p>
-        <p>В Planner у пары из JSON и SQLite сравниваем шесть полей. <code>id</code> помогает заметить пропажу, добавление или перенумерацию. <code>title</code>, <code>priority</code> и <code>is_done</code> сохраняют исходный текст, приоритет и состояние. <code>tags</code> проверяем целым списком, включая порядок. Для прежней записи без ключа ожидаем <code>[]</code>. Техническое <code>title_normalized</code> должно совпасть с <code>title.lower()</code>, поскольку именно эту форму использует поиск.</p>
+        <Lead>Сверка связывает запись из снимка с её копией по номеру и проверяет значения этой пары.</Lead>
+        <p>В двух картотеках по две заявки. У копии заявки 9 потеряли наклейку «склад». Счётчики совпали. Номер помогает найти нужную пару, даже если карточки разложили в другом порядке.</p>
+        <CodeBlock caption="Ищем пропавшие номера и проверяем одну метку" code={oneField} />
+        <p><code>set()</code> означает, что в копии есть все исходные номера. При обратном вычитании получим номера, которые появились только в копии. Для номера <code>9</code> сравнение возвращает <code>False</code>: пустая метка отличается от «склад».</p>
+        <InteractiveTable title="Что показала сверка двух картотек" columns={["Признак", "Ведомость", "Копия"]} rows={[
+          { id: "count", label: "Сколько заявок", values: [<code>2</code>, <code>2</code>] },
+          { id: "numbers", label: "Какие номера", values: [<code>7, 9</code>, <code>7, 9</code>] },
+          { id: "tag", label: "Метка заявки 9", values: ["склад", "пусто"] },
+        ]} />
         <QuizCard
-          question="Можно ли после сверки начать пробную запись?"
-          description="В другой поставке карточки 4 и 9 есть с обеих сторон, а у заявки 4 в копии изменился признак «закрыта»."
-          options={["Можно, обе заявки на месте", "Сначала разобраться с расхождением у заявки 4", "Проверить только категории и продолжить"]}
+          question="Что решим перед новой записью?"
+          description="В другой копии метки и номера совпали, но у заявки 7 изменился признак «закрыта»."
+          options={["Продолжим, состав совпал", "Остановимся и выясним причину изменения состояния", "Достаточно ещё раз посчитать строки"]}
           correctIndex={1}
-          explanation="Совпавшие номера подтверждают состав. Поле «закрыта» изменилось, поэтому содержимое пока расходится. До исправления новая запись затруднит сверку."
+          explanation="Равный состав позволяет сопоставить записи. Изменившееся состояние означает, что копия пока расходится с источником."
           orientation="vertical"
         />
-        <p>Готовый компаратор ниже получает <code>$source</code> и <code>$target</code> как файловые пути. Он использует знакомое преобразование <code>Task.from_dict</code>, чтобы учесть прежний формат JSON, и читает SQLite без изменений. В строке <code>JSON / SQLite</code> видны счётчики, затем отдельные списки потерянных или лишних номеров. Для каждой пары видны совпадение или имя поля с двумя значениями.</p>
-        <CodeBlock caption="Отчёт по снимку и SQLite в PowerShell" code={compareSnapshots} language="text" />
-        <p>Решение принимаем по всему отчёту до первой новой записи. Если отличается id или поле, сначала уточняем выбранные файлы и причину расхождения. Повтор импорта делаем на новой пустой цели. Так можно исследовать ошибку, сохранив первоначальные результаты.</p>
+        <p>В Planner сравниваем <code>id</code> и отдельно значения <code>title</code>, <code>priority</code>, <code>is_done</code>, <code>tags</code> и <code>title_normalized</code>. При прямом чтении из SQLite <code>is_done</code> приходит как <code>0</code> или <code>1</code>, а <code>tags</code> хранится как JSON-текст. <code>json.loads()</code> вернёт список. У старой записи без ключа <code>tags</code> ожидаем <code>[]</code>. Для технического названия ожидаем <code>title.lower()</code>.</p>
+        <p>Допуск к записи даёт совпадение состава и полей. При расхождении запишем номер, поле и оба значения, проверим выбранные файлы и при необходимости повторим перенос на новой пустой цели.</p>
       </Section>
 
       <Section number="03" title="Одна база и новое чтение по id">
-        <Lead>При перекрёстном чтении один интерфейс сохраняет запись, а другой открывает свой ресурс и ищет её по выданному номеру.</Lead>
-        <p>Диспетчер зарегистрировал ещё одну заявку «Заявка на СКЛАД». У старой заявки уже такое название. Сотрудник получает от диспетчера новый номер и открывает свою картотеку. Если у него осталась вчерашняя копия, старая заявка находится, а новой там ещё нет.</p>
-        <CodeBlock caption="Два независимых чтения после записи заявки" code={crossReadExample} />
-        <p>В выбранной картотеке появится <code>(10, 'Заявка на СКЛАД')</code>. В отдельной копии видна прежняя заявка <code>9</code>, а поиск <code>10</code> возвращает <code>None</code>. <code>lastrowid</code> берёт номер из записи, <code>commit()</code> подтверждает изменение. Читатель открывает новое соединение по переданному пути и ищет ровно этот номер.</p>
-        <p>В Planner вспомним подмену <code>get_planner</code> в тестовом API и <code>sql_service_context</code> для команды CLI. В двух отдельных Python-процессах задаём один выбранный <code>DATABASE_URL</code>. В первом используем прежнюю тестовую подмену и <code>TestClient</code>. Во втором передаём <code>run</code> фабрику контекстов пробного SQL. У каждого процесса своя фабрика Session и свой ресурс; обе фабрики смотрят в один и тот же файл.</p>
-        <p>В ответе на <code>POST /tasks</code> код <code>201</code> показывает успешное создание. Число в поле <code>id</code> переносим в <code>find</code>. При промахе сначала сравниваем физические файлы, открытые через Engine API и CLI. В SQLite команда <code>PRAGMA database_list</code> показывает их пути; в результате нужна строка <code>main</code>. Если пути совпали, проверяем номер из ответа и наличие подтверждённой записи.</p>
+        <Lead>Перекрёстное чтение связывает запись одного интерфейса с независимым чтением из другого.</Lead>
+        <p>Диспетчер принял ещё одну заявку на склад и выдал новую квитанцию. У старой заявки такое же название. Сотрудник ищет номер с квитанции. Если у него вчерашняя копия реестра, новый номер там отсутствует.</p>
+        <CodeBlock caption="Один номер в свежем реестре и вчерашней копии" code={differentReaders} />
+        <p>Первый читатель видит «Заявка на склад», второй получает <code>None</code>. Старая заявка с тем же названием есть в обоих реестрах, поэтому ищем по новому номеру.</p>
+        <p>На Planner возвращаемся к <code>TestClient</code> и подмене <code>get_planner</code> из проверки HTTP-ресурса. В отдельном CLI-процессе используем изученный вызов <code>run(None, context_factory=…)</code>. <code>None</code> занимает место готового сервиса, а фабрика передаётся для открытия ресурса на команду. Временно указываем один выбранный SQL-адрес обеим сборкам.</p>
+        <p>После <code>POST /tasks</code> берём <code>id</code> из успешного ответа <code>201</code>. Если свежая команда <code>find</code> пропускает его, сначала сверяем адреса двух пробных запусков и номер из ответа. В обоих исходных JSON этот номер должен отсутствовать. Иначе для проверки возврата нужна другая пробная запись.</p>
       </Section>
 
       <Section number="04" title="Возврат к обычному JSON">
-        <Lead>Вернуть обычный режим значит завершить процессы с пробными параметрами и запустить обе точки с исходными настройками.</Lead>
-        <p>До пробы диспетчер и сотрудник пользовались ведомостью. Потом они получили временные картотеки. Когда проба завершена, оба снова открывают ведомость. Если один продолжит пользоваться временной картотекой, он по-прежнему найдёт новую заявку.</p>
-        <CodeBlock caption="Два контрольных номера в каждом режиме" code={restoreExample} />
-        <p>Первые две строки <code>True True</code> означают, что оба временных читателя находят старый и новый номера. Две строки <code>True False</code> после возврата подтверждают наличие прежней заявки и отсутствие пробной. В последнем случае результаты расходятся: терминал всё ещё находит <code>10</code>. Если пропала и старая заявка, следует проверить путь к обычной ведомости. Такой вывод возможен, например, на чужом пустом файле.</p>
-        <p>Для Planner до пробы записываем путь обычного учебного JSON и наблюдение по старой задаче в обоих интерфейсах. Сохраняем контрольные копии JSON до изменения режима. После пробы заново запускаем HTTP-клиент без SQL-подмены и штатный CLI. Для старого id ждём чтение, для нового в API ждём <code>404</code>, а в CLI сообщение об отсутствии. У пробного номера заранее проверяем отсутствие в обоих исходных JSON. Если он совпал с прежним, берём новое пробное сохранение с различимым номером.</p>
-        <p>Готовая проверка ниже принимает <code>$file</code>, фактический <code>$number</code> и <code>$baseline</code>, путь к контрольной копии именно этого файла. Её первый результат различает id, а второй сравнивает точные байты. Совпадение байтов подтверждает сохранность файла независимо от того, какой источник использовала запущенная точка.</p>
-        <CodeBlock caption="Проверка номера и сохранности JSON в PowerShell" code={inspectJson} language="text" />
+        <Lead>Возврат означает, что пробные процессы завершены, а новые запуски используют прежний учебный источник.</Lead>
+        <p>Два сотрудника возвращаются к обычной ведомости. Заявка 4 хранится только в этой ведомости. Она не попала в снимок переноса. Заявка 10 появилась только в пробной картотеке. Общая заявка 9 есть в трёх источниках. По ней нельзя отличить одну ведомость от другой.</p>
+        <InteractiveTable title="Как различить три состояния читателя" columns={["Источник", "Обычная 4", "Пробная 10"]} rows={[
+          { id: "routine", label: "Обычная ведомость", values: ["есть", "нет"] },
+          { id: "snapshot", label: "Снимок переноса", values: ["нет", "нет"] },
+          { id: "trial", label: "Пробная картотека", values: ["нет", "есть"] },
+        ]} />
+        <p>Два чтения в таком порядке отличают обычный источник от снимка и оставшегося SQL. Если оба номера отсутствуют, точка могла открыть снимок или другой JSON. Проверяем записанный <code>JSON_PATH</code>. В Planner наличие задачи видно по <code>200</code> в API и результату <code>find</code> в CLI. Отсутствие даёт <code>404</code> и сообщение «Задача не найдена».</p>
+        <p>Сохранность ведомости проверяем отдельно. Слово на наклейке может занимать столько же места и при этом выглядеть иначе. Так же два файла могут иметь одинаковый размер и разные байты.</p>
+        <CodeBlock caption="Равная длина и два разных набора байтов" code={compareBytes} />
+        <p>Первая строка даёт <code>True</code>, вторая даёт <code>False</code>. Для реальных учебных файлов <code>Path.read_bytes()</code> возвращает сами байты. Сравниваем каждый JSON со своей контрольной копией, сохранённой до запуска.</p>
       </Section>
 
       <Section number="05" title="Что мы будем делать в практике">
         <LinkedNotes items={[
-          { title: "Выберем снимок и цель", description: "Запишем исходный режим и два разных адреса, затем увидим пустую tasks." },
-          { title: "Примем решение по переносу", description: "Сверим id и значения и объясним, когда отчёт разрешает перейти к пробной записи." },
-          { title: "Прочитаем новую задачу из другой точки", description: "Возьмём id из ответа API, найдём ту же запись в CLI и проверим исходные JSON." },
-          { title: "Вернём обычные запуски", description: "Обе обычные точки прочитают контрольный id. Пробный номер исчезнет из ответов, а копии подтвердят сохранность JSON." },
+          { title: "Подтвердим цель", description: "Увидим имя таблицы и ноль строк до импорта." },
+          { title: "Сверим перенос", description: "Решим, можно ли продолжать, по составу и полям." },
+          { title: "Прочитаем новый id", description: "Найдём в отдельном CLI то, что создал API." },
+          { title: "Вернём обычный запуск", description: "Проверим два номера в каждой точке и байты обоих JSON." },
         ]} />
-        <p>Работаем в одном учебном каталоге внутри своего Planner. В каждом шаге записываем результат, который понадобится дальше. От прогона останутся выбранные адреса, подтверждённая сверка и различающий id.</p>
       </Section>
     </RichLesson>
   );
