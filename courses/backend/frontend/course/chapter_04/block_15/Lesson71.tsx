@@ -21,13 +21,34 @@ def prepare_return():
 
 print(run_change(prepare_return, trace_scope))`;
 
-const SESSION_EXAMPLE = `from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+const DATABASE_SETUP = `from pathlib import Path
+from tempfile import TemporaryDirectory
 
-engine = create_engine("sqlite:///loans.sqlite3")
+from sqlalchemy import URL, create_engine
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
+
+class Base(DeclarativeBase):
+    pass
+
+class LoanRow(Base):
+    __tablename__ = "loans"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item: Mapped[str]
+    days: Mapped[int]
+    hours: Mapped[int]
+    note: Mapped[str]
+
+demo_dir = TemporaryDirectory()
+db_path = Path(demo_dir.name) / "loans.sqlite3"
+engine = create_engine(URL.create("sqlite", database=str(db_path)))
+Base.metadata.create_all(engine)
 loan_sessions = sessionmaker(bind=engine)
 
-with loan_sessions() as writer:
+with loan_sessions.begin() as seed:
+    seed.add(LoanRow(id=8, item="Проектор", days=2, hours=48, note="склад"))`;
+
+const SESSION_EXAMPLE = `with loan_sessions() as writer:
     def prepare_projector():
         loan = writer.get(LoanRow, 8)
         loan.note = "вернуть в зал"
@@ -39,20 +60,31 @@ const ID_EXAMPLE = `def register_loan(writer, item, days):
     loan = LoanRow(item=item, days=days, hours=days * 24, note="склад А")
     writer.add(loan)
     writer.flush()
-    return {"number": loan.id, "equipment": loan.item}
+    return {"number": loan.id, "equipment": loan.item}`;
 
-with loan_sessions.begin() as writer:
-    receipt = register_loan(writer, "Стойка", 3)
+const READ_EXAMPLE = `def read_loan(number):
+    with loan_sessions() as reader:
+        row = reader.get(LoanRow, number)
+        if row is None:
+            print("выдача не найдена")
+        else:
+            print(row.id, row.item, row.days, row.hours, row.note)`;
 
-loan_id = receipt["number"]
-print(receipt)`;
+const RECEIPT_EXAMPLE = `def issue_stand(use_transaction):
+    with loan_sessions() as writer:
+        def add_stand():
+            return register_loan(writer, "Стойка", 3)
 
-const READ_EXAMPLE = `with loan_sessions() as reader:
-    row = reader.get(LoanRow, loan_id)
-    if row is None:
-        print("выдача не найдена")
-    else:
-        print(row.id, row.item, row.days, row.hours, row.note)`;
+        open_write = writer.begin if use_transaction else nullcontext
+        receipt = run_change(add_stand, open_write)
+        print("Квитанция:", receipt)
+
+    number = receipt["number"]
+    read_loan(number)
+    return number
+
+issue_stand(False)
+loan_id = issue_stand(True)`;
 
 const UPDATE_EXAMPLE = `def extend_loan(writer, number, days):
     loan = writer.get(LoanRow, number)
@@ -63,7 +95,11 @@ const UPDATE_EXAMPLE = `def extend_loan(writer, number, days):
     return loan.days
 
 with loan_sessions.begin() as writer:
-    print(extend_loan(writer, loan_id, 5))`;
+    extend_loan(writer, loan_id, 5)
+
+read_loan(loan_id)
+engine.dispose()
+demo_dir.cleanup()`;
 
 export function Lesson71({ module }: { module?: string }) {
   const [outcome, setOutcome] = useState<"commit" | "rollback">("commit");
@@ -82,7 +118,7 @@ export function Lesson71({ module }: { module?: string }) {
           { title: "Новый вопрос", description: "В базе уже есть задача с таким же названием. Как изменить именно ту, которую мы только что добавили?" },
           { title: "Результат", description: "По номеру из POST найдём новую задачу в базе. После PUT увидим у неё новые значения, а у соседней задачи останутся прежние." },
         ]} />
-        <p>Разберём механизм на журнале выдачи оборудования. В нём уже записан проектор под номером 8. Добавим стойку, запомним её номер и продлим срок выдачи.</p>
+        <p>Разберём механизм на журнале выдачи оборудования. Начнём с проектора под номером 8, добавим стойку и продлим её выдачу по полученному номеру.</p>
       </Section>
 
       <Section number="01" title="Когда можно сказать «сохранено»">
@@ -108,10 +144,16 @@ export function Lesson71({ module }: { module?: string }) {
       </Section>
 
       <Section number="02" title="Одна Session для изменения и транзакции">
-        <Lead>Подключим к примеру настоящую транзакцию. В учебном файле <code>loans.sqlite3</code> уже есть таблица выдач с проектором под номером 8. Модель <code>LoanRow</code> описывает её строки.</Lead>
+        <Lead>Подключим настоящую транзакцию. Подготовим отдельную SQLite с одной записью о проекторе.</Lead>
+        <p>
+          Для запуска нужен Python с SQLAlchemy 2.x. Выполняйте блоки примера из разделов 01–04 по порядку в одном
+          сеансе Python. Подготовка создаёт по модели <code>LoanRow</code> таблицу в файле <code>loans.sqlite3</code> во
+          временной папке и сохраняет проектор под номером 8.
+        </p>
+        <CodeBlock code={DATABASE_SETUP} caption="Подготовка журнала выдач · временный файл и запись №8" />
         <CodeBlock code={SESSION_EXAMPLE} caption="В транзакции той же Session меняем примечание к проектору" />
         <p>
-          <code>sessionmaker</code> создаёт фабрику на Engine с адресом этого файла. Внутри операции <code>writer.get()</code> читает
+          <code>loan_sessions</code> открывает Session на подготовленном файле. Внутри операции <code>writer.get()</code> читает
           проектор, а <code>writer.begin</code> передаёт в <code>run_change</code> метод той же Session. Скобки появляются внутри
           {" "}<code>run_change</code>: сначала открывается транзакция, затем ищется строка. После подтверждения на экране появится «вернуть в зал».
         </p>
@@ -126,32 +168,38 @@ export function Lesson71({ module }: { module?: string }) {
         <Lead>При импорте id уже известен. При создании новой строки SQLite выдаёт его в момент INSERT.</Lead>
         <p>
           Добавим стойку на три дня с примечанием «склад А». В журнале есть и срок в часах, его получаем из числа дней.
-          Функция вставки принимает открытую Session, а вызывающий код владеет транзакцией.
-          Здесь <code>loan_sessions.begin()</code> открывает новую Session и транзакцию на время блока.
+          Функция вставки принимает открытую Session. Решение о подтверждении остаётся у вызывающего кода.
         </p>
         <CodeBlock code={ID_EXAMPLE} caption="Добавляем выдачу оборудования" />
         <p>
-          В ответе <code>number</code> равен 9, если до вставки в журнале был только проектор с id 8. У нового объекта
-          {" "}<code>id</code> сначала равен <code>None</code>. <code>add()</code> ставит объект в очередь, а <code>flush()</code> отправляет INSERT.
-          После него есть номер для квитанции, но транзакцию ещё можно откатить. В Planner роль квитанции играет <code>Task</code>.
-          Получить её из строки помогает знакомая функция <code>task_from_row</code>.
+          У нового объекта <code>id</code> сначала равен <code>None</code>. <code>add()</code> ставит объект в очередь,
+          а <code>flush()</code> отправляет INSERT. Теперь номер есть в квитанции. В Planner из строки после flush
+          получается <code>Task</code> через знакомую функцию <code>task_from_row</code>.
         </p>
-        <CodeBlock code={READ_EXAMPLE} caption="Новая Session на том же реестре" />
+        <CodeBlock code={READ_EXAMPLE} caption="Читаем номер квитанции через новую Session" />
+        <p>В обоих прогонах клиент получит квитанцию. Проверим её номер через <code>read_loan</code> после закрытия писателя.</p>
+        <CodeBlock code={RECEIPT_EXAMPLE} caption="Две квитанции и два результата чтения" />
         <p>
-          После выхода из блока записи этот код напечатает «9 Стойка 3 72 склад А». Каждый вызов фабрики создаёт новую Session
-          с адресом того же файла. Если открыть отдельного читателя сразу после{" "}
-          <code>flush()</code>, пока писатель ещё внутри блока, он напечатает «выдача не найдена». После отката вставки результат будет таким же.
-          Так видно, что SQLite выдаёт номер раньше, чем строка становится доступна другим читателям.
-          В Planner сервис завершит транзакцию до того, как POST вернёт этот номер клиенту.
+          В первом прогоне <code>nullcontext</code> только пропускает действие. Клиент получает номер после flush.
+          Когда <code>writer</code> закрывается без commit, незавершённая вставка откатывается. Новый читатель печатает
+          «выдача не найдена». Во втором прогоне <code>run_change</code> получает <code>begin</code> этой же Session.
+          Успешный выход подтверждает запись до выдачи квитанции. Новый читатель печатает «9 Стойка 3 72 склад А».
         </p>
-        <Diagram caption="Когда номер уже известен и когда запись увидит другой запрос">
-          <DiagramLane title="Session, которая создаёт выдачу">
-            <DiagramTrack label="Вставка" items={["add · id пока нет", "flush · id 9", "commit · запись подтверждена"]} />
+        <Diagram caption="От квитанции к проверке сохранённой выдачи">
+          <DiagramLane title="Сборка без области записи">
+            <DiagramTrack label="Ход операции" items={["flush · выдана квитанция", "закрытие · откат", "свежее чтение · выдачи нет"]} />
           </DiagramLane>
-          <DiagramLane title="Два свежих чтения">
-            <DiagramTrack label="Поиск по id 9" items={["До commit · None", "После commit · Стойка"]} />
+          <DiagramLane title="Сборка с begin той же Session">
+            <DiagramTrack label="Ход операции" items={["flush · появился номер", "commit · выдана квитанция", "свежее чтение · Стойка"]} />
           </DiagramLane>
         </Diagram>
+        <p>
+          Для отдельного вызова Planner эту связку собирает <code>sql_service_context</code>. В знакомой HTTP-подмене
+          из темы «Ресурс на один запрос» владельцем Session остаётся <code>get_db</code>: он открывает и закрывает её
+          на время запроса. Подмена <code>get_planner</code> получает уже открытую Session, отдаёт её репозиторию
+          и передаёт сервису её <code>begin</code>. Сервис подтверждает изменение до ответа. Эту же подмену можно
+          использовать при проверке PATCH.
+        </p>
       </Section>
 
       <Section number="04" title="Что сохраняется при замене">
@@ -161,7 +209,8 @@ export function Lesson71({ module }: { module?: string }) {
           При повторном чтении по id 9 видим «9 Стойка 5 120 склад А». SQLAlchemy отслеживает присваивания найденному
           объекту и сохраняет их при подтверждении транзакции. Старые 72 часа были бы ошибкой даже при верных 5 днях.
           Примечание и номер остаются прежними. Если выдачи с таким номером нет, функция возвращает <code>None</code>.
-          В Planner отсутствие задачи уже обрабатывают сервис и HTTP-маршрут.
+          В Planner отсутствие задачи уже обрабатывают сервис и HTTP-маршрут. После проверки примера последние две строки
+          освобождают соединения и удаляют временную папку.
         </p>
         <p>
           В Planner из тела PUT приходят <code>title</code>, <code>priority</code> и <code>is_done</code>. Номер в адресе
@@ -204,8 +253,8 @@ export function Lesson71({ module }: { module?: string }) {
       <Section number="05" title="Что мы будем делать в практике">
         <LinkedNotes items={[
           { title: "Подключим транзакцию", description: "Как в примере с проектором, сервис будет начинать операцию на той же Session, с которой работает репозиторий." },
-          { title: "Добавим создание задачи", description: "Как при выдаче стойки, получим номер от SQLite и вернём его в результате создания." },
-          { title: "Добавим замену по номеру", description: "Как при продлении выдачи, обновим нужные поля и пересчитаем зависимое значение. У задачи останутся её id и метки." },
+          { title: "Добавим создание задачи", description: "Получим номер от SQLite и найдём эту же задачу в новой Session." },
+          { title: "Добавим замену по номеру", description: "Изменим нужные поля и пересчитаем зависимое значение. По снимкам сверим id, метки и соседнюю строку." },
         ]} />
       </Section>
     </RichLesson>

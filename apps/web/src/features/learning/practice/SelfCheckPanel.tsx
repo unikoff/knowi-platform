@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, BookOpen, CheckCircle2, Lightbulb } from "lucide-react";
+import { CodeBlock } from "@course-ui";
 import { completeLesson, getManualPracticeAnswer } from "../api";
 import { formatManualPracticeResult, renderPracticeText } from "./text-format";
 import { usePracticeState } from "./session";
@@ -246,11 +247,11 @@ export function SelfCheckPanel({
               <article className="manual-practice-card" data-exercise-id={exerciseId} key={`${lesson.id}-${exercise.title}`}>
               <header className="manual-practice-card__head">
                 <span>Практика · Самопроверка</span>
-                <h2>{renderPracticeText(exercise.title)}</h2>
+                <h2>{renderPracticeText(exercise.title, { inlineOnly: true })}</h2>
               </header>
               <section className="manual-practice-card__context" aria-label="Контекст занятия">
                 <span className="manual-practice-section-label">Контекст</span>
-                <p>{renderPracticeText(exercise.task)}</p>
+                <div className="manual-practice-card__context-text">{renderPracticeText(exercise.task)}</div>
               </section>
               {practiceTask && (
                 <div className="manual-practice-task-list">
@@ -305,14 +306,14 @@ export function SelfCheckPanel({
                         </div>
 
                         <div className="manual-practice-task__head">
-                          <h3>{renderPracticeText(practiceTask.title)}</h3>
+                          <h3>{renderPracticeText(practiceTask.title, { inlineOnly: true })}</h3>
                         </div>
                         <div className="manual-practice-task__sections">
                           <section className="manual-practice-task__summary-section" aria-label="Условие задачи">
                             <span className="manual-practice-section-label">Условие</span>
-                            <p className="manual-practice-task__summary">
+                            <div className="manual-practice-task__summary">
                               {renderPracticeText(practiceTask.task)}
-                            </p>
+                            </div>
                           </section>
 
                           <section className="manual-practice-task__requirements" aria-label={"Техническое задание: " + practiceTask.title}>
@@ -328,7 +329,9 @@ export function SelfCheckPanel({
                             <CheckCircle2 size={17} aria-hidden="true" />
                             <div>
                               <strong>Критерий готовности</strong>
-                              <p>{renderPracticeText(formatManualPracticeResult(practiceTask.result ?? exercise.result))}</p>
+                              <div className="manual-practice-result-text">
+                                {renderPracticeText(formatManualPracticeResult(practiceTask.result ?? exercise.result))}
+                              </div>
                             </div>
                           </section>
                         </div>
@@ -390,11 +393,7 @@ export function SelfCheckPanel({
                                     <li key={step}>{renderPracticeText(step)}</li>
                                   ))}
                                 </ol>
-                                {answer.code && (
-                                  <pre className="manual-practice-task__code">
-                                    <code>{answer.code}</code>
-                                  </pre>
-                                )}
+                                {answer.code && <CodeBlock code={answer.code} language="text" preserveWhitespace />}
                                 {answer.checks && answer.checks.length > 0 && (
                                   <div className="manual-practice-task__checks">
                                     <strong>Самопроверка</strong>
@@ -452,7 +451,9 @@ export function SelfCheckPanel({
                     <CheckCircle2 size={17} aria-hidden="true" />
                     <div>
                       <strong>Критерий готовности</strong>
-                      <p>{renderPracticeText(formatManualPracticeResult(exercise.result))}</p>
+                      <div className="manual-practice-result-text">
+                        {renderPracticeText(formatManualPracticeResult(exercise.result))}
+                      </div>
                     </div>
                   </section>
                 </>

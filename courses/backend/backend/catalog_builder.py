@@ -244,8 +244,16 @@ def _build_lesson(
     ):
         display_number = ".".join(str(part) for part in number_parts)
         title = f"{display_number}. {title}"
-    chapter_four_rework = relative.startswith(("chapter_04/block_15/", "chapter_04/block_16/"))
-    under_revision = chapter_four_rework and lesson_id != "lesson-64c9d597a164bbdb4f145d5a"
+    number = path.name.partition(" - ")[0]
+    restored_block_15 = relative.startswith("chapter_04/block_15/") and number in {
+        "71", "72", "72.1", "73", "73.2", "74", "74.1", "75",
+    }
+    restored_block_16 = relative.startswith("chapter_04/block_16/") and number in {
+        "76", "76.1", "77", "78", "79", "80",
+    }
+    under_revision = relative.startswith(("chapter_04/block_15/", "chapter_04/block_16/")) and not (
+        restored_block_15 or restored_block_16
+    )
     tasks = _tasks_for_lesson(
         identity_source,
         text,
@@ -283,7 +291,9 @@ def _build_lesson(
         or bool(manual_practice)
     )
     video = None if under_revision else _extract_youtube_video(text, title)
-    tsx_theory_only = chapter_four_rework or relative.startswith("chapter_05/block_17/")
+    tsx_theory_only = relative.startswith(
+        ("chapter_04/block_15/", "chapter_04/block_16/", "chapter_05/block_17/")
+    )
 
     return {
         "id": lesson_id,
@@ -302,6 +312,7 @@ def _build_lesson(
         "video": video,
         "tasks": tasks,
         "source_file": relative,
+        "under_revision": under_revision,
         "progress_policy": {
             "retain_countable": under_revision,
             "overview": bool(re.fullmatch(r"chapter_\d+/block_00/[^/]+", relative)),

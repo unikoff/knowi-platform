@@ -92,6 +92,7 @@ export type Lesson = {
   video?: LessonVideo | null;
   tasks?: LessonTask[];
   source_file?: string;
+  under_revision?: boolean;
   self_check?: boolean;
   manual_practice?: LessonManualPractice[];
   completed?: boolean;

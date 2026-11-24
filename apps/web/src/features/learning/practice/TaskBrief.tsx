@@ -8,7 +8,7 @@ export function TaskBrief({ title, contract, examples, hints, visibleHintCount, 
   hints: string[]; visibleHintCount: number; isBusy: boolean; onRevealHint: () => void;
 }) {
   return <>
-          <h2 className="task-brief__title">{renderPracticeText(title)}</h2>
+          <h2 className="task-brief__title">{renderPracticeText(title, { inlineOnly: true })}</h2>
           <div className="task-spec">
             <section className="task-spec__item task-spec__item--given" aria-label="Дано">
               <span>Дано</span>

@@ -43,7 +43,7 @@ def test_full_products_preserve_every_baseline_resource_and_private_spec(runtime
         baseline = json.loads(current.read_text(encoding="utf-8"))
     catalog = runtime.snapshot(course_id).catalog
     assert len(catalog.TRACKS) == 9
-    assert len(catalog.LESSONS) == (306 if course_id == "backend" else 310)
+    assert len(catalog.LESSONS) == (302 if course_id == "backend" else 310)
     assert sum(len(lesson["tasks"]) for lesson in catalog.LESSONS) == 204
     expected = [(track["track_id"], lesson["lesson_id"], lesson["legacy_id"], lesson["source_file"],
                  [(task["task_id"], task["revision"]) for task in lesson["tasks"]])
@@ -59,12 +59,13 @@ def test_full_products_preserve_every_baseline_resource_and_private_spec(runtime
             ("lesson-c5597af4286aa5f6de00eccd", "chapter_05/block_17/84 - Добавляем пользователя в схему Planner.md"),
             ("lesson-0576d7e8df944d238cbb79e4", "chapter_05/block_17/85 - Записываем уникальные учётные записи.md"),
         )
+        retired_block15_ids = {
+            "lesson-6fba6a4aadfbd60afad41707",  # 71.1
+            "lesson-ae74df09d7d35d88a34f52c0",  # 73.1
+            "lesson-68a97f28ebcb4f5e7776430b",  # 75.1
+        }
         block15_insertions = {
-            "lesson-b098ede7bff903dc17251a8e": (
-                "lesson-f27f30ace5891ddae44faa0a",
-                "chapter_04/block_15/72.2 - Удаляем одну задачу по id.md",
-            ),
-            "lesson-ae74df09d7d35d88a34f52c0": (
+            "lesson-4d0e92d5a45c9a88004f2f6e": (  # 73
                 "lesson-816d61d45c842f03786c56af",
                 "chapter_04/block_15/73.2 - Считаем статистику в SQL.md",
             ),
@@ -80,7 +81,7 @@ def test_full_products_preserve_every_baseline_resource_and_private_spec(runtime
                         original = historical_by_id[lesson_id]
                         rewritten.append((*original[:3], source, original[4]))
                     inserted_block17 = True
-            elif historic[1] not in replacement_ids:
+            elif historic[1] not in replacement_ids and historic[1] not in retired_block15_ids:
                 rewritten.append(historic)
                 if historic[1] in block15_insertions:
                     lesson_id, source = block15_insertions[historic[1]]

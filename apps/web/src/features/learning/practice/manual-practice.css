@@ -50,6 +50,8 @@
 
 .manual-practice-card__result,
 .manual-practice-card__context,
+.manual-practice-card__context-text,
+.manual-practice-result-text,
 .manual-practice-task__summary-section,
 .manual-practice-task__summary,
 .manual-practice-task__text,
@@ -81,7 +83,7 @@
   border-left-color: color-mix(in srgb, var(--border-tint-accent) 50%, var(--line-soft));
 }
 
-.manual-practice-card__context p,
+.manual-practice-card__context-text,
 .manual-practice-task__summary {
   margin: 0;
   color: var(--muted);
@@ -124,31 +126,8 @@
   font-size: 0.82rem;
 }
 
-.manual-practice-card__result p {
-  margin: 0;
+.manual-practice-card__result .manual-practice-result-text {
   line-height: 1.5;
-}
-
-.practice-code-block {
-  box-sizing: border-box;
-  min-width: 0;
-  max-width: 100%;
-  margin: var(--space-2) 0;
-  padding: var(--space-4);
-  overflow-x: auto;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-sm);
-  background: var(--code-bg);
-  color: var(--text);
-  font: 0.84rem/1.55 var(--font-code);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.practice-code-block code {
-  font: inherit;
-  white-space: inherit;
-  overflow-wrap: inherit;
 }
 
 .manual-practice-task-list {
@@ -386,8 +365,7 @@
   font-size: 0.82rem;
 }
 
-.manual-practice-task__criterion p {
-  margin: 0;
+.manual-practice-task__criterion .manual-practice-result-text {
   color: var(--muted);
   line-height: 1.5;
   overflow-wrap: anywhere;
@@ -516,20 +494,6 @@
   margin: 0;
   color: var(--reading);
   line-height: 1.65;
-}
-
-.manual-practice-task__code {
-  margin: 0;
-  padding: var(--space-4);
-  overflow-x: auto;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-sm);
-  background: var(--code-bg);
-  color: var(--text);
-  font-family: "JetBrains Mono", Consolas, monospace;
-  font-size: 0.84rem;
-  line-height: 1.55;
-  white-space: pre;
 }
 
 .manual-practice-task__checks {

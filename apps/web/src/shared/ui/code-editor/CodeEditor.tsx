@@ -140,32 +140,39 @@ export function CodeBlock({
   code,
   caption,
   language = "python",
+  showLanguage = false,
+  preserveWhitespace = false,
   as = "figure",
 }: {
   code: string;
   caption?: string;
-  language?: "python" | "text";
+  language?: string;
+  showLanguage?: boolean;
+  preserveWhitespace?: boolean;
   as?: "figure" | "span";
 }) {
+  const source = preserveWhitespace ? code : code.trimEnd();
+  const isPython = ["python", "py"].includes(language.toLowerCase());
   const highlighted = useMemo(
-    () => language === "python" ? highlightPython(code.trimEnd()) : null,
-    [code, language],
+    () => isPython ? highlightPython(source) : null,
+    [source, isPython],
   );
 
   // Кнопки вариантов допускают только phrasing content: span/code вместо figure/pre.
   const Container = as;
   const Caption = as === "span" ? "span" : "figcaption";
-  const Content = as === "span" ? "code" : "pre";
+  const content = highlighted === null
+    ? <code>{source}</code>
+    : <code dangerouslySetInnerHTML={{ __html: highlighted }} />;
 
   return (
     <Container className="code-block" aria-label={caption}>
       <Caption className={as === "span" ? "code-block-caption" : undefined}>
+        {showLanguage && <span className="code-block-language">{language}</span>}
         <VisualHeading kind="code" as="span" />
         {caption && <span className="code-block-context">{caption}</span>}
       </Caption>
-      {highlighted === null
-        ? <Content>{code.trimEnd()}</Content>
-        : <Content dangerouslySetInnerHTML={{ __html: highlighted }} />}
+      {as === "span" ? content : <pre>{content}</pre>}
     </Container>
   );
 }

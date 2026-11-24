@@ -1,4 +1,5 @@
 import React from "react";
+import { CodeBlock } from "@course-ui";
 
 export function formatManualPracticeResult(result: string): string {
   // Старые и новые тексты практики могут уже включать эту подпись, а компонент
@@ -6,9 +7,9 @@ export function formatManualPracticeResult(result: string): string {
   return result.replace(/^\s*готово\s*,\s*если\s*:?\s*/iu, "");
 }
 
-export function renderPracticeText(text: string): React.ReactNode {
+export function renderPracticeText(text: string, { inlineOnly = false } = {}): React.ReactNode {
   const parts: React.ReactNode[] = [];
-  const codePattern = /```[^\n`]*\n([\s\S]*?)```|`([^`\n]+)`/g;
+  const codePattern = /```([^\n`]*)\n([\s\S]*?)```|`([^`\n]+)`/g;
   let lastIndex = 0;
 
   for (const match of text.matchAll(codePattern)) {
@@ -18,15 +19,25 @@ export function renderPracticeText(text: string): React.ReactNode {
     }
 
     if (match[1] !== undefined) {
-      parts.push(
-        <pre className="practice-code-block" key={`block:${matchIndex}`}>
-          <code>{match[1].replace(/\n$/, "")}</code>
-        </pre>,
-      );
-    } else if (match[2] !== undefined) {
+      if (inlineOnly) {
+        parts.push(match[0]);
+      } else {
+        const language = match[1].trim();
+        parts.push(
+          <div className="practice-code-snippet" key={`block:${matchIndex}`}>
+            <CodeBlock
+              code={match[2].replace(/\r?\n$/, "")}
+              language={language || "text"}
+              showLanguage={Boolean(language)}
+              preserveWhitespace
+            />
+          </div>,
+        );
+      }
+    } else if (match[3] !== undefined) {
       parts.push(
         <code className="lesson-token" key={`inline:${matchIndex}`}>
-          {match[2]}
+          {match[3]}
         </code>,
       );
     }

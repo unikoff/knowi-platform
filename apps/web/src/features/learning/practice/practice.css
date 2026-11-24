@@ -4,3 +4,7 @@
 @import "./manual-practice.css";
 @import "./lesson-interactions.css";
 @import "./auto-practice.css";
+
+.practice-code-snippet {
+  margin-block: var(--space-2);
+}
