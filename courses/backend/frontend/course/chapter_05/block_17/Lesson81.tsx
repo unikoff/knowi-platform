@@ -108,13 +108,19 @@ export function Lesson81() {
       <p>Работаем из корня существующего Planner: папки project/ с app/ и tests/. Используем один Python из .venv для теста, API и CLI. Флаг -m запускает модуль по Python-имени. Команды PowerShell вводим в терминале; list и exit вводятся внутри меню Planner.</p>
       <p>Для короткой пробы сохраним в project/backup_lab.py строку <code>print("Книжный опыт запущен")</code>. Из project/ выполним <code>.venv/Scripts/python.exe backup_lab.py</code>. Получим эту строку. Предскажем эффект запуска из другой папки: относительное имя может не найтись. Исправляем место запуска, затем повторяем.</p>
       <p>В project/data создадим один новый свободный каталог backup-work. Если имя уже занято, выберем другое и одинаково заменим его во всех путях. Старый каталог не очищаем. planner-source.sqlite3 внутри нового каталога пока отсутствует; обычный data/planner.sqlite3 сохраняем.</p>
-      <CodeBlock caption="PowerShell из project/: прежний тест, явный URL, новая учебная схема" code={String.raw`.venv/Scripts/python.exe -m pytest -q tests/test_sql_runtime.py::test_cli_main_uses_configured_sql_database_not_json
-$env:DATABASE_URL = "sqlite:///./data/backup-work/planner-source.sqlite3"
+      <p>После главы 4 v2 запустим знакомый тест из занятия 76. API и CLI должны найти одну и ту же задачу во временной SQLite.</p>
+      <CodeBlock caption="PowerShell из project/: проверка для главы 4 v2" code=".venv/Scripts/python.exe -m pytest -q tests/test_storage_availability.py::test_smoke_api_and_cli_read_the_same_task" />
+      <details>
+        <summary>Если у нас проект главы 4 v1</summary>
+        <CodeBlock caption="PowerShell из project/: проверка для главы 4 v1" code=".venv/Scripts/python.exe -m pytest -q tests/test_sql_runtime.py::test_cli_main_uses_configured_sql_database_not_json" />
+      </details>
+      <p>Успешный тест подтверждает запуск с изолированной SQLite. Адрес для нашего источника зададим и проверим отдельно.</p>
+      <CodeBlock caption="PowerShell из project/: явный URL и новая учебная схема" code={String.raw`$env:DATABASE_URL = "sqlite:///./data/backup-work/planner-source.sqlite3"
 .venv/Scripts/python.exe -c "from app.core.config import load_settings; print(load_settings().database_url)"
 .venv/Scripts/python.exe -m app.DBase.init_db`} />
-      <p>Тест проверяет прежний SQL-путь CLI на собственных изолированных данных. Его успех не доказывает URL наших процессов. Переменная $env:DATABASE_URL действует в этом терминале и наследуется его процессами; во втором терминале задаём её ещё раз. Флаг -c выполняет переданный текст Python: импортируем load_settings, вызываем её, читаем database_url у результата Settings и печатаем значение.</p>
+      <p>Переменная $env:DATABASE_URL действует в этом терминале и наследуется его процессами. Во втором терминале задаём её ещё раз. Флаг -c выполняет переданный текст Python: импортируем load_settings, вызываем её, читаем database_url у результата Settings и печатаем значение.</p>
       <p>URL должен указывать на наш полный адрес planner-source.sqlite3. Настройки разрешают относительный путь от project/. sqlite:/// является URL SQLAlchemy; sqlite3 позже получит Path или file: URI. URL не превращаем в путь срезом строки. init_db здесь намеренно создаёт новую учебную схему. При backup источник уже должен существовать.</p>
-      <Callout>Если тест или модуль не запускается, восстанавливаем точную ветвь окружения по README входного проекта тем же Python и повторяем пробу. При несовпадении URL не резервируем неизвестный файл.</Callout>
+      <Callout>Если файл теста не найден, сначала сверим версию Planner и путь к тесту. Если не запускается Python или отсутствует пакет, сверим окружение с README проекта. При несовпадении URL не резервируем неизвестный файл.</Callout>
       <CodeBlock caption="Каждая команда в своём терминале с одинаковым учебным URL" code={String.raw`.venv/Scripts/python.exe -m uvicorn app.api:app --host 127.0.0.1 --port 8000
 .venv/Scripts/python.exe -m app.main`} />
       <p>Откроем http://127.0.0.1:8000/docs, раскроем POST /tasks, нажмём Try it out и зададим title/priority в теле. Создадим «Сверить резерв», priority 2, затем «Проверить перенос», priority 4. После Execute успешный ответ имеет статус 201 и выданный id. Сохраним оба разных ID в data/backup-work/observations.md; их не назначаем заново.</p>
