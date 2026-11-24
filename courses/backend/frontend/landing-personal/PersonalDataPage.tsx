@@ -1,6 +1,5 @@
 import { BrandLogo } from "@platform/shared/brand/BrandLogo";
 import { useEffect } from 'react';
-import { ProgrammingBackground } from './components/ProgrammingBackground';
 import { LandingNav } from './LandingPages';
 import { ConsultationForm } from './components/ConsultationForm';
 import './styles/personal-data.css';
@@ -15,7 +14,7 @@ export function PersonalDataPage({ policy = false, courseId, landingBaseUrl, lea
   }, [policy]);
 
   return <main className="backend-landing personal-data-page" aria-labelledby="personal-data-title">
-    <div className="backend-landing__scene"><ProgrammingBackground /><div className="backend-landing__inner">
+    <div className="backend-landing__inner">
       <div className="landing-header-layer"><header className="landing-header"><a className="landing-brand" href={landingBaseUrl}>Никита Кирюхин</a><LandingNav landingBaseUrl={landingBaseUrl} /></header></div><ConsultationForm showActions={false} courseId={courseId} landingBaseUrl={landingBaseUrl} />
       <article className="personal-data">
         <a className="personal-data__back" href={landingBaseUrl}>← На главную</a>
@@ -37,6 +36,6 @@ export function PersonalDataPage({ policy = false, courseId, landingBaseUrl, lea
         </div>}
       </article>
       <footer className="landing-footer"><a className="landing-brand" href={learningUrl} aria-label="knowi — платформа"><BrandLogo /></a><span>ИП КИРЮХИН Н.А. ИНН 230109261735</span></footer>
-    </div></div>
+    </div>
   </main>;
 }

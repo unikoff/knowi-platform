@@ -1,358 +1,353 @@
 import { useState } from "react";
-import type { CSSProperties } from "react";
-import {
-  CodeBlock,
-  Diagram,
-  DiagramBranch,
-  DiagramBranches,
-  Lead,
-  LinkedNotes,
-  QuizCard,
-  RichHero,
-  RichLesson,
-  Section,
-} from "../../shared";
+import { CodeBlock, Diagram, DiagramLane, DiagramTrack, Lead, LinkedNotes, RichHero, RichLesson, Section } from "@course-ui";
 
-const BLOCK_TITLE = "Полный SQL-путь и единое переключение";
+const JOURNAL_SETUP = `from sqlalchemy import Boolean, JSON, create_engine, event
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
-const orderDemo = `from contextlib import closing
+class JournalBase(DeclarativeBase):
+    pass
+
+class RequestRow(JournalBase):
+    __tablename__ = "requests"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item: Mapped[str]
+    quantity: Mapped[int]
+    closed: Mapped[bool] = mapped_column(Boolean)
+    labels: Mapped[list[str]] = mapped_column(JSON)
+    search_name: Mapped[str]
+
+engine = create_engine("sqlite://")
+JournalBase.metadata.create_all(engine)
+sessions = sessionmaker(engine)
+with sessions.begin() as writer:
+    writer.add_all([
+        RequestRow(id=8, item="Кабель", quantity=1, closed=False,
+                   labels=["зал"], search_name="кабель"),
+        RequestRow(id=9, item="СТОЙКА", quantity=3, closed=False,
+                   labels=["сцена", "выдача"], search_name="стойка"),
+    ])
+
+updates = []
+
+@event.listens_for(engine, "before_cursor_execute")
+def count_updates(connection, cursor, sql, parameters, context, many):
+    if sql.lstrip().upper().startswith("UPDATE REQUESTS "):
+        updates.append(sql)`;
+
+const FIND_EXAMPLE = `with sessions() as reader:
+    stand = reader.get(RequestRow, 9)
+    print(stand.item, stand.closed)
+    print(reader.get(RequestRow, 99))`;
+
+const SCOPE_EXAMPLE = `with sessions.begin() as writer:
+    stand = writer.get(RequestRow, 9)
+    print(stand.id, stand.quantity)`;
+
+const DONE_EXAMPLE = `for attempt in ("первый вызов", "повтор"):
+    updates.clear()
+    with sessions.begin() as writer:
+        request = writer.get(RequestRow, 9)
+        if not request.closed:
+            request.closed = True
+    with sessions() as reader:
+        closed = reader.get(RequestRow, 9).closed
+    print(attempt, closed, len(updates))`;
+
+const STATUS_EXAMPLE = `def journal_label(closed):
+    if closed:
+        return "заявка уже закрыта"
+    return "заявка ещё открыта"
+
+print(journal_label(True))`;
+
+const DELETE_EXAMPLE = `with sessions.begin() as writer:
+    stand = writer.get(RequestRow, 9)
+    receipt = (stand.id, stand.item, stand.quantity, list(stand.labels))
+    writer.delete(stand)
+
+print("Квитанция:", receipt)
+
+with sessions() as reader:
+    print("Заявка 9:", reader.get(RequestRow, 9))
+    cable = reader.get(RequestRow, 8)
+    print("Заявка 8:", cable.id, cable.item, cable.quantity,
+          cable.closed, cable.labels, cable.search_name)`;
+
+const RECEIPT_EXAMPLE = `def show_receipt(receipt):
+    if receipt is None:
+        return "Квитанции нет"
+    return receipt[1]
+
+print(show_receipt(None))
+print(show_receipt((9, "СТОЙКА", 3, ["сцена", "выдача"])))`;
+
+const LAB_CELL = `exec('''
+import atexit
+from contextlib import contextmanager
 from pathlib import Path
-import sqlite3
 from tempfile import TemporaryDirectory
-
-
-def setup(path):
-    with closing(sqlite3.connect(path)) as db, db:
-        db.execute("CREATE TABLE orders (id INTEGER PRIMARY KEY, title TEXT, closed INTEGER)")
-        db.executemany("INSERT INTO orders VALUES (?, ?, ?)", [
-            (9, "Витрина", 0),
-            (10, "Полка", 0),
-        ])
-
-
-def close_order(path, order_id):
-    statements = []
-    with closing(sqlite3.connect(path)) as db, db:
-        db.set_trace_callback(statements.append)
-        db.execute("BEGIN")
-        order = db.execute(
-            "SELECT id, title, closed FROM orders WHERE id = ?", (order_id,)
-        ).fetchone()
-        if order is None:
-            return "Заказ не найден", 0
-        if order[2]:
-            return "Заказ закрыт", 0
-
-        db.execute("UPDATE orders SET closed = 1 WHERE id = ?", (order_id,))
-        writes = sum(sql.startswith("UPDATE ") for sql in statements)
-        return "Заказ закрыт", writes
-
-
-def show_orders(path):
-    with closing(sqlite3.connect(path)) as db:
-        rows = db.execute("SELECT id, closed FROM orders ORDER BY id").fetchall()
-        return [(order_id, bool(closed)) for order_id, closed in rows]
-
-
-with TemporaryDirectory() as directory:
-    path = Path(directory) / "orders.sqlite3"
-    setup(path)
-    print("До вызовов:", show_orders(path))
-    for order_id in (9, 9, 99):
-        message, writes = close_order(path, order_id)
-        print(f"{order_id}: {message}; UPDATE: {writes}")
-        print("Свежий просмотр:", show_orders(path))`;
-
-const orderDemoOutput = `До вызовов: [(9, False), (10, False)]
-9: Заказ закрыт; UPDATE: 1
-Свежий просмотр: [(9, True), (10, False)]
-9: Заказ закрыт; UPDATE: 0
-Свежий просмотр: [(9, True), (10, False)]
-99: Заказ не найден; UPDATE: 0
-Свежий просмотр: [(9, True), (10, False)]`;
-
-const doneStarter = `    def mark_done(self, task_id):
-        with self.write_scope():
-            task = self.get_task(task_id)
-            raise NotImplementedError("Здесь будет ваше решение")`;
-
-const doneCheck = `from pathlib import Path
-from tempfile import TemporaryDirectory
-from unittest.mock import patch
 
 from sqlalchemy import URL, create_engine, event
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import sessionmaker
 
 from app.DBase.models import Base, TaskRow
 from app.DBase.repositories import SqlTaskRepository
-from app.DBase.session import create_session_factory
-from app.cli import handle_done
-from app.main import sql_service_context
+from app.main import build_service
 
+lab_dir = engine = None
 
-TARGET = {
-    "id": 120, "title": "Старый План", "priority": 4,
-    "is_done": True, "tags": ["внутр"],
-}
-CONTROL = {
-    "id": 121, "title": "Сосед", "priority": 1,
-    "is_done": False, "tags": ["рядом"],
-}
-
-
-def require(condition, message):
-    if not condition:
-        raise RuntimeError(message)
-
-
-def with_normalized(task):
-    return {**task, "title_normalized": task["title"].lower()}
-
-
-def read_pair(session_factory):
-    with session_factory() as session:
-        rows = [session.get(TaskRow, task_id) for task_id in (120, 121)]
-        require(all(row is not None for row in rows), "Одна из двух строк пропала.")
-        return [
-            {field: getattr(row, field) for field in with_normalized(TARGET)}
-            for row in rows
-        ]
-
-
-def verify_context(service, engine):
-    repository = service.repository
-    require(
-        isinstance(repository, SqlTaskRepository)
-        and repository.session.get_bind() is engine,
-        "Нужен SQL-сервис, подключённый к этой учебной базе.",
-    )
-    require(
-        service.write_scope == repository.session.begin,
-        "Восстановите sql_service_context из темы создания задачи.",
-    )
-
-
-def check_done(path):
-    engine = create_engine(URL.create("sqlite", database=str(path)))
-    try:
-        session_factory = create_session_factory(engine)
-        Base.metadata.create_all(engine)
-        with session_factory() as session, session.begin():
-            session.add_all(
-                [TaskRow(**with_normalized(task)) for task in (TARGET, CONTROL)]
-            )
-
-        sql_updates = 0
-
-        @event.listens_for(engine, "before_cursor_execute")
-        def count_update(conn, cursor, statement, params, context, many):
-            compiled = context.compiled
-            if compiled is not None and compiled.isupdate:
-                if compiled.statement.table.name == TaskRow.__tablename__:
-                    nonlocal sql_updates
-                    sql_updates += 1
-
-        open_target = {**TARGET, "is_done": False}
-        expected_open = [with_normalized(open_target), with_normalized(CONTROL)]
-        try:
-            with sql_service_context(session_factory) as service:
-                verify_context(service, engine)
-                service.patch_task(120, is_done=False)
-            require(read_pair(session_factory) == expected_open, "Флаг False не сохранился.")
-
-            before = sql_updates
-            with sql_service_context(session_factory) as service:
-                verify_context(service, engine)
-                service.patch_task(120)
-            initial = read_pair(session_factory)
-            require(initial == expected_open, "Пустой PATCH изменил данные.")
-            require(sql_updates == before, "Пустой PATCH отправил UPDATE.")
-        except (AttributeError, NotImplementedError, RuntimeError, SQLAlchemyError) as error:
-            raise RuntimeError(f"Вход PATCH не готов: {error}") from error
-
-        print("После PATCH, новая Session:", initial)
-        expected_done = [with_normalized(TARGET), with_normalized(CONTROL)]
-        cases = (
-            ("Первый вызов", 120, "Задача выполнена.", 1),
-            ("Повторный вызов", 120, "Задача выполнена.", 0),
-            ("Отсутствующий id", 999, "Задача не найдена.", 0),
-        )
-        for label, task_id, expected_message, expected_writes in cases:
-            messages = []
-            before = sql_updates
-            with sql_service_context(session_factory) as service:
-                verify_context(service, engine)
-                with patch.object(
-                    service.repository, "update", wraps=service.repository.update
-                ) as update:
-                    handle_done(service, read=lambda prompt: str(task_id), write=messages.append)
-                calls = update.call_count
-            writes = sql_updates - before
-            rows = read_pair(session_factory)
-            print(f"{label}: {' | '.join(messages)} update: {calls}, SQL UPDATE: {writes}")
-            print("Новая Session:", rows)
-            require(messages == [expected_message], f"{label}: неожиданное сообщение.")
-            require(calls == expected_writes, f"{label}: неверное число вызовов update.")
-            require(writes == expected_writes, f"{label}: неверное число SQL UPDATE.")
-            require(rows == expected_done, f"{label}: итоговые строки отличаются.")
-
-        task, control = read_pair(session_factory)
-        for record in (task, control):
-            del record["title_normalized"]
-        print("Проверка done прошла")
-        print(f"DONE_TASK = {task!r}")
-        print(f"CONTROL_TASK = {control!r}")
-    finally:
+def close_lab():
+    global lab_dir, engine
+    if engine is not None:
         engine.dispose()
+        engine = None
+    if lab_dir is not None:
+        lab_dir.cleanup()
+        lab_dir = None
 
+def start_lab(closed=False):
+    global lab_dir, engine, sessions
+    close_lab()
+    lab_dir = TemporaryDirectory(prefix="planner-done-delete-")
+    atexit.unregister(close_lab)
+    atexit.register(close_lab)
+    path = Path(lab_dir.name) / "planner.sqlite3"
+    engine = create_engine(URL.create("sqlite", database=str(path)))
+    sessions = sessionmaker(engine)
+    Base.metadata.create_all(engine)
+    with sessions.begin() as db:
+        db.add_all([
+            TaskRow(id=17, title="Проверить АРХИВ", priority=2, is_done=True,
+                    tags=["бумаги"], title_normalized="проверить архив"),
+            TaskRow(id=42, title="Сдать КЛЮЧИ", priority=4, is_done=closed,
+                    tags=["срок", "офис"], title_normalized="сдать ключи"),
+        ])
+    @event.listens_for(engine, "before_cursor_execute")
+    def watch(connection, cursor, sql, parameters, context, many):
+        words = sql.lstrip().lower().split()
+        if words[:2] == ["update", "tasks"]:
+            trace["UPDATE"] += 1
+        if words[:3] == ["delete", "from", "tasks"]:
+            trace["DELETE"] += 1
 
-if __name__ == "__main__":
-    try:
-        with TemporaryDirectory() as directory:
-            check_done(Path(directory) / "done.sqlite3")
-    except (AttributeError, NotImplementedError, RuntimeError, SQLAlchemyError) as error:
-        raise SystemExit(f"Проверка done остановлена: {error}") from error`;
+    reset_counts()
+    print(path)
+    print(read_rows(17, 42))
 
-const controlStyle: CSSProperties = {
-  background: "var(--surface-2)",
-  color: "var(--reading)",
-  border: "1px solid var(--line-soft)",
-  borderRadius: 8,
-  font: "inherit",
-  padding: "8px 12px",
-  maxWidth: "100%",
+def read_rows(first_id, second_id):
+    with sessions() as db:
+        result = {}
+        for key in (first_id, second_id):
+            r = db.get(TaskRow, key)
+            result[key] = None if r is None else (
+                r.id, r.title, r.priority, r.is_done, list(r.tags), r.title_normalized,
+            )
+        return result
+
+def reset_counts():
+    trace.clear()
+    trace.update(update=0, UPDATE=0, DELETE=0, read_in_scope=None)
+
+def counts():
+    return trace.copy()
+
+class ObservedRepository(SqlTaskRepository):
+    def get(self, key):
+        trace["read_in_scope"] = self.session.in_transaction()
+        return super().get(key)
+
+    def update(self, task):
+        trace["update"] += 1
+        return super().update(task)
+
+trace = {}
+
+@contextmanager
+def service_context():
+    with sessions() as db:
+        yield build_service(repository=ObservedRepository(db), write_scope=db.begin)
+
+def done(key):
+    with service_context() as service:
+        return service.mark_done(key)
+
+def delete(key):
+    with service_context() as service:
+        return service.delete_task(key)
+
+def repo_delete(key):
+    with sessions.begin() as db:
+        return SqlTaskRepository(db).delete(key)
+''')`;
+
+const REGRESSION_CELL = `exec('''
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from app.cli import handle_delete, handle_done
+from app.core.dependencies import get_planner
+from app.routers.tasks.router import router
+
+def regression():
+    with TemporaryDirectory(prefix="planner-compat-") as folder:
+        factory_engine = create_engine(URL.create(
+            "sqlite", database=str(Path(folder) / "compat.sqlite3"),
+        ))
+        try:
+            factory = sessionmaker(factory_engine)
+            Base.metadata.create_all(factory_engine)
+            with factory.begin() as db:
+                db.add_all([
+                    TaskRow(id=17, title="Доска", title_normalized="доска"),
+                    TaskRow(id=42, title="Папка", title_normalized="папка"),
+                ])
+
+            def provider():
+                with factory() as db:
+                    yield build_service(
+                        repository=SqlTaskRepository(db), write_scope=db.begin,
+                    )
+
+            application = FastAPI()
+            application.include_router(router)
+            application.dependency_overrides[get_planner] = provider
+            with TestClient(application) as client:
+                first = client.delete("/tasks/17")
+                assert first.status_code == 204 and first.content == b""
+                assert client.get("/tasks/17").status_code == 404
+                assert client.delete("/tasks/17").status_code == 404
+                assert client.get("/tasks/42").status_code == 200
+
+            messages = []
+            for handler in (handle_done, handle_done, handle_delete, handle_delete):
+                with contextmanager(provider)() as service:
+                    handler(service, read=lambda prompt: "42", write=messages.append)
+
+            assert messages == [
+                "Задача выполнена.", "Задача выполнена.",
+                "Задача удалена.", "Задача не найдена.",
+            ], messages
+            print("HTTP: 204 без тела, GET и повтор DELETE 404. CLI: ответы сохранены.")
+        finally:
+            factory_engine.dispose()
+''')`;
+
+type RequestStatus = "open" | "closed" | "missing";
+type Command = "done" | "delete";
+type WriteEffect = "UPDATE" | "DELETE" | "none";
+
+const STATUS_LABEL: Record<RequestStatus, string> = {
+  open: "Открыта",
+  closed: "Закрыта",
+  missing: "Строки нет",
 };
 
-const controlsStyle: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  alignItems: "center",
-  gap: 8,
+const WRITE_LABEL: Record<WriteEffect, string> = {
+  UPDATE: "UPDATE",
+  DELETE: "DELETE",
+  none: "Без записи",
 };
 
-function CopyPython({ caption, code }: { caption: string; code: string }) {
-  const [feedback, setFeedback] = useState("");
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(code);
-      setFeedback("Скопировано");
-    } catch {
-      setFeedback("Выделите код и скопируйте его вручную.");
-    }
+function requestOutcome(status: RequestStatus, command: Command): {
+  status: RequestStatus;
+  write: WriteEffect;
+  explanation: string;
+} {
+  if (status === "missing") {
+    return { status, write: "none", explanation: "Поиск сразу показал, что такой строки нет. Команда сообщает о промахе. Свежий поиск снова пуст." };
   }
-
-  return (
-    <>
-      <CodeBlock caption={caption} code={code} />
-      <div style={controlsStyle}>
-        <button type="button" style={controlStyle} onClick={copy}>
-          Скопировать: {caption}
-        </button>
-        <span role="status">{feedback}</span>
-      </div>
-    </>
-  );
+  if (command === "delete") {
+    return { status: "missing", write: "DELETE", explanation: "Строка найдена и удалена по её номеру. Новый поиск по этому id пуст. Номер соседа в команду не передавался." };
+  }
+  if (status === "closed") {
+    return { status, write: "none", explanation: "У найденной заявки уже стоит отметка о завершении. Команда подтверждает закрытие, а записывать новое состояние не нужно." };
+  }
+  return { status: "closed", write: "UPDATE", explanation: "У найденной открытой заявки изменился флаг. После подтверждения записи новый читатель видит закрытую заявку." };
 }
 
-function OrderClosingTryout() {
-  const [initiallyClosed, setInitiallyClosed] = useState(false);
-  const [prediction, setPrediction] = useState("");
-  const [writes, setWrites] = useState<number[]>([]);
-  const [showSaved, setShowSaved] = useState(false);
-  const closed = initiallyClosed || writes.length > 0;
-  const total = writes.reduce((sum, count) => sum + count, 0);
+function RequestPrediction() {
+  const [target, setTarget] = useState("8");
+  const [status, setStatus] = useState<RequestStatus>("closed");
+  const [command, setCommand] = useState<Command>("delete");
+  const [writeGuess, setWriteGuess] = useState<WriteEffect | "">("");
+  const [statusGuess, setStatusGuess] = useState<RequestStatus | "">("");
+  const [checked, setChecked] = useState(false);
+  const result = requestOutcome(status, command);
+  const targetName = target === "8" ? "8 · Кабель" : "9 · СТОЙКА";
+  const neighborName = target === "8" ? "9 · СТОЙКА" : "8 · Кабель";
 
   function reset() {
-    setPrediction("");
-    setWrites([]);
-    setShowSaved(false);
+    setTarget("8");
+    setStatus("closed");
+    setCommand("delete");
+    setWriteGuess("");
+    setStatusGuess("");
+    setChecked(false);
   }
 
   return (
-    <section
-      className="lesson-infographic"
-      aria-label="Проба повторного закрытия"
-      data-order-closing-tryout=""
-      style={{
-        background: "var(--surface-2)",
-        border: "1px solid var(--line-soft)",
-        borderRadius: 12,
-        padding: 16,
-        display: "grid",
-        gap: 12,
-      }}
-    >
-      <h3>Сколько раз запишется заказ?</h3>
-      <p>В модели два заказа: «Витрина» и открытая «Полка». Выберите старт для «Витрины», спрогнозируйте число записей, затем закройте её дважды.</p>
-      <div style={controlsStyle}>
-        <label htmlFor="done-order-start">Исходный статус «Витрины»</label>
-        <select
-          id="done-order-start"
-          style={controlStyle}
-          value={initiallyClosed ? "closed" : "open"}
-          onChange={(event) => {
-            setInitiallyClosed(event.target.value === "closed");
-            reset();
-          }}
-        >
-          <option value="open">Открыта</option>
-          <option value="closed">Закрыта</option>
-        </select>
-      </div>
-      <div style={controlsStyle}>
-        <label htmlFor="done-order-prediction">Всего UPDATE за два вызова</label>
-        <select
-          id="done-order-prediction"
-          style={controlStyle}
-          value={prediction}
-          disabled={writes.length > 0}
-          onChange={(event) => setPrediction(event.target.value)}
-        >
-          <option value="">Выбрать</option>
-          <option value="0">0</option>
-          <option value="1">1</option>
-          <option value="2">2</option>
-        </select>
-      </div>
-      <div style={controlsStyle}>
-        <button
-          type="button"
-          style={controlStyle}
-          disabled={prediction === "" || writes.length === 2}
-          onClick={() => setWrites((previous) => [...previous, closed ? 0 : 1])}
-        >
-          Закрыть заказ
-        </button>
-        <button
-          type="button"
-          style={controlStyle}
-          disabled={writes.length !== 2 || showSaved}
-          onClick={() => setShowSaved(true)}
-        >
-          Свежий просмотр
-        </button>
-        <button type="button" style={controlStyle} onClick={reset}>Сбросить попытку</button>
-      </div>
+    <section aria-labelledby="request-prediction">
+      <h3 id="request-prediction">Что увидит новый читатель?</h3>
+      <p>В модели сначала выбрана закрытая заявка 8. Предскажем след записи и результат свежего поиска. Затем поменяем один вход и сравним. Соседняя заявка открыта в каждом сценарии.</p>
+      <fieldset>
+        <legend>Вход команды</legend>
+        <p>
+          <label>Номер заявки{" "}
+            <select value={target} onChange={(event) => { setTarget(event.target.value); setChecked(false); }}>
+              <option value="8">8 · Кабель</option>
+              <option value="9">9 · СТОЙКА</option>
+            </select>
+          </label>
+          {" "}<label>Состояние до команды{" "}
+            <select value={status} onChange={(event) => { setStatus(event.target.value as RequestStatus); setChecked(false); }}>
+              <option value="open">Открыта</option>
+              <option value="closed">Закрыта</option>
+              <option value="missing">Строки нет</option>
+            </select>
+          </label>
+          {" "}<label>Команда{" "}
+            <select value={command} onChange={(event) => { setCommand(event.target.value as Command); setChecked(false); }}>
+              <option value="done">Завершить</option>
+              <option value="delete">Удалить</option>
+            </select>
+          </label>
+        </p>
+      </fieldset>
+      <fieldset>
+        <legend>Наш прогноз</legend>
+        <p>
+          <label>След записи{" "}
+            <select value={writeGuess} onChange={(event) => { setWriteGuess(event.target.value as WriteEffect | ""); setChecked(false); }}>
+              <option value="">Выбрать</option>
+              <option value="UPDATE">UPDATE</option>
+              <option value="DELETE">DELETE</option>
+              <option value="none">Без записи</option>
+            </select>
+          </label>
+          {" "}<label>Что вернёт свежий поиск{" "}
+            <select value={statusGuess} onChange={(event) => { setStatusGuess(event.target.value as RequestStatus | ""); setChecked(false); }}>
+              <option value="">Выбрать</option>
+              <option value="open">Открыта</option>
+              <option value="closed">Закрыта</option>
+              <option value="missing">Строки нет</option>
+            </select>
+          </label>
+        </p>
+        <button className="interactive-primary" type="button" disabled={!writeGuess || !statusGuess} onClick={() => setChecked(true)}>Сверить прогноз</button>
+        {" "}<button className="interactive-secondary" type="button" onClick={reset}>Сбросить</button>
+      </fieldset>
       <div aria-live="polite">
-        <p>«Витрина» сейчас {closed ? "закрыта" : "открыта"}. Вызовов: {writes.length} из 2.</p>
-        {writes.map((count, index) => (
-          <p key={index}>
-            Вызов {index + 1}: «Заказ закрыт», UPDATE: {count}.{" "}
-            {count === 1 ? "Статус изменился." : "Заказ уже был закрыт."}
-          </p>
-        ))}
-        {showSaved && (
-          <p>
-            <strong>{Number(prediction) === total ? "Прогноз совпал." : "Прогноз отличается."}</strong>{" "}
-            Всего UPDATE: {total}. {initiallyClosed
-              ? "«Витрина» с самого начала была закрыта."
-              : "Запись понадобилась только при первом закрытии."}{" "}
-            «Витрина» закрыта, «Полка» открыта.
-          </p>
+        {checked && (
+          <>
+            <p><strong>{writeGuess === result.write && statusGuess === result.status ? "Прогноз совпал." : "Сравним прогноз с результатом."}</strong> {result.explanation}</p>
+            <ul>
+              <li>След записи · {WRITE_LABEL[result.write]}</li>
+              <li>{targetName} · {STATUS_LABEL[status]} → {STATUS_LABEL[result.status]}</li>
+              <li>{neighborName} · Открыта → Открыта, все поля прежние</li>
+            </ul>
+          </>
         )}
       </div>
-      <small>Модель показывает результат команды. Она не подключается к вашей базе.</small>
     </section>
   );
 }
@@ -361,107 +356,122 @@ export function Lesson72_1({ module }: { module?: string }) {
   return (
     <RichLesson>
       <RichHero
-        chip={module ?? BLOCK_TITLE}
-        title="Завершаем задачу без повторной записи"
-        intro="Одна команда, один id, два вызова. Посмотрим, почему запись нужна только при смене статуса."
+        chip={module ?? "Полный SQL-путь Planner"}
+        title="Завершаем и удаляем задачу по id"
+        intro="Что останется в базе после завершения, его повтора и удаления по одному номеру?"
       />
-
       <Section number="00" title="Вступление">
-        <Lead>Представьте, что вы дважды подряд ввели done для одной задачи Planner.</Lead>
+        <Lead>Частичное обновление уже умеет менять статус задачи. Посмотрим, что происходит, когда команду со знакомым номером отправляют снова или когда строки уже нет.</Lead>
         <LinkedNotes items={[
-          { title: "Точка старта", description: "После частичного обновления Planner умеет найти задачу и сохранить изменённый флаг в SQLite." },
-          { title: "Новый вопрос", description: "Что делать при повторной команде, если задача уже завершена?" },
-          { title: "Результат", description: "Первый вызов сохранит True. Повтор вернёт завершённую задачу без ещё одной записи." },
+          { title: "Точка старта", description: "Находим задачу по id и умеем сохранить новый статус в SQLite." },
+          { title: "Новый вопрос", description: "Что вернёт команда и что останется в таблице после завершения, повтора и удаления?" },
+          { title: "Результат", description: "Закроем одну строку, подтвердим повтор без записи и докажем, что удаление затронуло только выбранный id." },
         ]} />
-        <p>Мы сравним флаг до команды, ответ на команду и число записей. Каждое наблюдение покажет свою часть результата.</p>
+        <p>Ответ команды увидим сразу. Состояние базы проверим отдельно, когда работу сможет продолжить новый читатель.</p>
       </Section>
 
-      <Section number="01" title="Когда команда меняет состояние">
-        <Lead>В каталоге заказов команда «Закрыть» должна оставить выбранный заказ закрытым.</Lead>
-        <p>Сначала находим карточку по id. У заказа есть флаг <code>closed</code>: он показывает, закрыт ли заказ сейчас. Если флаг уже истинный, нужное состояние достигнуто. Можно сразу вернуть успешный результат. Такой выход из функции называется ранним возвратом. При отсутствии карточки поиск заканчивается сообщением «Заказ не найден».</p>
+      <Section number="01" title="Как выбрать одну запись и проверить результат после записи">
+        <Lead>В журнале оборудования заявка 8 на кабель и заявка 9 на три стойки открыты. Номер заявки ведёт к одной карточке, даже если несколько заявок описывают похожие вещи.</Lead>
+        <p>
+          Номер передаём вторым аргументом <code>Session.get()</code>. Знакомая ORM-модель <code>RequestRow</code> описывает строки журнала.
+          {" "}<code>get</code> найдёт строку 9. Для номера 99 в этом журнале вернётся <code>None</code>.
+        </p>
+        <CodeBlock code={FIND_EXAMPLE} caption="По номеру 9 находим СТОЙКА False, по номеру 99 получаем None" />
+        <details>
+          <summary>Подготовка для самостоятельного запуска примеров</summary>
+          <p>На странице уже есть исходные данные и выводы. Чтобы повторить опыт, один раз выполним подготовку в Python с SQLAlchemy. База существует в памяти. Остальные фрагменты можно выполнить в том же сеансе по порядку.</p>
+          <CodeBlock code={JOURNAL_SETUP} caption="Две заявки и готовый счётчик UPDATE для таблицы requests" />
+        </details>
+        <p>Когда карточку собираемся менять, поиск входит в ту же область записи. Представим, что журнал открыт на время одного поручения. Сначала открываем его, потом находим карточку и при необходимости меняем её. При успешном выходе из блока запись подтверждается.</p>
+        <CodeBlock code={SCOPE_EXAMPLE} caption="Сначала открываем область, затем читаем номер и количество · 9 3" />
+        <p>
+          {" "}<code>sessions.begin()</code> открывает Session с транзакцией. В Planner знакомый <code>write_scope</code> открывает транзакцию у той же Session, которую получил репозиторий.
+          При первом чтении SQLAlchemy может открыть транзакцию сама. Поэтому при редактировании метода важно заметить, где он впервые читает запись.
+          Новый вызов фабрики после выхода из области читает тот же журнал уже с подтверждёнными изменениями.
+        </p>
+      </Section>
 
-        <Diagram caption="Что происходит после команды закрытия">
-          <DiagramBranches label="Три результата поиска заказа по id">
-            <DiagramBranch label="Найден открытый">
-              <p>Открыт → Закрыт</p>
-              <p>Успех, 1 UPDATE</p>
-            </DiagramBranch>
-            <DiagramBranch label="Найден закрытый">
-              <p>Закрыт → Закрыт</p>
-              <p>Успех, 0 UPDATE</p>
-            </DiagramBranch>
-            <DiagramBranch label="Не найден">
-              <p>Карточки по этому id нет.</p>
-              <p>Сообщение об отсутствии, 0 UPDATE</p>
-            </DiagramBranch>
-          </DiagramBranches>
+      <Section number="02" title="Когда завершение требует записи">
+        <Lead>Завершить заявку значит поставить отметку, что работа выполнена. Сначала смотрим прежнюю отметку. Открытую заявку закрываем, а уже закрытую можем подтвердить ещё раз без новой записи.</Lead>
+        <p>
+          Переход состояния происходит при изменении флага. Возьмём открытую заявку 9.
+          {" "}<code>if not request.closed</code> пропускает внутрь только открытую карточку.
+          {" "}<code>request.closed = True</code> меняет её отметку. В примере это сама ORM-строка, поэтому SQLAlchemy увидит изменение при выходе из области.
+        </p>
+        <CodeBlock code={DONE_EXAMPLE} caption="Два завершения заявки 9 · счётчик сбрасываем перед каждым" />
+        <p>
+          Первый вывод <code>первый вызов True 1</code> показывает новое состояние и один UPDATE. При повторе получается
+          {" "}<code>повтор True 0</code>. Поиск нашёл существующую строку с <code>True</code>, условие не пустило к присваиванию.
+          Если взять номер 99, сначала получим <code>None</code>. У отсутствующей строки нет флага, который можно проверить. В Planner знакомый поиск превращает такой промах в предметную ошибку.
+        </p>
+        <p>
+          В Planner сервис получает обычную Task, а общий <code>update</code> переносит изменение в SQLite. Здесь есть два наблюдения: вызвали ли репозиторий и выполнила ли база UPDATE.
+          Если передать репозиторию прежние значения, SQLAlchemy может не отправить UPDATE. Пара <code>1 / 0</code> подскажет, что ветка сохранения всё-таки сработала.
+          По выводу <code>True</code> определяем результат команды, по свежему чтению и счётчикам проверяем сохранение.
+        </p>
+        <p>Когда отдельная функция уже знает ответ по прежней отметке, она может вернуть его сразу. В этом примере <code>return</code> отдаёт подпись закрытой карточки и завершает вызов. До второй подписи выполнение не доходит.</p>
+        <CodeBlock code={STATUS_EXAMPLE} caption="Ранний возврат · заявка уже закрыта" />
+        <p>Перед переходом к удалению предскажем результат для заявки 8, если она уже закрыта. Какими будут флаг и число UPDATE?</p>
+        <details>
+          <summary>Сверить прогноз для закрытой заявки</summary>
+          <p>Свежий читатель увидит <code>True</code>, а UPDATE будет 0. Заявка существует и уже находится в требуемом состоянии.</p>
+        </details>
+      </Section>
+
+      <Section number="03" title="Что остаётся после удаления">
+        <Lead>Удалить заявку значит убрать карточку из действующего журнала. Если данные нужны для квитанции, заполняем её по найденной карточке и затем убираем строку.</Lead>
+        <p>
+          Материализовать результат значит сразу собрать обычное значение из полей строки. В примере это кортеж с данными стойки.
+          {" "}<code>list(stand.labels)</code> делает отдельный список меток для квитанции.
+          {" "}<code>writer.delete(stand)</code> принимает найденный ORM-объект и отмечает его к удалению. Успешный выход из области подтверждает удаление.
+        </p>
+        <p>До удаления свежая заявка 8 выглядит так: <code>8 Кабель 1 False ['зал'] кабель</code>. Запомним все шесть значений, чтобы потом сравнить.</p>
+        <CodeBlock code={DELETE_EXAMPLE} caption="Удаляем заявку 9 и читаем квитанцию после закрытия Session" />
+        <p>
+          Квитанция содержит <code>(9, "СТОЙКА", 3, ["сцена", "выдача"])</code>. Она доступна после выхода из блока.
+          Новый поиск печатает <code>Заявка 9: None</code>, а строка 8 содержит те же шесть значений.
+          Это показывает адресность удаления: исчез именно переданный id, а сосед сохранил и публичные, и служебные поля.
+          Уменьшение общего числа строк само по себе не скажет, какую карточку убрали.
+        </p>
+        <p>
+          При промахе по номеру 99 нет ни строки для удаления, ни полей для квитанции. Получатель может проверить <code>is None</code> и отдельно обработать отсутствие данных.
+        </p>
+        <CodeBlock code={RECEIPT_EXAMPLE} caption="Просмотр квитанции · сначала «Квитанции нет», затем «СТОЙКА»" />
+        <p>
+          У SQL-репозитория Planner остаётся знакомый договор <code>Task | None</code>. Обычную Task уже умеет собирать <code>task_from_row</code>.
+          Сервис отличает промах по <code>is None</code> и сообщает прежнюю предметную ошибку. У вызывающей команды свои результаты: например, HTTP сообщает об успешном удалении пустым ответом.
+        </p>
+        <Diagram caption="Заявка 9 в журнале · новые чтения после команд">
+          <DiagramLane title="Два изменения одной строки">
+            <DiagramTrack label="ID 9" items={["Открыта · False", "done · UPDATE → закрыта", "delete · DELETE → строки нет"]} />
+          </DiagramLane>
+          <DiagramLane title="Повтор на закрытой строке">
+            <DiagramTrack label="ID 9" items={["Закрыта · True", "done · 0 UPDATE", "Закрыта · True"]} />
+          </DiagramLane>
+          <DiagramLane title="Соседняя строка">
+            <DiagramTrack label="ID 8" items={["До команд · Кабель", "После команд · тот же полный снимок"]} />
+          </DiagramLane>
         </Diagram>
-
-        <h3>Закрываем заказ в отдельной SQLite</h3>
-        <p>Заказы 9 «Витрина» и 10 «Полка» открыты. Закроем заказ 9 дважды, потом выберем отсутствующий 99. После каждого вызова заново откроем базу и посмотрим на обе записи.</p>
-        <p>Сохраните общий пример как <code>close_order_demo.py</code> в своей учебной папке и выполните там <code>python close_order_demo.py</code>. Python сам создаст отдельную временную SQLite и очистит её после прогона. Для примера достаточно стандартной библиотеки.</p>
-        <details>
-          <summary>Открыть код примера с заказами</summary>
-          <CopyPython caption="close_order_demo.py" code={orderDemo} />
-        </details>
-        <CodeBlock caption="Вывод примера" language="text" code={orderDemoOutput} />
-        <ol>
-          <li><code>close_order</code> открывает базу и в транзакции выбирает карточку командой SELECT по переданному id. <code>fetchone()</code> возвращает одну строку либо <code>None</code>.</li>
-          <li>В строке <code>(id, title, closed)</code> значение <code>closed</code> стоит третьим, поэтому <code>if order[2]:</code> проверяет флаг. Первый вызов видит 0, отправляет UPDATE только для заказа 9 и возвращает успех. При выходе из <code>with</code> транзакция завершается.</li>
-          <li>Повторный вызов видит уже сохранённую 1. Ранний <code>return</code> возвращает успех до строки с UPDATE. Для id 99 срабатывает отдельный ранний выход, потому что карточка отсутствует.</li>
-        </ol>
-        <p>Вывод «Свежий просмотр» получен из другого соединения после команды. В нём есть оба заказа. По статусу заказа 9 виден результат закрытия, а по заказу 10 видно, что запись была адресной.</p>
+        <RequestPrediction />
       </Section>
 
-      <Section number="02" title="Как увидеть лишний вызов записи">
-        <Lead>Два одинаковых сообщения «Заказ закрыт» совместимы с разным количеством записей.</Lead>
-        <p>В примере число UPDATE показывает, сколько SQL-команд отправилось за один вызов. В Planner готовая проверка дополнительно считает обращения к общему <code>update</code>. Репозиторий может получить неизменённую задачу и пропустить отправку UPDATE. Поэтому ноль SQL-команд сам по себе ещё не подтверждает ранний возврат до вызова репозитория.</p>
-
-        <OrderClosingTryout />
-
-        <QuizCard
-          question="При повторе счётчик вызовов update равен 1, а счётчик SQL UPDATE равен 0. Что показывает отчёт?"
-          options={[
-            "Сервис вернулся раньше вызова update.",
-            "Сервис вызвал update, а хранилище не отправило команду UPDATE.",
-          ]}
-          correctIndex={1}
-          explanation="Оба счётчика измеряют разные границы. Для раннего возврата до передачи в репозиторий оба должны остаться на нуле."
-        />
-
-        <h3>Те же наблюдения в Planner</h3>
-        <p><code>with self.write_scope():</code> открывает готовую область записи перед поиском. В тестовом SQL-сервисе её предоставляет <code>sql_service_context</code> из темы создания задачи. Возврат из тела <code>with</code> сначала завершает область, затем отдаёт результат обработчику. Публичный <code>patch_task</code> сам открывает свою область. Для завершения есть общий путь записи на уровне репозитория.</p>
-        <ul>
-          <li><code>self.get_task(task_id)</code> возвращает обычную Task. Для отсутствующего id прежний сервис поднимает <code>TaskNotFoundError</code>. Обработчик превращает её в «Задача не найдена.».</li>
-          <li><code>task.is_done</code> хранит статус. <code>task.mark_done()</code> меняет флаг этой Task в памяти и возвращает <code>None</code>. Изменённый объект остаётся доступен под именем <code>task</code>.</li>
-          <li><code>self.repository.update(task)</code> принимает Task целиком и сохраняет её по собственному id. Он возвращает сохранённую Task либо <code>None</code>, если строки для записи нет. В прежнем сервисе отсутствие передаётся через <code>self._raise_task_not_found(task.id)</code>.</li>
-        </ul>
-        <p>Готовый прогон подаёт id в прежний <code>handle_done</code>. В него уже переданы тестовый SQL-сервис, ввод и сбор сообщений. После вызова отдельная Session покажет сохранённые данные обеих задач. Отчёт укажет сообщение и два счётчика за текущий вызов.</p>
-      </Section>
-
-      <Section number="03" title="Что мы будем делать в практике">
-        <Lead>Продолжим свой Planner после частичного обновления. Самостоятельная правка нужна в одном методе сервиса.</Lead>
+      <Section number="04" title="Что мы будем делать в практике">
         <LinkedNotes items={[
-          { title: "Завершим задачу", description: "Открытая задача после первой команды будет завершена в SQLite." },
-          { title: "Повторим команду", description: "Сохраним успешное сообщение и увидим 0 вызовов update и 0 SQL UPDATE." },
-          { title: "Проверим поиск по id", description: "Для отсутствующей задачи увидим прежнее сообщение. Строки цели и соседа останутся прежними." },
+          { title: "Завершим и повторим", description: "Сохраним статус, прочитаем его в новой Session и подтвердим, что повтор оставляет оба счётчика на нуле." },
+          { title: "Удалим и проверим оба id", description: "Получим данные удалённой задачи, подтвердим отсутствие выбранного id и сравним полный снимок соседа." },
         ]} />
-        <p>Сначала подготовьте два открытых фрагмента ниже. Область записи, поиск и вызов обработчика готовы. Правило перехода и возврат результата напишете сами.</p>
-
+        <p>Сначала проверим переход статуса и повтор. Затем применим тот же поиск по ключу к удалению и отдельно сравним оба id после подтверждения.</p>
         <details>
-          <summary>Старт для mark_done</summary>
-          <p>В своём <code>project/app/service.py</code> найдите <code>PlannerService.mark_done</code> и замените только этот метод фрагментом ниже. Строка с <code>NotImplementedError</code> обозначает место для вашего кода. Пока она на месте, проверка остановится с понятным сообщением.</p>
-          <CopyPython caption="PlannerService.mark_done" code={doneStarter} />
+          <summary>Диагностика Planner для локального запуска</summary>
+          <p>Из корня <code>project/</code> в рабочем окружении запускаем <code>python</code> и вставляем ячейку в его приглашение. Затем вызываем <code>start_lab()</code> для карточек завершения или <code>start_lab(closed=True)</code> для карточек удаления. Появятся временный путь и исходные снимки.</p>
+          <p><code>read_rows</code> читает два id в новой Session. <code>counts</code> показывает обращения к update и прошедшие SQL UPDATE или DELETE. После правки Planner открываем свежий сеанс Python, чтобы подхватить изменения. <code>exit()</code> завершает сеанс и закрывает временную базу.</p>
+          <CodeBlock code={LAB_CELL} caption="Ячейка диагностики · вызывает методы из вашего Planner" />
         </details>
-
         <details>
-          <summary>Проверка done</summary>
-          <p>Сохраните полный блок как <code>project/check_done_practice.py</code>. Если файл с таким именем уже есть, используйте <code>check_done_practice_local.py</code> и подставьте это имя в команду. Откройте терминал в <code>project</code> с окружением Planner. После своей правки выполните <code>python check_done_practice.py</code>.</p>
-          <p>Проверка сама создаёт временную SQLite. В неё попадают задача 120 «Старый План» с приоритетом 4 и тегом «внутр» и задача 121 «Сосед» с приоритетом 1 и тегом «рядом». Сначала знакомый PATCH открывает задачу 120, затем пустой PATCH оставляет её открытой. Сообщение «Вход PATCH не готов» означает, что нужно восстановить выданный тестовый контекст или результат частичного обновления по причине в отчёте.</p>
-          <CopyPython caption="check_done_practice.py" code={doneCheck} />
+          <summary>Готовый прогон HTTP и CLI</summary>
+          <p>После проверки обоих id вставляем эту ячейку в тот же сеанс Python и вызываем <code>regression()</code>. Она проверяет прежние сообщения и HTTP-коды на другой временной SQLite.</p>
+          <CodeBlock code={REGRESSION_CELL} caption="Ячейка совместимости · отдельные данные и тестовые маршруты" />
         </details>
-
-        <p>Если все три случая совпали, отчёт напечатает «Проверка done прошла» и две строки <code>DONE_TASK =</code> и <code>CONTROL_TASK =</code>. Сохраните эти присваивания целиком: в них id, заголовок, приоритет, статус и теги обеих задач. Их можно перенести в следующую практику после очистки временной базы.</p>
       </Section>
     </RichLesson>
   );

@@ -1,13 +1,11 @@
 import { BrandLogo } from "@platform/shared/brand/BrandLogo";
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { ArrowUpRight, BookOpen, Compass, FolderCode, MessageCircle, Target } from 'lucide-react';
-import { ProgrammingBackground } from './components/ProgrammingBackground';
 import { ConsultationForm } from './components/ConsultationForm';
 import dmitriyPhoto from './assets/Dmitriy.jpg';
 import varvaraPhoto from './assets/Varvara.jpg';
 import zaharPhoto from './assets/Zahar.jpg';
 import './styles/landing.css';
-import './styles/programming-background.css';
 import './styles/landing-pages.css';
 import './styles/pricing.css';
 
@@ -124,12 +122,12 @@ export function LandingDetailPage({ page, courseId, landingBaseUrl, learningUrl 
   page: Page; courseId: string; landingBaseUrl: string; learningUrl: string;
 }) {
   useEffect(() => { const previous = document.title; document.title = `${titles[page]} | knowi`; return () => { document.title = previous; }; }, [page]);
-  return <main className="backend-landing" aria-labelledby="detail-title"><div className="backend-landing__scene"><ProgrammingBackground /><div className="backend-landing__inner">
+  return <main className="backend-landing" aria-labelledby="detail-title"><div className="backend-landing__inner">
     <div className="landing-header-layer"><header className="landing-header"><a className="landing-brand" href={landingBaseUrl}>Никита Кирюхин</a><LandingNav landingBaseUrl={landingBaseUrl} /></header></div><ConsultationForm showActions={false} courseId={courseId} landingBaseUrl={landingBaseUrl} />
     <div className="landing-detail"><a className="landing-detail__back" href={landingBaseUrl}>← На главную</a>
       {page === 'reviews' && <><div className="landing-detail__intro"><p className="landing-overline">Истории учеников</p><h1 id="detail-title">Разные точки старта — свои пути в backend</h1><p>Истории учеников о практике, обратной связи и движении к своим целям.</p></div><div className="landing-reviews">{reviews.map(review => <article className="landing-review" key={review.name}><img src={review.photo} alt="" loading="lazy" /><div><p className="landing-overline">{review.context}</p><h2>{review.role}</h2><div className="landing-review__context"><p className="case-path__eyebrow">Как проходило обучение</p><div className="case-path__story">{review.mentorStory.map(paragraph => <p key={paragraph}>{paragraph}</p>)}</div><div className="case-path__outcome"><p>{review.caseOutcome}</p></div></div><blockquote>{review.paragraphs.map(paragraph => <p key={paragraph}>{paragraph}</p>)}</blockquote><p>{review.result}</p><strong>{review.name}</strong> · <a href={`https://t.me/${review.handle}`} target="_blank" rel="noopener noreferrer">@{review.handle} ↗</a></div></article>)}</div></>}
       {page === 'platform' && <><div className="landing-detail__intro"><p className="landing-overline">Учебная платформа</p><h1 id="detail-title">knowi: теория, практика и обратная связь в одном месте</h1><p>Здесь удобно учиться в своём темпе, возвращаться к материалам и видеть следующий шаг.</p></div><section className="landing-detail__block landing-platform-detail"><div><p className="landing-overline">Знакомство с платформой</p><h2>Посмотрите, как устроено обучение</h2><p>Здесь появится видео с обзором платформы и рабочего пространства ученика.</p><a className="primary-action landing-action" href={learningUrl}>Открыть платформу <span aria-hidden="true">↗</span></a></div><div className="landing-video-placeholder" aria-label="Место для видеообзора платформы"><div className="landing-video-placeholder__bar" aria-hidden="true"><span /><span /><span /><small>knowi / видеообзор</small></div><div className="landing-video-placeholder__content"><span className="landing-video-placeholder__play" aria-hidden="true">▶</span><strong>Знакомство с knowi</strong><small>Здесь будет видео о платформе</small></div><div className="landing-video-placeholder__timeline" aria-hidden="true"><span /></div></div></section><section className="landing-detail__block"><h2>Что внутри</h2><div className="landing-detail__columns"><p><strong>Теория и практика.</strong> Материалы и задания собраны в одном учебном пространстве.</p><p><strong>Разбор решений.</strong> Код-ревью помогает увидеть ошибки и понять, как двигаться дальше.</p><p><strong>Прогресс.</strong> Можно вернуться к пройденным материалам и продолжить обучение.</p></div></section></>}
       {page === 'pricing' && <><div className="landing-detail__intro"><p className="landing-overline">Тарифы</p><h1 id="detail-title">Формат под вашу цель</h1><p>Выберите подходящий ритм и обсудите детали на бесплатной консультации.</p></div><PricingSection /></>}
     </div><footer className="landing-footer"><a className="landing-brand" href={learningUrl} aria-label="knowi — платформа"><BrandLogo /></a><a href={`${landingBaseUrl}/privacy-policy`}>Политика обработки данных</a><a href={`${landingBaseUrl}/personal-data`}>Согласие на обработку данных</a><span>ИП КИРЮХИН Н.А. ИНН 230109261735</span></footer>
-  </div></div></main>;
+  </div></main>;
 }

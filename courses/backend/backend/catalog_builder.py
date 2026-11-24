@@ -244,7 +244,10 @@ def _build_lesson(
     ):
         display_number = ".".join(str(part) for part in number_parts)
         title = f"{display_number}. {title}"
-    under_revision = relative.startswith(("chapter_04/block_15/", "chapter_04/block_16/"))
+    restored_block_15 = relative.startswith("chapter_04/block_15/") and path.name.partition(" - ")[0] in {
+        "71", "72", "72.1", "73", "73.2", "74", "74.1", "75",
+    }
+    under_revision = relative.startswith(("chapter_04/block_15/", "chapter_04/block_16/")) and not restored_block_15
     tasks = _tasks_for_lesson(
         identity_source,
         text,

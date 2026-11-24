@@ -1,16 +1,15 @@
 import { BrandLogo } from "@platform/shared/brand/BrandLogo";
-import { useEffect, useId, useState, type PointerEvent } from 'react';
+import { useEffect, useId, useRef, useState, type PointerEvent } from 'react';
 import { ArrowDownRight } from 'lucide-react';
-import { ProgrammingBackground } from './components/ProgrammingBackground';
 import { LearningSystem } from './sections/LearningSystem';
 import { CareerLaunch } from './sections/CareerLaunch';
 import { LandingFaq } from './sections/LandingFaq';
 import { AboutSection } from './sections/AboutSection';
 import { LandingNav, PricingSection, ReviewsSection } from './LandingPages';
 import { ConsultationForm } from './components/ConsultationForm';
+import { LandingBackdrop } from './components/LandingBackdrop';
 import mentorPhoto from './assets/mentor-portrait.png';
 import './styles/landing.css';
-import './styles/programming-background.css';
 import './styles/start-offer.css';
 
 function trackMetricLight(event: PointerEvent<HTMLLIElement>) {
@@ -62,12 +61,13 @@ function MentoringAudiences() {
 export function BackendLandingPage({ courseId, landingBaseUrl, learningUrl }: {
   courseId: string; landingBaseUrl: string; learningUrl: string;
 }) {
+  const viewportRef = useRef<HTMLDivElement>(null);
   const [activeComparison, setActiveComparison] = useState<string | null>(null);
   const comparisonHeading = (label: string) => <th scope="row"><button className="mentoring-choice__row-toggle" type="button" aria-label={`Выделить строку: ${label}`} aria-pressed={activeComparison === label} onClick={() => setActiveComparison(current => current === label ? null : label)}><span>{label}</span><i aria-hidden="true" /></button></th>;
 
   useEffect(() => {
     const id = window.location.hash.slice(1);
-    if (id) document.getElementById(id)?.scrollIntoView();
+    if (id) document.getElementById(id)?.scrollIntoView({ block: 'start', behavior: 'instant' });
   }, []);
 
   useEffect(() => {
@@ -105,7 +105,7 @@ export function BackendLandingPage({ courseId, landingBaseUrl, learningUrl }: {
   }, []);
 
   useEffect(() => {
-    const root = document.querySelector('.backend-landing');
+    const root = viewportRef.current;
     if (!root) return;
 
     const targets = root.querySelectorAll<HTMLElement>('[data-reveal]');
@@ -130,10 +130,10 @@ export function BackendLandingPage({ courseId, landingBaseUrl, learningUrl }: {
 
 
   useEffect(() => {
-    const root = document.querySelector<HTMLElement>('.backend-landing');
+    const root = viewportRef.current;
     if (!root) return;
     const desktop = window.matchMedia('(min-width: 901px) and (min-height: 701px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)');
-    const sections = Array.from(root.querySelectorAll<HTMLElement>('.backend-landing__inner > .landing-opening, .backend-landing__inner > section, .backend-landing__inner > .landing-ending'));
+    const sections = Array.from(root.querySelectorAll<HTMLElement>('.backend-landing__inner > :is(section, .landing-ending)'));
     let lastWheel = 0;
     let lastDirection = 0;
     const onWheel = (event: WheelEvent) => {
@@ -149,17 +149,14 @@ export function BackendLandingPage({ courseId, landingBaseUrl, learningUrl }: {
         element = element.parentElement;
       }
       const bounds = root.getBoundingClientRect();
-      const header = root.querySelector<HTMLElement>('.landing-header')?.getBoundingClientRect();
-      const inset = Math.max(0, (header?.bottom ?? bounds.top) - bounds.top + 10);
-      const availableHeight = root.clientHeight - inset;
-      const center = bounds.top + inset + availableHeight / 2;
+      const center = bounds.top + root.clientHeight / 2;
       const index = sections.findIndex((section) => {
         const rect = section.getBoundingClientRect();
         return rect.top <= center && rect.bottom >= center;
       });
       if (index < 0) return;
       const current = sections[index].getBoundingClientRect();
-      if (current.height > availableHeight && (direction > 0 ? current.bottom > bounds.bottom + 8 : current.top < bounds.top + inset - 8)) return;
+      if (current.height > root.clientHeight && (direction > 0 ? current.bottom > bounds.bottom + 8 : current.top < bounds.top - 8)) return;
       const target = sections[index + direction];
       if (!target) return;
       event.preventDefault();
@@ -169,9 +166,7 @@ export function BackendLandingPage({ courseId, landingBaseUrl, learningUrl }: {
       lastDirection = direction;
       const rect = target.getBoundingClientRect();
       const top = root.scrollTop + rect.top - bounds.top;
-      const destination = rect.height > availableHeight
-        ? (direction > 0 ? top - inset : top + rect.height - root.clientHeight)
-        : top - inset + (rect.height - availableHeight) / 2;
+      const destination = direction < 0 ? top + Math.max(0, rect.height - root.clientHeight) : top;
       root.scrollTo({ top: Math.max(0, Math.min(root.scrollHeight - root.clientHeight, destination)), behavior: 'smooth' });
     };
     root.addEventListener('wheel', onWheel, { passive: false });
@@ -179,17 +174,18 @@ export function BackendLandingPage({ courseId, landingBaseUrl, learningUrl }: {
   }, []);
 
   return (
-    <main className="backend-landing" aria-labelledby="landing-title">
-      <div className="backend-landing__scene">
-        <ProgrammingBackground />
-        <div className="backend-landing__inner">
-        <div className="landing-header-layer"><header className="landing-header">
+    <main className="backend-landing backend-landing--personal" aria-labelledby="landing-title">
+      <div className="landing-navigation">
+        <header className="landing-header">
           <a className="landing-brand" href={landingBaseUrl}>Никита Кирюхин</a>
           <LandingNav landingBaseUrl={landingBaseUrl} />
-        </header></div>
+        </header>
+      </div>
+      <div className="landing-viewport" ref={viewportRef} role="region" aria-label="Разделы лендинга" tabIndex={0}>
+      <div className="backend-landing__inner">
+        <LandingBackdrop />
 
-        <div className="landing-opening">
-        <section className="landing-hero" aria-labelledby="landing-title" data-scene="hero">
+        <section className="landing-hero" aria-labelledby="landing-title">
           <div className="hero-main">
             <h1 id="landing-title">Backend с ментором<span>Вместе к первой работе в IT</span></h1>
             <p className="hero-main__lead">Хотите начать с нуля или застряли в самостоятельном обучении? Вместе найдём понятный путь: разберём сложные темы, напишем код и создадим проекты. Я помогу вам двигаться дальше и увереннее идти к цели.</p>
@@ -216,9 +212,8 @@ export function BackendLandingPage({ courseId, landingBaseUrl, learningUrl }: {
             </div>
           </aside>
         </section>
-        </div>
 
-        <section className="landing-section landing-path landing-reveal" id="path" aria-labelledby="path-title" data-reveal data-scene="path">
+        <section className="landing-section landing-path landing-reveal" id="path" aria-labelledby="path-title" data-reveal>
           <div className="landing-path__intro">
             <h2 id="path-title">Начать можно с простого <span>разговора</span></h2>
             <p className="landing-path__lead">Оставьте заявку — я свяжусь с вами, чтобы обсудить ваши цели и договориться о бесплатной консультации.</p>
@@ -271,7 +266,7 @@ export function BackendLandingPage({ courseId, landingBaseUrl, learningUrl }: {
 
         <AboutSection />
 
-        <section className="landing-section landing-offer landing-reveal" id="start" aria-labelledby="offer-title" data-reveal data-scene="offer">
+        <section className="landing-section landing-offer landing-reveal" id="start" aria-labelledby="offer-title" data-reveal>
           <div className="landing-offer__heading">
             <h2 id="offer-title">Ваш первый шаг <span>в Python</span></h2>
             <p>Пробный формат для новых учеников: за 30 дней вы познакомитесь с наставником и платформой и поймёте, подходит ли вам обучение.</p>
@@ -282,12 +277,6 @@ export function BackendLandingPage({ courseId, landingBaseUrl, learningUrl }: {
             </ul>
           </div>
           <article className="landing-offer__card">
-            <svg className="landing-offer__constellation" viewBox="0 0 180 100" fill="none" aria-hidden="true" focusable="false">
-              <path className="landing-offer__constellation-path" d="M8 82 48 54 90 68 132 24 171 37" />
-              <path className="landing-offer__constellation-star landing-offer__constellation-star--one" d="m48 49 1.3 3.7L53 54l-3.7 1.3L48 59l-1.3-3.7L43 54l3.7-1.3z" />
-              <path className="landing-offer__constellation-star landing-offer__constellation-star--two" d="m132 18 1.6 4.4L138 24l-4.4 1.6L132 30l-1.6-4.4L126 24l4.4-1.6z" />
-              <path className="landing-offer__constellation-star landing-offer__constellation-star--three" d="m171 33 1 3 3 1-3 1-1 3-1-3-3-1 3-1z" />
-            </svg>
             <div className="landing-offer__price"><strong>5 000 <span>₽</span></strong></div>
             <div className="landing-offer__features">
               <div><strong>4 + 4</strong><span><small>Встречи с наставником по 60 минут + код-ревью</small></span></div>
@@ -304,7 +293,7 @@ export function BackendLandingPage({ courseId, landingBaseUrl, learningUrl }: {
           <LandingFaq learningUrl={learningUrl} />
           <footer className="landing-footer"><a className="landing-brand" href={learningUrl} aria-label="knowi — платформа"><BrandLogo /></a><a href={`${landingBaseUrl}/privacy-policy`}>Политика обработки данных</a><a href={`${landingBaseUrl}/personal-data`}>Согласие на обработку данных</a><span>ИП КИРЮХИН Н.А. ИНН 230109261735</span></footer>
         </div>
-        </div>
+      </div>
       </div>
     </main>
   );

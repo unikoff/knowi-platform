@@ -17,7 +17,7 @@ export function LandingFaq({ learningUrl }: { learningUrl: string }) {
   const [active, setActive] = useState<number | null>(0);
   const id = useId();
 
-  return <section className="landing-section faq-redesign landing-reveal" id="faq" aria-labelledby={`${id}-title`} data-reveal data-scene="faq">
+  return <section className="landing-section faq-redesign landing-reveal" id="faq" aria-labelledby={`${id}-title`} data-reveal>
     <div className="faq-redesign__intro">
       <h2 id={`${id}-title`}>Всё о пути к <span>работе в IT</span></h2>
       <p>Собрал ответы на частые вопросы о занятиях, практике и платформе. Не нашли свой вопрос? Оставьте заявку на консультацию — ответим в течение 24 часов.</p>
