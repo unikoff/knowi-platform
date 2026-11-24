@@ -1,6 +1,6 @@
 import { BrandLogo } from "@platform/shared/brand/BrandLogo";
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
-import { ArrowUpRight, BookOpen, Compass, FolderCode, MessageCircle, Target } from 'lucide-react';
+import { ArrowUpRight, BookOpen, Compass, FolderCode, MessageCircle, Target, X } from 'lucide-react';
 import { ConsultationForm } from './components/ConsultationForm';
 import dmitriyPhoto from './assets/Dmitriy.jpg';
 import varvaraPhoto from './assets/Varvara.jpg';
@@ -12,7 +12,7 @@ import './styles/pricing.css';
 
 const plans = [
   {
-    hours: 12, reviewCount: 12, label: 'Главный формат', price: 20000,
+    sessions: 10, reviewCount: null, label: 'Главный формат', price: 19900,
     items: [
       { icon: Compass, title: 'Личный план обучения', description: 'Поймёте, с чего начать и к чему двигаться дальше.' },
       { icon: FolderCode, title: 'Проект шаг за шагом', description: 'Вместе разбираем каждый этап создания вашего проекта.' },
@@ -21,13 +21,23 @@ const plans = [
     ],
   },
   {
-    hours: 6, reviewCount: 6, label: 'Стабильный ритм', price: 15000,
+    sessions: 4, reviewCount: 8, label: 'Стабильный ритм', price: 9900,
     items: [
       { icon: Target, title: 'Ключевые затруднения', description: 'На встречах сосредоточимся на самых важных вопросах.' },
       { icon: FolderCode, title: 'Работа над проектом', description: 'Обсудим ключевые трудности, которые возникают в проекте.' },
       { icon: Compass, title: 'План практики', description: 'Темы и задачи для самостоятельной работы между встречами.' },
     ],
   },
+];
+
+const maxSessions = Math.max(...plans.map(plan => plan.sessions));
+const unlimitedReviewsLabel = 'Без лимита';
+const comparisonDetails = [
+  ['Разбор кода', 'Разбор каждого задания', 'Разбор важных решений'],
+  ['План и практика', 'Личный маршрут под вашу цель', 'План самостоятельной практики'],
+  ['Темы', 'Последовательно разбираем каждую тему', 'Сосредоточимся на ключевых затруднениях'],
+  ['Работа над проектом', 'Разбираем проект на каждом этапе', 'Обсуждаем ключевые трудности'],
+  ['Поддержка', 'Пишите в Telegram в любое время. Ваши вопросы в приоритете', 'Не указана отдельно'],
 ];
 
 export function LandingNav({ landingBaseUrl }: { landingBaseUrl: string }) {
@@ -39,8 +49,10 @@ export function LandingNav({ landingBaseUrl }: { landingBaseUrl: string }) {
   </>;
 }
 
-function MetricTicks({ count }: { count: number }) {
-  return <div className="landing-plan__ticks" aria-hidden="true">{Array.from({ length: 12 }, (_, tick) => <span className={tick < count ? 'is-filled' : ''} style={{ animationDelay: `${tick * 120}ms` }} key={tick} />)}</div>;
+function MetricTicks({ count, total = count }: { count: number; total?: number }) {
+  return <div className="landing-plan__ticks" aria-hidden="true">
+    {Array.from({ length: total }, (_, tick) => <span className={tick < count ? 'is-filled' : ''} style={{ animationDelay: `${tick * 120}ms` }} key={tick} />)}
+  </div>;
 }
 
 function movePlanLight(event: PointerEvent<HTMLElement>) {
@@ -54,32 +66,134 @@ const formatPrice = (price: number) => price.toLocaleString('ru-RU');
 
 export function PricingSection() {
   const compareRef = useRef<HTMLDialogElement>(null);
-  const [mainPlan, steadyPlan] = plans;
+  const compareTriggerRef = useRef<HTMLButtonElement>(null);
+  const compareContentRef = useRef<HTMLDivElement>(null);
+
+  function openComparison() {
+    const dialog = compareRef.current;
+    if (!dialog || dialog.open) return;
+
+    dialog.showModal();
+    if (compareContentRef.current) compareContentRef.current.scrollTop = 0;
+  }
+
   return <section className="landing-section landing-pricing" id="pricing" aria-label="Тарифы">
-    <div className="landing-pricing__grid">{plans.map((plan, index) => <article className={`landing-plan${index === 0 ? ' landing-plan--featured' : ''}`} key={plan.label} onPointerMove={movePlanLight}>
-      <div className="landing-plan__label"><h3>{plan.label}</h3></div>
-      <div className="landing-plan__cost"><p className="landing-plan__price">{formatPrice(plan.price)} <span>₽</span></p><p className="landing-plan__term">в месяц</p></div>
-      <div className="landing-plan__metrics" aria-label="В месяц входит"><div><div className="landing-plan__metric-heading"><span>Индивидуальные занятия</span><strong>{plan.hours} <small>ч / месяц</small></strong></div><MetricTicks count={plan.hours} /></div><div><div className="landing-plan__metric-heading"><span>Код-ревью</span><strong>{plan.reviewCount} <small>/ месяц</small></strong></div><MetricTicks count={plan.reviewCount} /></div></div>
-      <ul className="landing-plan__benefits">{plan.items.map(item => <li key={item.title}><span className="landing-plan__benefit-icon" aria-hidden="true"><item.icon size={17} strokeWidth={1.7} /></span><div><strong>{item.title}</strong><span>{item.description}</span></div></li>)}</ul>
-      <button className="landing-plan__action" type="button" data-consultation-trigger>{index === 0 ? 'Обсудить главный формат' : 'Обсудить стабильный ритм'} <span className="landing-plan__action-arrow" aria-hidden="true"><ArrowUpRight size={17} strokeWidth={2} /></span></button>
-    </article>)}</div>
-    <button className="landing-pricing__compare-trigger" type="button" onClick={() => compareRef.current?.showModal()} aria-haspopup="dialog">Сравнить форматы <span aria-hidden="true">↗</span></button>
-    <dialog className="pricing-dialog" ref={compareRef} aria-labelledby="pricing-dialog-title" onClick={(event) => { if (event.target === event.currentTarget) event.currentTarget.close(); }}>
-      <button className="pricing-dialog__close" type="button" onClick={() => compareRef.current?.close()} aria-label="Закрыть сравнение"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
-      <div className="pricing-dialog__content">
-        <h3 id="pricing-dialog-title" tabIndex={-1} autoFocus>Сравните форматы</h3>
-        <div className="pricing-dialog__table-wrap"><table><thead><tr><th scope="col">Условия</th>{plans.map(plan => <th scope="col" key={plan.label}><span>{plan.label}</span><strong>{formatPrice(plan.price)} ₽ <small>/ месяц</small></strong></th>)}</tr></thead><tbody>
-          <tr className="pricing-dialog__shared"><th scope="row">Занятия</th><td>Индивидуально с наставником</td><td>Индивидуально с наставником</td></tr>
-          <tr className="pricing-dialog__shared"><th scope="row">Платформа</th><td>Доступ на месяц</td><td>Доступ на месяц</td></tr>
-          <tr className="pricing-dialog__shared"><th scope="row">Проект</th><td>Работа над проектом</td><td>Работа над проектом</td></tr>
-          <tr><th scope="row">Индивидуальные занятия, часов в месяц</th><td><div className="pricing-dialog__quantity"><strong>{mainPlan.hours}</strong></div></td><td><div className="pricing-dialog__quantity"><strong>{steadyPlan.hours}</strong></div></td></tr>
-          <tr><th scope="row">Код-ревью, проверок в месяц</th><td><div className="pricing-dialog__quantity"><strong>{mainPlan.reviewCount}</strong></div></td><td><div className="pricing-dialog__quantity"><strong>{steadyPlan.reviewCount}</strong></div></td></tr>
-          <tr><th scope="row">Разбор кода</th><td>Каждое задание, до {mainPlan.reviewCount} проверок</td><td>Разбор важных решений</td></tr>
-          <tr><th scope="row">План и практика</th><td>Личный маршрут под вашу цель</td><td>План самостоятельной практики</td></tr>
-          <tr><th scope="row">Темы</th><td>Последовательно разбираем каждую тему</td><td>Сосредоточимся на ключевых затруднениях</td></tr>
-          <tr><th scope="row">Работа над проектом</th><td>Разбираем проект на каждом этапе</td><td>Обсуждаем ключевые трудности</td></tr>
-          <tr><th scope="row">Поддержка</th><td>Пишите в Telegram в любое время. Ваши вопросы в приоритете</td><td>Не указана отдельно</td></tr>
-        </tbody></table></div>
+    <div className="landing-pricing__grid">
+      {plans.map((plan, index) => <article className={`landing-plan${index === 0 ? ' landing-plan--featured' : ''}`} key={plan.label} onPointerMove={movePlanLight}>
+        <header className="landing-plan__header">
+          <h3>{plan.label}</h3>
+          <div className="landing-plan__cost">
+            <p className="landing-plan__price">{formatPrice(plan.price)}<span>₽</span></p>
+            <p className="landing-plan__term">в месяц</p>
+          </div>
+        </header>
+        <div className="landing-plan__body">
+          <div className="landing-plan__metrics" aria-label="В месяц входит">
+            <div>
+              <div className="landing-plan__metric-heading">
+                <span>Индивидуальные занятия</span>
+                <strong>{plan.sessions} <small>/ месяц</small></strong>
+              </div>
+              <MetricTicks count={plan.sessions} total={maxSessions} />
+            </div>
+            <div>
+              <div className="landing-plan__metric-heading">
+                <span>Код-ревью</span>
+                {plan.reviewCount === null
+                  ? <strong className="landing-plan__unlimited">{unlimitedReviewsLabel}</strong>
+                  : <strong>{plan.reviewCount} <small>/ месяц</small></strong>}
+              </div>
+              {plan.reviewCount === null
+                ? <div className="landing-plan__ticks" aria-hidden="true"><span className="landing-plan__unlimited-bar" /></div>
+                : <MetricTicks count={plan.reviewCount} />}
+            </div>
+          </div>
+          <ul className="landing-plan__benefits">
+            {plan.items.map(item => <li key={item.title}>
+              <item.icon aria-hidden="true" size={18} strokeWidth={1.7} />
+              <div>
+                <strong>{item.title}</strong>
+                <span>{item.description}</span>
+              </div>
+            </li>)}
+          </ul>
+          <button className="landing-plan__action" type="button" data-consultation-trigger>
+            {index === 0 ? 'Обсудить главный формат' : 'Обсудить стабильный ритм'}
+            <ArrowUpRight className="landing-plan__action-arrow" aria-hidden="true" size={18} strokeWidth={2} />
+          </button>
+        </div>
+      </article>)}
+    </div>
+    <button className="landing-pricing__compare-trigger" ref={compareTriggerRef} type="button" onClick={openComparison} aria-haspopup="dialog">Сравнить форматы <span aria-hidden="true">↗</span></button>
+    <dialog
+      className="pricing-dialog"
+      ref={compareRef}
+      aria-labelledby="pricing-dialog-title"
+      onClose={() => compareTriggerRef.current?.focus({ preventScroll: true })}
+      onClick={event => { if (event.target === event.currentTarget) event.currentTarget.close(); }}
+    >
+      <header className="pricing-dialog__header">
+        <h3 id="pricing-dialog-title">Сравните форматы</h3>
+        <button className="pricing-dialog__close" type="button" autoFocus onClick={() => compareRef.current?.close()} aria-label="Закрыть сравнение">
+          <X aria-hidden="true" size={20} />
+        </button>
+      </header>
+      <div className="pricing-dialog__content" ref={compareContentRef} role="region" aria-label="Условия тарифов" tabIndex={0}>
+        <table role="table" aria-label="Сравнение тарифов">
+          <thead role="rowgroup">
+            <tr role="row">
+              <td className="pricing-dialog__condition" aria-hidden="true" />
+              {plans.map((plan, index) => <th scope="col" role="columnheader" key={plan.label}>
+                <div className={`pricing-dialog__plan${index === 0 ? ' pricing-dialog__plan--featured' : ''}`}>
+                  <span>{plan.label}</span>
+                  <div className="pricing-dialog__price">
+                    <strong>{formatPrice(plan.price)}<span className="pricing-dialog__currency"> ₽</span></strong>
+                    <small>в месяц</small>
+                  </div>
+                </div>
+              </th>)}
+            </tr>
+          </thead>
+          <tbody className="pricing-dialog__metrics" role="rowgroup">
+            <tr className="pricing-dialog__group" role="row">
+              <th scope="rowgroup" colSpan={3} role="rowheader">В месяц</th>
+            </tr>
+            <tr role="row">
+              <th scope="row" role="rowheader">Индивидуальные занятия</th>
+              {plans.map(plan => <td role="cell" key={plan.label}>
+                <div className="pricing-dialog__metric"><strong>{plan.sessions}</strong><MetricTicks count={plan.sessions} total={maxSessions} /></div>
+              </td>)}
+            </tr>
+            <tr role="row">
+              <th scope="row" role="rowheader">Код-ревью</th>
+              {plans.map(plan => <td role="cell" key={plan.label}>
+                <div className="pricing-dialog__metric">
+                  {plan.reviewCount === null
+                    ? <>
+                        <strong className="pricing-dialog__unlimited">{unlimitedReviewsLabel}</strong>
+                        <div className="landing-plan__ticks" aria-hidden="true"><span className="landing-plan__unlimited-bar" /></div>
+                      </>
+                    : <><strong>{plan.reviewCount}</strong><MetricTicks count={plan.reviewCount} /></>}
+                </div>
+              </td>)}
+            </tr>
+          </tbody>
+          <tbody role="rowgroup">
+            <tr className="pricing-dialog__group" role="row">
+              <th scope="rowgroup" colSpan={3} role="rowheader">Обучение и поддержка</th>
+            </tr>
+            {comparisonDetails.map(([label, ...values]) => <tr role="row" key={label}>
+              <th scope="row" role="rowheader">{label}</th>
+              {values.map((value, index) => <td role="cell" key={plans[index].label}>{value}</td>)}
+            </tr>)}
+          </tbody>
+          <tfoot role="rowgroup">
+            <tr role="row">
+              <th scope="row" role="rowheader">Платформа</th>
+              <td colSpan={2} role="cell">Доступ на месяц в обоих форматах</td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
     </dialog>
   </section>;

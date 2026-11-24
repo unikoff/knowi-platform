@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import { ArrowUpRight } from 'lucide-react';
+import { trackCardSpotlight } from '@course-ui/effects/aceternity';
 import '../styles/landing-faq.css';
 
 const questions = [
@@ -8,7 +9,7 @@ const questions = [
   { question: 'Можно ли совмещать обучение с работой?', answer: 'Да. На консультации обсудим ваш график и доступное время, чтобы подобрать подходящий формат занятий.' },
   { question: 'Можно ли попробовать платформу бесплатно?', answer: 'Да. Откройте knowi и познакомьтесь с занятиями и практикой в удобное время.', href: 'learning', link: 'Открыть платформу' },
   { question: 'Как проходит бесплатная консультация?', answer: 'Познакомимся, обсудим ваш опыт, цель и вопросы. Вместе определим, какой формат обучения вам подходит.', action: 'consultation', link: 'Записаться на консультацию' },
-  { question: 'Что входит в «Старт в Python»?', answer: 'Четыре индивидуальных занятия по 60 минут, четыре код-ревью и доступ к knowi на 30 дней. Стартовый пакет для новых учеников стоит 5 000 ₽.' },
+  { question: 'Что входит в «Старт в Python»?', answer: 'Четыре индивидуальных занятия по 60 минут, четыре код-ревью и доступ к knowi на 30 дней. Стартовый пакет для новых учеников стоит 4990₽.' },
   { question: 'Как наставник помогает с кодом?', answer: 'Я разбираю ваши решения, показываю ошибки и объясняю, что можно улучшить. Вы сможете доработать код и применить обратную связь в следующих задачах.' },
   { question: 'Можно ли подготовиться к работе в backend?', answer: 'Да. Мы можем работать над проектом, разбирать технические темы и готовиться к собеседованиям. Результат зависит от вашего опыта, практики и ситуации на рынке.' },
 ] as const;
@@ -29,7 +30,7 @@ export function LandingFaq({ learningUrl }: { learningUrl: string }) {
         const open = active === index;
         const questionId = `${id}-question-${index}`;
         const answerId = `${id}-answer-${index}`;
-        return <article className={`faq-redesign__item${open ? ' faq-redesign__item--open' : ''}`} key={item.question}>
+        return <article className={`faq-redesign__item ui-card-spotlight${open ? ' faq-redesign__item--open' : ''}`} key={item.question} onPointerMove={trackCardSpotlight}>
           <h3><button id={questionId} type="button" aria-expanded={open} aria-controls={answerId} onClick={() => setActive(current => current === index ? null : index)}><span>{item.question}</span><i aria-hidden="true" /></button></h3>
           <div id={answerId} className="faq-redesign__answer" role="region" aria-labelledby={questionId} aria-hidden={!open}><div className="faq-redesign__answer-inner"><p>{item.answer}{'action' in item && <> <button className="faq-redesign__answer-action" type="button" data-consultation-trigger>{item.link} <ArrowUpRight size={14} aria-hidden="true" /></button></>}{'href' in item && <> <a href={learningUrl}>{item.link} <ArrowUpRight size={14} aria-hidden="true" /></a></>}</p></div></div>
         </article>;

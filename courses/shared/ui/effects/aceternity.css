@@ -1,0 +1,55 @@
+/* Spotlight New adapted to the platform theme.
+   https://ui.aceternity.com/components/spotlight-new */
+.ui-ambient-spotlight {
+  --ambient-spotlight-x: 40%;
+  --ambient-spotlight-y: 64%;
+  --ambient-spotlight-background:
+    radial-gradient(ellipse 210px 125px at var(--ambient-spotlight-x) var(--ambient-spotlight-y),
+      color-mix(in srgb, var(--accent) 16%, transparent),
+      color-mix(in srgb, var(--accent) 7%, transparent) 34%,
+      color-mix(in srgb, var(--accent) 2%, transparent) 66%, transparent),
+    radial-gradient(ellipse 48% 51% at 51% 48%,
+      color-mix(in srgb, var(--accent) 9%, transparent),
+      color-mix(in srgb, var(--accent) 3.5%, transparent) 50%,
+      color-mix(in srgb, var(--accent) 1%, transparent) 78%, transparent);
+  background-image: var(--ambient-spotlight-background);
+}
+
+/* Card Spotlight adapted to use a quiet, local CSS gradient.
+   https://ui.aceternity.com/components/card-spotlight */
+.ui-card-spotlight {
+  --card-spotlight-position: 50% 30%;
+  position: relative;
+  isolation: isolate;
+}
+
+.ui-card-spotlight::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background-image: radial-gradient(
+    ellipse 230px 112px at var(--card-spotlight-origin, 50% 30%),
+    color-mix(in srgb, var(--accent) 14%, transparent),
+    color-mix(in srgb, var(--accent) 5%, transparent) 44%,
+    transparent
+  );
+  content: '';
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease;
+}
+
+.ui-card-spotlight:has(:focus-visible)::before { opacity: 1; }
+
+@media (hover: hover) and (pointer: fine) {
+  .ui-card-spotlight:hover::before { opacity: 1; }
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .ui-card-spotlight:hover::before { --card-spotlight-origin: var(--card-spotlight-position); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-card-spotlight::before { transition: none; }
+}

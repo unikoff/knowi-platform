@@ -1,6 +1,6 @@
 import { BrandLogo } from "@platform/shared/brand/BrandLogo";
-import { useEffect, useId, useRef, useState, type PointerEvent } from 'react';
-import { ArrowDownRight } from 'lucide-react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type PointerEvent } from 'react';
+import { ArrowDownRight, ArrowLeftRight, ArrowRight, BookOpen, Check, Code2, Video } from 'lucide-react';
 import { LearningSystem } from './sections/LearningSystem';
 import { CareerLaunch } from './sections/CareerLaunch';
 import { LandingFaq } from './sections/LandingFaq';
@@ -8,6 +8,7 @@ import { AboutSection } from './sections/AboutSection';
 import { LandingNav, PricingSection, ReviewsSection } from './LandingPages';
 import { ConsultationForm } from './components/ConsultationForm';
 import { LandingBackdrop } from './components/LandingBackdrop';
+import { StartOfferPreview } from './components/StartOfferPreview';
 import mentorPhoto from './assets/mentor-portrait.png';
 import './styles/landing.css';
 import './styles/start-offer.css';
@@ -58,12 +59,112 @@ function MentoringAudiences() {
   })}</div>;
 }
 
+const mentoringFormats = ['С наставником', 'Курс в knowi', 'Самостоятельно'];
+
+type ComparisonCell = string | { strength: string };
+
+const mentoringComparison: { label: string; values: [ComparisonCell, ComparisonCell, ComparisonCell] }[] = [
+  {
+    label: 'Материалы и практика',
+    values: [{ strength: 'Доступ к knowi' }, { strength: 'Уроки и задачи' }, { strength: 'Свои источники' }],
+  },
+  {
+    label: 'Проект для портфолио',
+    values: [{ strength: 'Вместе по шагам' }, { strength: 'Учебные проекты' }, { strength: 'Своя тема и стек' }],
+  },
+  {
+    label: 'План обучения',
+    values: [{ strength: 'Под вашу цель' }, { strength: 'Готовая программа' }, '—'],
+  },
+  {
+    label: 'Навыки вайбкодинга',
+    values: [{ strength: 'С пониманием backend' }, { strength: 'Доп. материалы' }, '—'],
+  },
+  {
+    label: 'Личные занятия',
+    values: [{ strength: 'Встречи 1:1' }, '—', '—'],
+  },
+  {
+    label: 'Обратная связь по коду',
+    values: [{ strength: 'Личное код-ревью' }, '—', '—'],
+  },
+  {
+    label: 'Подготовка к собеседованию',
+    values: [{ strength: 'С практиками из IT' }, '—', '—'],
+  },
+  {
+    label: 'Оплата',
+    values: [{ strength: 'Помесячно, без рассрочки' }, { strength: 'Подписка на материалы' }, '—'],
+  },
+];
+
+function MentoringComparison() {
+  const [activeRow, setActiveRow] = useState<string | null>(null);
+
+  return <div className="mentoring-choice__comparison">
+    <div className="mentoring-choice__comparison-heading">
+      <h3 id="mentoring-comparison-title">Сравнение форматов обучения</h3>
+      <p className="mentoring-choice__swipe-hint">
+        <ArrowLeftRight size={15} aria-hidden="true" />
+        Листайте таблицу в стороны
+      </p>
+    </div>
+    <div className="mentoring-choice__table-wrap" role="region" aria-labelledby="mentoring-comparison-title" tabIndex={0}>
+      <table className="mentoring-choice__table" aria-labelledby="mentoring-comparison-title">
+        <thead>
+          <tr>
+            <th scope="col">Что получаете</th>
+            {mentoringFormats.map((format, index) => <th scope="col" className={index === 0 ? 'choice-featured' : undefined} key={format}>{format}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {mentoringComparison.map(({ label, values }) => <tr key={label}>
+            <th scope="row">
+              <button className="mentoring-choice__row-toggle" type="button" aria-label={`Выделить строку: ${label}`} aria-pressed={activeRow === label} onClick={() => setActiveRow(current => current === label ? null : label)}>
+                {label}
+              </button>
+            </th>
+            {values.map((value, index) => <td className={index === 0 ? 'choice-featured' : undefined} key={mentoringFormats[index]}>
+              {typeof value === 'string'
+                ? value
+                : <span className="mentoring-choice__strength"><Check size={15} aria-hidden="true" /><span>{value.strength}</span></span>}
+            </td>)}
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </div>;
+}
+
 export function BackendLandingPage({ courseId, landingBaseUrl, learningUrl }: {
   courseId: string; landingBaseUrl: string; learningUrl: string;
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
-  const [activeComparison, setActiveComparison] = useState<string | null>(null);
-  const comparisonHeading = (label: string) => <th scope="row"><button className="mentoring-choice__row-toggle" type="button" aria-label={`Выделить строку: ${label}`} aria-pressed={activeComparison === label} onClick={() => setActiveComparison(current => current === label ? null : label)}><span>{label}</span><i aria-hidden="true" /></button></th>;
+  const navigationRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const navigation = navigationRef.current;
+    const viewport = viewportRef.current;
+    if (!navigation || !viewport) return;
+
+    const startOffer = viewport.querySelector('#start .landing-offer__panel');
+    const updateNavigationSurface = () => {
+      const bounds = startOffer?.getBoundingClientRect();
+      navigation.toggleAttribute('data-accent-backdrop', Boolean(bounds && bounds.top < navigation.offsetHeight && bounds.bottom > 0));
+    };
+    const updateNavigationSpace = () => {
+      viewport.style.setProperty('--landing-nav-space', `${navigation.getBoundingClientRect().height}px`);
+      updateNavigationSurface();
+    };
+    updateNavigationSpace();
+    const resize = new ResizeObserver(updateNavigationSpace);
+    resize.observe(navigation, { box: 'border-box' });
+    viewport.addEventListener('scroll', updateNavigationSurface, { passive: true });
+    return () => {
+      resize.disconnect();
+      viewport.removeEventListener('scroll', updateNavigationSurface);
+    };
+  }, []);
 
   useEffect(() => {
     const id = window.location.hash.slice(1);
@@ -149,14 +250,17 @@ export function BackendLandingPage({ courseId, landingBaseUrl, learningUrl }: {
         element = element.parentElement;
       }
       const bounds = root.getBoundingClientRect();
-      const center = bounds.top + root.clientHeight / 2;
+      const navigationSpace = Number.parseFloat(window.getComputedStyle(root).scrollPaddingBlockStart);
+      const visibleTop = bounds.top + navigationSpace;
+      const visibleHeight = root.clientHeight - navigationSpace;
+      const center = visibleTop + visibleHeight / 2;
       const index = sections.findIndex((section) => {
         const rect = section.getBoundingClientRect();
         return rect.top <= center && rect.bottom >= center;
       });
       if (index < 0) return;
       const current = sections[index].getBoundingClientRect();
-      if (current.height > root.clientHeight && (direction > 0 ? current.bottom > bounds.bottom + 8 : current.top < bounds.top - 8)) return;
+      if (current.height > visibleHeight && (direction > 0 ? current.bottom > bounds.bottom + 8 : current.top < visibleTop - 8)) return;
       const target = sections[index + direction];
       if (!target) return;
       event.preventDefault();
@@ -165,8 +269,8 @@ export function BackendLandingPage({ courseId, landingBaseUrl, learningUrl }: {
       lastWheel = now;
       lastDirection = direction;
       const rect = target.getBoundingClientRect();
-      const top = root.scrollTop + rect.top - bounds.top;
-      const destination = direction < 0 ? top + Math.max(0, rect.height - root.clientHeight) : top;
+      const top = root.scrollTop + rect.top - visibleTop;
+      const destination = direction < 0 ? top + Math.max(0, rect.height - visibleHeight) : top;
       root.scrollTo({ top: Math.max(0, Math.min(root.scrollHeight - root.clientHeight, destination)), behavior: 'smooth' });
     };
     root.addEventListener('wheel', onWheel, { passive: false });
@@ -175,7 +279,7 @@ export function BackendLandingPage({ courseId, landingBaseUrl, learningUrl }: {
 
   return (
     <main className="backend-landing backend-landing--personal" aria-labelledby="landing-title">
-      <div className="landing-navigation">
+      <div className="landing-navigation" ref={navigationRef}>
         <header className="landing-header">
           <a className="landing-brand" href={landingBaseUrl}>Никита Кирюхин</a>
           <LandingNav landingBaseUrl={landingBaseUrl} />
@@ -187,25 +291,39 @@ export function BackendLandingPage({ courseId, landingBaseUrl, learningUrl }: {
 
         <section className="landing-hero" aria-labelledby="landing-title">
           <div className="hero-main">
-            <h1 id="landing-title">Backend с ментором<span>Вместе к первой работе в IT</span></h1>
-            <p className="hero-main__lead">Хотите начать с нуля или застряли в самостоятельном обучении? Вместе найдём понятный путь: разберём сложные темы, напишем код и создадим проекты. Я помогу вам двигаться дальше и увереннее идти к цели.</p>
-            <div className="hero-features">
-              <div className="hero-features__heading"><p className="hero-mentor__label">Почему выбирают меня</p></div>
-              <ul aria-label="Преимущества обучения">
-                <li><a href="#lessons"><strong>1:1 <ArrowDownRight size={16} aria-hidden="true" /></strong><span>Занимаемся один на один: подстрою темп под вас и помогу разобраться в сложных темах.</span></a></li>
-                <li><a href="#platform"><strong>knowi <ArrowDownRight size={16} aria-hidden="true" /></strong><span>Теория и практика собраны в понятный маршрут. Загляните на платформу и посмотрите сами.</span></a></li>
-                <li><a href="#demo"><strong>Code review <ArrowDownRight size={16} aria-hidden="true" /></strong><span>Проверяю каждое изменение в вашем проекте: покажу ошибки и объясню, как их исправить.</span></a></li>
-              </ul>
+            <div className="hero-main__intro">
+              <h1 id="landing-title">Backend с ментором<span>Вместе к первой работе в IT</span></h1>
+              <p className="hero-main__lead">Начнём с вашего уровня. Вместе напишем код на Python и соберём проект для портфолио.</p>
             </div>
+            <button className="primary-action landing-action" type="button" data-consultation-trigger>
+              Бесплатная консультация <ArrowRight size={17} aria-hidden="true" />
+            </button>
+            <nav className="hero-features" aria-labelledby="hero-features-title">
+              <h2 id="hero-features-title">Почему выбирают меня</h2>
+              <ul>
+                <li><a href="#lessons">
+                  <strong>1:1 <ArrowDownRight size={14} aria-hidden="true" /></strong>
+                  <span>Занимаемся один на один в вашем темпе.</span>
+                </a></li>
+                <li><a href="#platform">
+                  <strong>knowi <ArrowDownRight size={14} aria-hidden="true" /></strong>
+                  <span>Изучаете теорию и решаете задачи на Python.</span>
+                </a></li>
+                <li><a href="#demo">
+                  <strong>Code review <ArrowDownRight size={14} aria-hidden="true" /></strong>
+                  <span>Разбираю ваш код и помогаю исправить ошибки.</span>
+                </a></li>
+              </ul>
+            </nav>
           </div>
           <aside className="hero-mentor" aria-label="Ваш ментор Никита Кирюхин">
             <div className="hero-mentor__profile">
               <img src={mentorPhoto} alt="Никита Кирюхин, backend-ментор" />
-              <div><p className="hero-mentor__label">Ваш личный ментор</p><h2>Никита Кирюхин</h2><p className="hero-mentor__bio">Мой опыт в разработке и менторстве помогает вам расти в backend.</p><a className="hero-mentor__more" href="#about">Подробнее обо мне <span aria-hidden="true">↗</span></a></div>
+              <div><p className="hero-mentor__label">Ваш личный ментор</p><h2>Никита Кирюхин</h2><a className="hero-mentor__more" href="#about">Подробнее обо мне <span aria-hidden="true">↗</span></a></div>
             </div>
             <div className="hero-mentor__experience">
               <ul>
-                <li onPointerMove={trackMetricLight}><strong>30+</strong><span>учеников уже работают backend-разработчиками</span><span className="hero-mentor__caption">От обучения к работе</span></li>
+                <li onPointerMove={trackMetricLight}><strong>30+</strong><span>учеников уже работают backend-разработчиками</span></li>
                 <li onPointerMove={trackMetricLight}><strong>180 000 ₽</strong><span>средний оффер в месяц после менторства</span></li>
                 <li onPointerMove={trackMetricLight}><strong>100%</strong><span>учеников получили заметный результат и ясный следующий шаг</span></li>
               </ul>
@@ -236,26 +354,11 @@ export function BackendLandingPage({ courseId, landingBaseUrl, learningUrl }: {
 
         <section className="landing-section mentoring-choice landing-reveal" id="mentoring" aria-labelledby="mentoring-title" data-reveal>
           <div className="mentoring-choice__side">
-            <div className="mentoring-choice__heading"><h2 id="mentoring-title">Ваш путь в backend с наставником</h2></div>
-            <div className="mentoring-choice__bridge"><div><span>Кому подходит</span></div></div>
+            <h2 className="mentoring-choice__heading" id="mentoring-title">Ваш путь в&nbsp;backend <span>с&nbsp;наставником</span></h2>
+            <p className="mentoring-choice__audience-label">Кому подходит</p>
             <MentoringAudiences />
           </div>
-          <div className="mentoring-choice__comparison">
-          <p className="mentoring-choice__swipe-hint" id="comparison-swipe-hint">Листайте таблицу в стороны <span aria-hidden="true">↔</span></p>
-          <div className="mentoring-choice__table-wrap" role="region" aria-label="Сравнение форматов обучения" aria-describedby="comparison-swipe-hint" tabIndex={0}><table className="mentoring-choice__table">
-            <thead><tr><th scope="col">Что получаете</th><th className="choice-featured" scope="col">С наставником</th><th scope="col">Курсы</th><th scope="col">Самостоятельно</th></tr></thead>
-            <tbody>
-              <tr>{comparisonHeading('План обучения')}<td className="choice-featured"><span>С наставником</span><div>Под вашу цель и опыт</div></td><td><span>Курсы</span><div>По программе курса</div></td><td><span>Самостоятельно</span><div>Составляете сами</div></td></tr>
-              <tr>{comparisonHeading('Проект для портфолио')}<td className="choice-featured"><span>С наставником</span><div className="choice-check" role="img" aria-label="Есть">✓</div></td><td><span>Курсы</span><div>Зависит от курса</div></td><td><span>Самостоятельно</span><div className="choice-cross" role="img" aria-label="Срок не указан">×</div></td></tr>
-              <tr>{comparisonHeading('Навыки вайбкодинга')}<td className="choice-featured"><span>С наставником</span><div>С пониманием Backend</div></td><td><span>Курсы</span><div className="choice-cross" role="img" aria-label="Срок не указан">×</div></td><td><span>Самостоятельно</span><div className="choice-cross" role="img" aria-label="Срок не указан">×</div></td></tr>
-              <tr>{comparisonHeading('Разбор кода проекта')}<td className="choice-featured"><span>С наставником</span><div className="choice-check" role="img" aria-label="Есть">✓</div></td><td><span>Курсы</span><div className="choice-cross" role="img" aria-label="Срок не указан">×</div></td><td><span>Самостоятельно</span><div className="choice-cross" role="img" aria-label="Не входит в самостоятельный формат">×</div></td></tr>
-              <tr>{comparisonHeading('Подготовка к собеседованию')}<td className="choice-featured"><span>С наставником</span><div>С практиками из IT</div></td><td><span>Курсы</span><div className="choice-cross" role="img" aria-label="Срок не указан">×</div></td><td><span>Самостоятельно</span><div className="choice-cross" role="img" aria-label="Срок не указан">×</div></td></tr>
-              <tr>{comparisonHeading('Составление легенды')}<td className="choice-featured"><span>С наставником</span><div className="choice-check" role="img" aria-label="Есть">✓</div></td><td><span>Курсы</span><div className="choice-cross" role="img" aria-label="Срок не указан">×</div></td><td><span>Самостоятельно</span><div className="choice-cross" role="img" aria-label="Срок не указан">×</div></td></tr>
-              <tr>{comparisonHeading('Время до оффера')}<td className="choice-featured"><span>С наставником</span><div>До 9 месяцев</div></td><td><span>Курсы</span><div className="choice-cross" role="img" aria-label="Срок не указан">×</div></td><td><span>Самостоятельно</span><div className="choice-cross" role="img" aria-label="Срок не указан">×</div></td></tr>
-              <tr>{comparisonHeading('Оплата')}<td className="choice-featured"><span>С наставником</span><div>Ежемесячно, без рассрочек</div></td><td><span>Курсы</span><div>Полная оплата, либо рассрочка</div></td><td><span>Самостоятельно</span><div className="choice-cross" role="img" aria-label="Срок не указан">×</div></td></tr>
-            </tbody>
-          </table></div>
-          </div>
+          <MentoringComparison />
         </section>
 
         <ReviewsSection />
@@ -266,25 +369,26 @@ export function BackendLandingPage({ courseId, landingBaseUrl, learningUrl }: {
 
         <AboutSection />
 
-        <section className="landing-section landing-offer landing-reveal" id="start" aria-labelledby="offer-title" data-reveal>
-          <div className="landing-offer__heading">
-            <h2 id="offer-title">Ваш первый шаг <span>в Python</span></h2>
-            <p>Пробный формат для новых учеников: за 30 дней вы познакомитесь с наставником и платформой и поймёте, подходит ли вам обучение.</p>
-            <ul className="landing-offer__benefits" aria-label="Что даст вам старт">
-              <li><strong>Личный план</strong><span>Поймёте, с чего начать и куда двигаться.</span></li>
-              <li><strong>Практика с первых шагов</strong><span>Закрепите основы на задачах.</span></li>
-              <li><strong>Разбор ошибок</strong><span>Обсудите сложные места с наставником.</span></li>
-            </ul>
-          </div>
-          <article className="landing-offer__card">
-            <div className="landing-offer__price"><strong>5 000 <span>₽</span></strong></div>
-            <div className="landing-offer__features">
-              <div><strong>4 + 4</strong><span><small>Встречи с наставником по 60 минут + код-ревью</small></span></div>
-              <div><strong>30<small>дней</small></strong><span><small>Подписки на платформу</small></span></div>
-              <div><strong>60<small>%</small></strong><span><small>Выгоды относительно обычного месячного сопровождения</small></span></div>
+        <section className="landing-section landing-offer" id="start" aria-labelledby="offer-title">
+          <div className="landing-offer__panel">
+            <div className="landing-offer__heading">
+              <p className="landing-offer__label">Пробный формат для новичков</p>
+              <h2 id="offer-title">Старт <span>в Python</span></h2>
+              <p className="landing-offer__lead">Попробуйте учиться с наставником на первых задачах по Python. За месяц вы поймёте, подходит ли вам такой формат.</p>
             </div>
-            <button className="primary-action landing-action landing-offer__action" type="button" data-consultation-trigger>Обсудить старт <span aria-hidden="true">↗</span></button>
-          </article>
+            <div className="landing-offer__purchase">
+              <p className="landing-offer__label">Пробный месяц</p>
+              <p className="landing-offer__price"><strong>4990<span>₽</span></strong><del>10&nbsp;000₽</del></p>
+              <ul className="landing-offer__features" aria-label="Что входит в стоимость">
+                <li><Video size={18} aria-hidden="true" /><span><strong>4 встречи</strong> с наставником по 60 минут</span></li>
+                <li><Code2 size={18} aria-hidden="true" /><span><strong>4 код-ревью</strong> ваших решений</span></li>
+                <li><BookOpen size={18} aria-hidden="true" /><span><strong>30 дней</strong> доступа к knowi</span></li>
+              </ul>
+              <button className="landing-action landing-offer__action" type="button" data-consultation-trigger>Обсудить старт <span aria-hidden="true">↗</span></button>
+              <p className="landing-offer__note">Первая консультация бесплатна.</p>
+            </div>
+            <StartOfferPreview />
+          </div>
         </section>
 
         <PricingSection />

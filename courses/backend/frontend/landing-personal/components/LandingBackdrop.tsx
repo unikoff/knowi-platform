@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
+import '@course-ui/effects/aceternity.css';
 
 const highlights = [
-  { selector: '#landing-title', shape: 'wide', anchorY: .55 },
+  { selector: '.hero-main [data-consultation-trigger]', shape: 'hero-action', anchorY: .45 },
   { selector: '#path .landing-path__intro', shape: 'wide', anchorY: .55 },
   { selector: '#mentoring .mentoring-choice__cases', shape: 'wide', anchorY: .44 },
   { selector: '#reviews .story-portraits', shape: 'wide', anchorY: .05 },
@@ -12,9 +13,9 @@ const highlights = [
   },
   { selector: '#career .career-card--resume', shape: 'portrait', anchorY: .68 },
   { selector: '#about .mentor-about__portrait img', shape: 'portrait', anchorY: .46 },
-  { selector: '#start .landing-offer__price strong', shape: 'action', anchorY: .5 },
   { selector: '#pricing .landing-plan--featured .landing-plan__price', shape: 'portrait', anchorY: .5 },
-  { selector: '#faq .faq-redesign__action', shape: 'action', anchorY: .5 },
+  { selector: '#faq .faq-redesign__action', shape: 'faq', anchorX: .16, anchorY: .45 },
+  { selector: '.hero-mentor__profile img', shape: 'hero-portrait', anchorY: .4 },
 ];
 
 export function LandingBackdrop() {
@@ -39,7 +40,7 @@ export function LandingBackdrop() {
           spot.hidden = true;
           return;
         }
-        spot.style.left = `${rect.left + rect.width / 2 - origin.left}px`;
+        spot.style.left = `${rect.left + rect.width * (highlights[index].anchorX ?? .5) - origin.left}px`;
         spot.style.top = `${rect.top + rect.height * highlights[index].anchorY - origin.top}px`;
         spot.hidden = false;
       });
@@ -68,7 +69,7 @@ export function LandingBackdrop() {
   return (
     <div className="landing-backdrop" ref={backdropRef} aria-hidden="true">
       {highlights.map(({ selector, shape }) => (
-        <span key={selector} className={`landing-backdrop__spot landing-backdrop__spot--${shape}`} hidden />
+        <span key={selector} className={`landing-backdrop__spot landing-backdrop__spot--${shape}${shape === 'faq' ? ' ui-ambient-spotlight' : ''}`} hidden />
       ))}
     </div>
   );
