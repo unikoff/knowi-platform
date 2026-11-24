@@ -312,7 +312,7 @@ def _build_lesson(
         "video": video,
         "tasks": tasks,
         "source_file": relative,
-        "under_revision": under_revision,
+        **({"under_revision": True} if under_revision else {}),
         "progress_policy": {
             "retain_countable": under_revision,
             "overview": bool(re.fullmatch(r"chapter_\d+/block_00/[^/]+", relative)),
