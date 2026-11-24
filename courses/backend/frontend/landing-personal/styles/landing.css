@@ -441,11 +441,13 @@
   height: clamp(460px, 98cqh, 1080px);
 }
 @media (prefers-reduced-motion: no-preference) {
-  .backend-landing .landing-backdrop__spot { animation: landing-backdrop-glow 24s ease-in-out infinite; }
+  .backend-landing .landing-backdrop__spot { animation: landing-backdrop-glow 32s ease-in-out infinite; }
+  .backend-landing .landing-backdrop__spot:nth-child(3n + 2) { animation-delay: -11s; }
+  .backend-landing .landing-backdrop__spot:nth-child(3n) { animation-delay: -22s; }
 }
 @keyframes landing-backdrop-glow {
-  0%, 100% { opacity: .78; transform: translateX(-1.5%); }
-  50% { opacity: 1; transform: translateX(1.5%); }
+  0%, 100% { opacity: .82; }
+  50% { opacity: 1; }
 }
 
 /* Floating navigation for the secondary landing pages. */
