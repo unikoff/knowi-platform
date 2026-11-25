@@ -175,8 +175,8 @@ def _production_path(binding, course_id, suffix=".json"):
     return path
 
 
-def _production_read(binding, course_id, *, pending=False):
-    path = _production_path(binding, course_id, ".pending.json" if pending else ".json")
+def _production_read(binding, course_id, *, pending=False, suffix=None):
+    path = _production_path(binding, course_id, suffix or (".pending.json" if pending else ".json"))
     if path.stat().st_size > publication.MAX_BYTES + 2048:
         raise ValueError("invalid receipt")
     receipt = json.loads(path.read_bytes())
@@ -186,13 +186,15 @@ def _production_read(binding, course_id, *, pending=False):
     if (message["catalog"]["course_id"] != course_id
             or message["catalog_version"] != "sha256:" + publication.digest(message["catalog"])
             or receipt["fingerprint"] != publication.digest(message)
-            or not re.fullmatch(r"[0-9a-f]{64}", receipt["source_digest"])):
+            or not re.fullmatch(r"[0-9a-f]{64}", receipt["source_digest"])
+            or (suffix is not None and suffix.startswith(".source-")
+                and suffix != _source_suffix(receipt["source_digest"]))):
         raise ValueError("invalid receipt")
     return receipt
 
 
-def _production_write(binding, course_id, receipt, *, pending=False):
-    path = _production_path(binding, course_id, ".pending.json" if pending else ".json")
+def _production_write(binding, course_id, receipt, *, pending=False, suffix=None):
+    path = _production_path(binding, course_id, suffix or (".pending.json" if pending else ".json"))
     fd, temp = tempfile.mkstemp(prefix=".receipt-", dir=path.parent)
     try:
         with os.fdopen(fd, "wb") as stream:
@@ -244,10 +246,44 @@ def _production_lock(binding, course_id):
 
 def read_production_catalog(course_id, binding):
     snapshot = default_runtime().snapshot(course_id)
-    receipt = _production_read(binding, course_id)
-    if publication.current_digest(snapshot) != receipt["source_digest"]:
+    source_digest = publication.current_digest(snapshot)
+    try:
+        receipt = _production_read(binding, course_id, suffix=_source_suffix(source_digest))
+    except FileNotFoundError:
+        receipt = _production_read(binding, course_id)
+    if source_digest != receipt["source_digest"]:
         raise ValueError("Catalog publication no longer matches the course")
     return snapshot, receipt["message"]
+
+
+def _source_suffix(source_digest):
+    if not re.fullmatch(r"[0-9a-f]{64}", source_digest):
+        raise ValueError("invalid source digest")
+    return ".source-" + source_digest + ".json"
+
+
+def _write_source_receipt(binding, course, receipt):
+    suffix = _source_suffix(receipt["source_digest"])
+    try:
+        existing = _production_read(binding, course, suffix=suffix)
+    except FileNotFoundError:
+        _production_write(binding, course, receipt, suffix=suffix)
+    else:
+        if existing != receipt:
+            raise ValueError("source digest already has a different receipt")
+
+
+def _versioned_head(binding, course):
+    try:
+        return _production_read(binding, course, suffix=".head.json")
+    except FileNotFoundError:
+        try:
+            legacy = _production_read(binding, course)
+        except FileNotFoundError:
+            return None
+        _write_source_receipt(binding, course, legacy)
+        _production_write(binding, course, legacy, suffix=".head.json")
+        return legacy
 
 
 async def _reconcile(endpoint, message, fingerprint, token, *, transport=None, verify=None):
@@ -281,7 +317,7 @@ async def _reconcile(endpoint, message, fingerprint, token, *, transport=None, v
     return status
 
 
-async def publish_production(binding, snapshot, signer, env, *, transport=None):
+async def publish_production(binding, snapshot, signer, env, *, transport=None, versioned=False):
     """Publish after operator restore quarantine; no runtime schedules this API."""
     production_root(binding)
     if signer.issuer != binding.producer_issuer or signer.kid != binding.producer_kid or signer._purpose != "producer":
@@ -294,6 +330,10 @@ async def publish_production(binding, snapshot, signer, env, *, transport=None):
         raise ValueError("Production catalog mutual TLS required")
     course = snapshot.context.course_id
     with _production_lock(binding, course):
+        if versioned:
+            return await _publish_versioned(binding, snapshot, signer, tls, transport)
+        if _production_path(binding, course, ".head.json").exists():
+            raise ValueError("versioned catalog publication is active")
         try:
             pending = _production_read(binding, course, pending=True)
         except FileNotFoundError:
@@ -318,6 +358,53 @@ async def publish_production(binding, snapshot, signer, env, *, transport=None):
         _production_path(binding, course, ".pending.json").unlink(missing_ok=True)
         _sync_directory(binding.directory)
         return "accepted" if publication.current_digest(snapshot) == source_digest else "changed"
+
+
+async def _publish_versioned(binding, snapshot, signer, tls, transport):
+    course = snapshot.context.course_id
+    head = _versioned_head(binding, course)
+    target_digest = publication.current_digest(snapshot)
+
+    # One existing pending transaction and one new transaction are sufficient.
+    for _ in range(2):
+        try:
+            pending = _production_read(binding, course, pending=True)
+        except FileNotFoundError:
+            pending = None
+        if pending is None:
+            try:
+                existing = _production_read(binding, course, suffix=_source_suffix(target_digest))
+            except FileNotFoundError:
+                message, source_digest = publication.project(snapshot, head["message"] if head else None)
+                pending = {"message": message, "fingerprint": publication.digest(message),
+                           "source_digest": source_digest}
+                _production_write(binding, course, pending, pending=True)
+            else:
+                status = await _reconcile(binding.endpoint, existing["message"], existing["fingerprint"],
+                    lambda: signer.producer(binding.producer_id), transport=transport, verify=tls)
+                if status != "accepted":
+                    return status
+                return "accepted" if publication.current_digest(snapshot) == target_digest else "changed"
+
+        message = pending["message"]
+        if head is not None:
+            head_message = head["message"]
+            if (message["sequence"] < head_message["sequence"]
+                    or (message["sequence"] == head_message["sequence"]
+                        and message["catalog_version"] != head_message["catalog_version"])):
+                raise ValueError("pending catalog precedes the publication head")
+        status = await _reconcile(binding.endpoint, message, pending["fingerprint"],
+            lambda: signer.producer(binding.producer_id), transport=transport, verify=tls)
+        if status != "accepted":
+            return status
+        _write_source_receipt(binding, course, pending)
+        _production_write(binding, course, pending, suffix=".head.json")
+        _production_path(binding, course, ".pending.json").unlink()
+        _sync_directory(binding.directory)
+        head = pending
+        if pending["source_digest"] == target_digest:
+            return "accepted" if publication.current_digest(snapshot) == target_digest else "changed"
+    return "changed"
 
 
 def initialize_binding(binding):
@@ -369,8 +456,11 @@ def main():
     parser = argparse.ArgumentParser(description="Publish one catalog to an explicitly bound Analytics dataset")
     parser.add_argument("--production", action="store_true", help="publish after the operator has completed restore quarantine")
     parser.add_argument("--course-id", required=True)
+    parser.add_argument("--versioned", action="store_true", help="retain receipts for concurrently running course versions")
     args = parser.parse_args()
     env = os.environ
+    if args.versioned and not args.production:
+        raise ValueError("Versioned publication requires production configuration")
     if args.production:
         binding = production_binding_from_env(env)
         if binding is None:
@@ -379,7 +469,10 @@ def main():
         signer = Signer(issuer=binding.producer_issuer, kid=binding.producer_kid,
             private_pem=Path(env["PYMENTOR_ANALYTICS_PRODUCER_KEY_FILE"]).read_bytes(), purpose="producer")
         snapshot = default_runtime().snapshot(args.course_id)
-        status = asyncio.run(publish_production(binding, snapshot, signer, env))
+        if args.versioned:
+            status = asyncio.run(publish_production(binding, snapshot, signer, env, versioned=True))
+        else:
+            status = asyncio.run(publish_production(binding, snapshot, signer, env))
         print(status)
         if status != "accepted":
             raise SystemExit(1)

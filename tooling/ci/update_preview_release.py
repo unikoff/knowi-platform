@@ -10,7 +10,9 @@ IMAGES = {
     'pymentor/frontend': 'ghcr.io/unikoff/knowi-platform-frontend',
     'pymentor/preview-pool': 'ghcr.io/unikoff/knowi-platform-runner-pool',
 }
-RESOURCES = {'applications.json', 'checks.json', 'analysis.json', 'routes.json', 'runner.json', 'notifications.json'}
+CATALOG_PUBLISHER = 'analytics-catalog-publisher.json'
+RESOURCES = {'applications.json', 'checks.json', 'analysis.json', 'routes.json',
+             'runner.json', 'notifications.json', CATALOG_PUBLISHER}
 WORKLOAD_IMAGES = {
     'core-api-progressive': 'core',
     'frontend-progressive': 'frontend',
@@ -58,6 +60,11 @@ def update(directory, source_sha, core_digest, frontend_digest, runner_digest, m
             or any(not isinstance(item, str) or item not in RESOURCES for item in resources)
             or len(resources) != len(set(resources))):
         raise ValueError('unknown or duplicate preview resource')
+    # Argo watches Release before CI finishes. Activate the hook in the same
+    # GitOps commit that first promotes an image from the publisher's source.
+    if CATALOG_PUBLISHER not in resources and path(CATALOG_PUBLISHER).is_file():
+        if image_sources is not None and image_sources['core'] == source_sha:
+            resources.append(CATALOG_PUBLISHER)
     existing_images = kustomization.get('images', [])
     if not isinstance(existing_images, list):
         raise ValueError('invalid image mappings')

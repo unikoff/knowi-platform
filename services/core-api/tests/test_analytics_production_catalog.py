@@ -172,3 +172,148 @@ def test_command_requires_explicit_production_configuration(receipt_dir, monkeyp
     monkeypatch.delenv("PYMENTOR_ANALYTICS_LOCAL_COLLECTION_ENABLED", raising=False)
     with pytest.raises(ValueError, match="Local Analytics collection is disabled"):
         catalog.main()
+
+
+def test_versioned_publication_keeps_legacy_and_older_receipts(receipt_dir, monkeypatch):
+    env, binding, signer, source = setup_binding(receipt_dir)
+    source.digest = "a" * 64
+    monkeypatch.setattr(publication, "current_digest", lambda value: value.digest)
+    monkeypatch.setattr(catalog, "client_tls", lambda *args: ssl.create_default_context())
+    calls = []
+
+    async def reconcile(endpoint, message, fingerprint, token, **kwargs):
+        calls.append((message["sequence"], message["catalog_version"], fingerprint))
+        return "accepted"
+
+    monkeypatch.setattr(catalog, "_reconcile", reconcile)
+    assert asyncio.run(catalog.publish_production(binding, source, signer, env)) == "accepted"
+    legacy = catalog._production_read(binding, "test-course")
+    source.digest = "b" * 64
+    source.catalog.TRACKS[0]["title"] = "Updated"
+    assert asyncio.run(catalog.publish_production(binding, source, signer, env, versioned=True)) == "accepted"
+    head = catalog._production_read(binding, "test-course", suffix=".head.json")
+    assert head["message"]["sequence"] == 2
+    assert catalog._production_read(binding, "test-course") == legacy
+    assert catalog._production_read(binding, "test-course", suffix=catalog._source_suffix("a" * 64)) == legacy
+    monkeypatch.setattr(catalog, "default_runtime", lambda: SimpleNamespace(snapshot=lambda _: source))
+    assert catalog.read_production_catalog("test-course", binding)[1] == head["message"]
+    source.digest = "a" * 64
+    assert catalog.read_production_catalog("test-course", binding)[1] == legacy["message"]
+    assert asyncio.run(catalog.publish_production(binding, source, signer, env, versioned=True)) == "accepted"
+    assert catalog._production_read(binding, "test-course", suffix=".head.json") == head
+    assert len(calls) == 3
+    assert calls[-1] == calls[0]
+    with pytest.raises(ValueError, match="versioned catalog publication"):
+        asyncio.run(catalog.publish_production(binding, source, signer, env))
+
+
+def test_versioned_same_catalog_new_source_retains_both(receipt_dir, monkeypatch):
+    env, binding, signer, source = setup_binding(receipt_dir)
+    source.digest = "a" * 64
+    monkeypatch.setattr(publication, "current_digest", lambda value: value.digest)
+    monkeypatch.setattr(catalog, "client_tls", lambda *args: ssl.create_default_context())
+
+    async def reconcile(*args, **kwargs):
+        return "accepted"
+
+    monkeypatch.setattr(catalog, "_reconcile", reconcile)
+    assert asyncio.run(catalog.publish_production(binding, source, signer, env, versioned=True)) == "accepted"
+    first = catalog._production_read(binding, "test-course", suffix=".head.json")
+    source.digest = "b" * 64
+    assert asyncio.run(catalog.publish_production(binding, source, signer, env, versioned=True)) == "accepted"
+    second = catalog._production_read(binding, "test-course", suffix=".head.json")
+    assert first["message"] == second["message"]
+    assert catalog._production_read(binding, "test-course", suffix=catalog._source_suffix("a" * 64)) == first
+    assert catalog._production_read(binding, "test-course", suffix=catalog._source_suffix("b" * 64)) == second
+
+
+def test_versioned_recovers_ack_and_then_publishes_current(receipt_dir, monkeypatch):
+    env, binding, signer, source = setup_binding(receipt_dir)
+    source.digest = "a" * 64
+    monkeypatch.setattr(publication, "current_digest", lambda value: value.digest)
+    monkeypatch.setattr(catalog, "client_tls", lambda *args: ssl.create_default_context())
+    calls = []
+    outcomes = iter(["unknown", "accepted", "accepted"])
+
+    async def reconcile(endpoint, message, fingerprint, token, **kwargs):
+        calls.append((message["sequence"], fingerprint))
+        return next(outcomes)
+
+    monkeypatch.setattr(catalog, "_reconcile", reconcile)
+    assert asyncio.run(catalog.publish_production(binding, source, signer, env, versioned=True)) == "unknown"
+    source.digest = "b" * 64
+    source.catalog.TRACKS[0]["title"] = "Newer"
+    assert asyncio.run(catalog.publish_production(binding, source, signer, env, versioned=True)) == "accepted"
+    assert calls[0] == calls[1]
+    assert calls[2][0] == 2
+    assert catalog._production_read(binding, "test-course", suffix=".head.json")["source_digest"] == "b" * 64
+    assert not catalog._production_path(binding, "test-course", ".pending.json").exists()
+
+
+def test_versioned_recovers_after_ack_before_head_write(receipt_dir, monkeypatch):
+    env, binding, signer, source = setup_binding(receipt_dir)
+    monkeypatch.setattr(publication, "current_digest", lambda _: "a" * 64)
+    monkeypatch.setattr(catalog, "client_tls", lambda *args: ssl.create_default_context())
+    calls = []
+
+    async def reconcile(endpoint, message, fingerprint, token, **kwargs):
+        calls.append((message["sequence"], fingerprint))
+        return "accepted"
+
+    monkeypatch.setattr(catalog, "_reconcile", reconcile)
+    original = catalog._production_write
+    fail = True
+
+    def interrupted(*args, **kwargs):
+        nonlocal fail
+        if kwargs.get("suffix") == ".head.json" and fail:
+            fail = False
+            raise OSError("simulated interruption")
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(catalog, "_production_write", interrupted)
+    with pytest.raises(OSError, match="simulated interruption"):
+        asyncio.run(catalog.publish_production(binding, source, signer, env, versioned=True))
+    assert catalog._production_read(binding, "test-course", pending=True)
+    assert asyncio.run(catalog.publish_production(binding, source, signer, env, versioned=True)) == "accepted"
+    assert len(calls) == 2 and calls[0] == calls[1]
+    assert catalog._production_read(binding, "test-course", suffix=".head.json")["source_digest"] == "a" * 64
+    assert not catalog._production_path(binding, "test-course", ".pending.json").exists()
+
+
+def test_versioned_existing_receipt_requires_collector_confirmation(receipt_dir, monkeypatch):
+    env, binding, signer, source = setup_binding(receipt_dir)
+    monkeypatch.setattr(publication, "current_digest", lambda _: "a" * 64)
+    monkeypatch.setattr(catalog, "client_tls", lambda *args: ssl.create_default_context())
+    outcomes = iter(["accepted", "unknown"])
+
+    async def reconcile(*args, **kwargs):
+        return next(outcomes)
+
+    monkeypatch.setattr(catalog, "_reconcile", reconcile)
+    assert asyncio.run(catalog.publish_production(binding, source, signer, env, versioned=True)) == "accepted"
+    assert asyncio.run(catalog.publish_production(binding, source, signer, env, versioned=True)) == "unknown"
+
+
+def test_versioned_command_selects_production_publisher(receipt_dir, monkeypatch):
+    env, binding, signer, source = setup_binding(receipt_dir)
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    key_file = receipt_dir / "key.pem"
+    key_file.write_bytes(b"test-key")
+    monkeypatch.setenv("PYMENTOR_ANALYTICS_PRODUCER_KEY_FILE", str(key_file))
+    monkeypatch.setattr(catalog, "Signer", lambda **kwargs: signer)
+    monkeypatch.setattr(catalog, "default_runtime", lambda: SimpleNamespace(snapshot=lambda _: source))
+    called = []
+
+    async def publish(selected, selected_source, selected_signer, selected_env, *, versioned=False):
+        called.append((selected, selected_source, selected_signer, versioned))
+        return "accepted"
+
+    monkeypatch.setattr(catalog, "publish_production", publish)
+    monkeypatch.setattr(sys, "argv", ["analytics_catalog", "--production", "--course-id", "test-course", "--versioned"])
+    catalog.main()
+    assert called == [(binding, source, signer, True)]
+    monkeypatch.setattr(sys, "argv", ["analytics_catalog", "--course-id", "test-course", "--versioned"])
+    with pytest.raises(ValueError, match="requires production"):
+        catalog.main()

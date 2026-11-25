@@ -26,6 +26,14 @@ def updater_tests():
     spec = importlib.util.spec_from_file_location('preview_updater', ROOT / 'tooling/ci/update_preview_release.py')
     updater = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(updater)
+    publisher = json.loads((ROOT / 'infra/gitops/preview' / updater.CATALOG_PUBLISHER).read_text(encoding='utf-8'))
+    assert publisher['metadata']['annotations']['argocd.argoproj.io/hook'] == 'PreSync'
+    publisher_container = publisher['spec']['template']['spec']['containers'][0]
+    assert publisher_container['image'] == 'pymentor/core-api'
+    assert publisher_container['command'] == [
+        'python', '-m', 'pymentor_core.app.analytics_catalog', '--production',
+        '--course-id', 'backend', '--versioned',
+    ]
     sha = 'a' * 40
     digests = tuple('sha256:' + char * 64 for char in '123')
     with tempfile.TemporaryDirectory(prefix='preview-updater-test-') as temp:
@@ -101,7 +109,12 @@ def updater_tests():
         write('applications.json', {'kind': 'List', 'items': [core, web]})
         write('runner.json', dict(workload('Deployment'), metadata={'name': 'preview-pool-broker'}))
         image_sources = dict.fromkeys(('core', 'frontend', 'runner-pool'), sha)
+        write(updater.CATALOG_PUBLISHER, publisher)
+        older_image_sources = dict(image_sources, core='0' * 40)
+        updater.update(directory, sha, *digests, image_sources=older_image_sources)
+        assert updater.CATALOG_PUBLISHER not in read('kustomization.yaml')['resources']
         updater.update(directory, sha, *digests, image_sources=image_sources)
+        assert read('kustomization.yaml')['resources'].count(updater.CATALOG_PUBLISHER) == 1
         before_core, before_web = read('applications.json')['items']
         before_runner = (directory / 'runner.json').read_bytes()
         new_sha = 'b' * 40
@@ -111,6 +124,7 @@ def updater_tests():
         assert before_core == after_core and before_web != after_web
         assert (directory / 'runner.json').read_bytes() == before_runner
         assert read('release.json')['image_sources'] == image_sources
+        assert read('kustomization.yaml')['resources'].count(updater.CATALOG_PUBLISHER) == 1
     print('Preview updater fixture tests passed', flush=True)
 
 def require_test_results(path):

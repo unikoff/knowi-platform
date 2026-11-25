@@ -1,0 +1,57 @@
+{
+  "apiVersion": "batch/v1",
+  "kind": "Job",
+  "metadata": {
+    "name": "analytics-catalog-publisher",
+    "namespace": "pymentor",
+    "annotations": {
+      "argocd.argoproj.io/hook": "PreSync",
+      "argocd.argoproj.io/hook-delete-policy": "BeforeHookCreation"
+    }
+  },
+  "spec": {
+    "backoffLimit": 1,
+    "activeDeadlineSeconds": 300,
+    "template": {
+      "metadata": {"labels": {"app": "analytics-catalog-publisher"}},
+      "spec": {
+        "automountServiceAccountToken": false,
+        "restartPolicy": "Never",
+        "nodeSelector": {"kubernetes.io/hostname": "knowi01"},
+        "securityContext": {
+          "runAsNonRoot": true,
+          "runAsUser": 10001,
+          "runAsGroup": 10001,
+          "fsGroup": 10001,
+          "seccompProfile": {"type": "RuntimeDefault"}
+        },
+        "containers": [{
+          "name": "publisher",
+          "image": "pymentor/core-api",
+          "imagePullPolicy": "IfNotPresent",
+          "command": ["python", "-m", "pymentor_core.app.analytics_catalog", "--production", "--course-id", "backend", "--versioned"],
+          "envFrom": [{"configMapRef": {"name": "knowi-analytics-core-env-s17"}}],
+          "env": [
+            {"name": "PYMENTOR_COURSES_ROOT", "value": "/app/courses"},
+            {"name": "PYMENTOR_ANALYTICS_PRODUCTION_CATALOG_ENABLED", "value": "1"},
+            {"name": "PYMENTOR_ANALYTICS_PRODUCTION_CATALOG_RECEIPT_DIR", "value": "/run/analytics-catalog"},
+            {"name": "PYMENTOR_ANALYTICS_PRODUCER_KEY_FILE", "value": "/var/run/analytics-publisher/publisher.key"},
+            {"name": "PYMENTOR_ANALYTICS_PRODUCTION_CATALOG_TLS_CA_FILE", "value": "/var/run/analytics-publisher/ca.crt"},
+            {"name": "PYMENTOR_ANALYTICS_PRODUCTION_CATALOG_TLS_CLIENT_CERT_FILE", "value": "/var/run/analytics-publisher/tls.crt"},
+            {"name": "PYMENTOR_ANALYTICS_PRODUCTION_CATALOG_TLS_CLIENT_KEY_FILE", "value": "/var/run/analytics-publisher/tls.key"}
+          ],
+          "resources": {"requests": {"cpu": "50m", "memory": "128Mi"}, "limits": {"cpu": "1", "memory": "512Mi"}},
+          "securityContext": {"allowPrivilegeEscalation": false, "readOnlyRootFilesystem": true, "capabilities": {"drop": ["ALL"]}},
+          "volumeMounts": [
+            {"name": "receipts", "mountPath": "/run/analytics-catalog"},
+            {"name": "publisher-secret", "mountPath": "/var/run/analytics-publisher", "readOnly": true}
+          ]
+        }],
+        "volumes": [
+          {"name": "receipts", "hostPath": {"path": "/var/lib/knowi-analytics-catalog-s17/receipts", "type": "Directory"}},
+          {"name": "publisher-secret", "secret": {"secretName": "knowi-analytics-publisher-s17", "defaultMode": 288}}
+        ]
+      }
+    }
+  }
+}
