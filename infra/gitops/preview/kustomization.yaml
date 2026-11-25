@@ -8,23 +8,24 @@
     "analysis.json",
     "routes.json",
     "runner.json",
-    "notifications.json"
+    "notifications.json",
+    "analytics-catalog-publisher.json"
   ],
   "images": [
     {
       "name": "pymentor/core-api",
       "newName": "ghcr.io/unikoff/knowi-platform-core",
-      "digest": "sha256:58addd9846c270713ef83380b48ce5dcb8399cd2152a8ff1791d7d550b97372e"
+      "digest": "sha256:3f117941556ef9a9d8342f45e37c8a4f8d241454d00c5a1face05458f5bf1252"
     },
     {
       "name": "pymentor/frontend",
       "newName": "ghcr.io/unikoff/knowi-platform-frontend",
-      "digest": "sha256:f025ea8a3f43273a34df02fb80daa866870854ea85dec7da56f21d080db693e0"
+      "digest": "sha256:9dd36842c738d7c16c58e28cb464e95b1861e9fa77b9f06c4805996f725757d5"
     },
     {
       "name": "pymentor/preview-pool",
       "newName": "ghcr.io/unikoff/knowi-platform-runner-pool",
-      "digest": "sha256:8e288499f605b7f268d2ebb9d3319bdd29840e1484ea0390963bcaa82dedad59"
+      "digest": "sha256:307db432afa5079536e3408a1ce503ca3c2f42d6c5403d6badd61022312e37c5"
     }
   ]
 }
