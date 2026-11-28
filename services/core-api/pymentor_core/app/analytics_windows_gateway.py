@@ -14,6 +14,7 @@ from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
 from pymentor_core.adapters.analytics_http.http import request as http_request
+from pymentor_core.adapters.course_local.runtime import default_runtime
 from pymentor_core.app.analytics_browser_gateway import configure as configure_browser_gateway
 from pymentor_core.modules.analytics_delivery import windows_grants as grants
 
@@ -126,6 +127,10 @@ async def window_grant(request: Request):
         return error(grants.WindowHTTPError(503, "unavailable", "Window grant unavailable"))
 
 
+def _load_lessons(course_id: str):
+    return default_runtime().snapshot(course_id).catalog.LESSONS
+
+
 @router.post(BATCH_PATH)
 async def window_batch(request: Request):
     state = request.app.state
@@ -143,7 +148,9 @@ async def window_batch(request: Request):
                 if claims["sub"] != principal.account_ref:
                     raise grants.WindowHTTPError(403, "forbidden", "Access denied")
                 raw = await json_body(request, grants.MAX_BATCH_BYTES)
-                rejected = await run_in_threadpool(grants.batch_permissions, raw, principal, scope, claims)
+                rejected = await run_in_threadpool(
+                    grants.batch_permissions, raw, principal, scope, claims, load_lessons=_load_lessons,
+                )
                 proof = signer.attest_windows_request(
                     subject=principal.account_ref, body_sha256=sha256(raw).hexdigest(),
                     grant_sha256=sha256(token.encode("ascii")).hexdigest(), rejected=rejected,

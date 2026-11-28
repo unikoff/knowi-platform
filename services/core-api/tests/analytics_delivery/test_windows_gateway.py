@@ -72,7 +72,7 @@ def runtime(tmp_path, monkeypatch):
     monkeypatch.setattr(grants, "run_request_sql", run_sql)
     monkeypatch.setattr(grants, "authorize_grant", policy)
     monkeypatch.setattr(grants, "enabled_course_ids", lambda: ["backend", "sql", "unassigned"])
-    monkeypatch.setattr(grants, "default_runtime", lambda: SimpleNamespace(snapshot=catalog))
+    monkeypatch.setattr(gateway, "default_runtime", lambda: SimpleNamespace(snapshot=catalog))
     monkeypatch.setattr(gateway, "http_request", collector)
     return app, set_scope, calls, authorities, key, env
 

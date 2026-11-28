@@ -13,7 +13,6 @@ from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
-from pymentor_core.adapters.course_local.runtime import default_runtime
 from pymentor_core.app.async_request import request_principal, run_request_sql
 from pymentor_core.app.course_context import enabled_course_ids
 from pymentor_core.modules.analytics_delivery.grants import PLATFORM_TOOL_SCOPE, authorize_grant
@@ -199,7 +198,7 @@ def issue(signer, principal, scope, request: WindowGrantRequest):
     }
 
 
-def batch_permissions(raw: bytes, principal, scope, claims):
+def batch_permissions(raw: bytes, principal, scope, claims, *, load_lessons):
     """Core attests exactly this body and validates each snapshot as a unit."""
     try:
         parsed = decode_json(raw)
@@ -241,8 +240,7 @@ def batch_permissions(raw: bytes, principal, scope, claims):
                 continue
             if course not in catalogs:
                 try:
-                    snapshot = default_runtime().snapshot(course)
-                    catalogs[course] = {entry["id"]: entry for entry in snapshot.catalog.LESSONS}
+                    catalogs[course] = {entry["id"]: entry for entry in load_lessons(course)}
                 except (OSError, ValueError, LookupError, TypeError):
                     raise WindowHTTPError(503, "unavailable", "Course access unavailable") from None
             entry = catalogs[course].get(lesson)

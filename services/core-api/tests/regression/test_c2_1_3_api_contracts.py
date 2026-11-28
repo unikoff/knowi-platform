@@ -526,9 +526,12 @@ def test_all_frontend_operations_asgi_contracts_and_legacy_errors(clients):
     assert any(user["id"] == student_id for user in response.json()["users"])
     _validate(AdminAccountsResponse, response.json())
 
+    # The slot must be inside the admin overview window. Its quota belongs
+    # to the slot month, which can differ from the current month.
+    slot_date = date.today() + timedelta(days=3)
     response = admin.post(
         f"/api/admin/users/{student_id}/quota",
-        json={"year": year, "month": month, "add": 2},
+        json={"year": slot_date.year, "month": slot_date.month, "add": 2},
     )
     assert response.status_code == 200
     _validate(StudentProfileEnvelope, response.json())
@@ -540,9 +543,6 @@ def test_all_frontend_operations_asgi_contracts_and_legacy_errors(clients):
     assert response.status_code == 200
     _validate(StudentProfileEnvelope, response.json())
 
-    # The admin overview's upcoming-bookings window is shorter than the slot
-    # listing window, so keep this slot inside both runtime views.
-    slot_date = date.today() + timedelta(days=3)
     response = admin.post(
         "/api/admin/slots",
         json={"slot_date": slot_date.isoformat(), "start_time": "10:00", "duration_minutes": 60},
@@ -576,6 +576,7 @@ def test_all_frontend_operations_asgi_contracts_and_legacy_errors(clients):
     response = client.get("/api/user/slots", params={"year": slot_date.year, "month": slot_date.month}, cookies=student_cookies)
     assert response.status_code == 200
     _validate(StudentSlotsResponse, response.json())
+    assert response.json()["quota"]["remaining"] == 2
     assert any(item["id"] == slot_id and item["status"] == "free" for item in response.json()["slots"])
 
     response = client.post(f"/api/user/slots/{slot_id}/book", cookies=student_cookies)
