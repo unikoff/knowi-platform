@@ -49,8 +49,11 @@ def create_app():
 
     @asynccontextmanager
     async def lifespan(_app):
-        await run_in_threadpool(read_snapshot, config)
-        yield
+        try:
+            await run_in_threadpool(read_snapshot, config)
+            yield
+        finally:
+            config.engine.dispose()
 
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.state.analytics_local_collection = config

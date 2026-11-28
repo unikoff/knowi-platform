@@ -318,11 +318,19 @@ def test_packaged_probe_script_compiles_with_existing_history_probe():
 def test_verified_histories_require_full_head_and_exact_target_prefix():
     import bootstrap_runtime
     full, prefix = bench.verified_histories(bootstrap_runtime, "a010")
-    assert full[0] == "a014" and prefix[0] == "a010" and full[1][4:] == prefix[1]
+    assert full[0] == "a016" and prefix[0] == "a010" and full[1][6:] == prefix[1]
     day_prefix = bench.verified_histories(bootstrap_runtime, "a011")[1]
-    assert day_prefix[0] == "a011" and full[1][3:] == day_prefix[1]
-    with pytest.raises(bench.LiveFailure): bench.verified_histories(bootstrap_runtime, "a012")
-    for bad_full, bad_prefix in ((full[:2] + ("0" * 64,), prefix),
+    assert day_prefix[0] == "a011" and full[1][5:] == day_prefix[1]
+    for unsupported in ("a012", "a015", "a016"):
+        with pytest.raises(bench.LiveFailure, match="unsupported database target"):
+            bench.verified_histories(bootstrap_runtime, unsupported)
+        with pytest.raises(bench.LiveFailure, match="unsupported database target"):
+            bench._database_setup(None, None, None, RUN, unsupported)
+    old = bootstrap_runtime.schema_history("a015")
+    wrong_order = (full[0], (full[1][0], full[1][2], full[1][1], *full[1][3:]), full[2])
+    for bad_full, bad_prefix in ((old, prefix), (wrong_order, prefix),
+                                 (full[:2] + ("0" * 64,), prefix),
+                                 (full[:2] + (old[2],), prefix),
                                  (full, ("a010", tuple(reversed(prefix[1])), prefix[2])),
                                  (full, prefix[:2] + ("0" * 64,))):
         fake = SimpleNamespace(schema_history=lambda revision=None: bad_full if revision is None else bad_prefix)
@@ -654,11 +662,11 @@ def test_host_save_preserves_partial_archive_and_does_not_retry(monkeypatch):
 
 
 def test_source_probe_is_bounded_host_id_pinned_and_preserves_unknown_outcome(monkeypatch):
+    import bootstrap_runtime
+
     events = []
-    revisions = tuple(f"a{n:03d}" for n in range(14, 0, -1))
-    history = ("a014", revisions, bench.HISTORY_SHA256["a014"])
-    prefix = ("a010", revisions[4:], bench.HISTORY_SHA256["a010"])
-    source = SimpleNamespace(runtime=SimpleNamespace(schema_history=lambda revision=None: prefix if revision == "a010" else history), ROOT=Path("source"),
+    history = bootstrap_runtime.schema_history()
+    source = SimpleNamespace(runtime=bootstrap_runtime, ROOT=Path("source"),
                              runtime_files_fingerprint=lambda root: "runtime-hash", IMAGE_HISTORY_PROBE="read-only hash script")
     runtime = SimpleNamespace(resource_snapshot=SimpleNamespace(local_context=lambda env: "local"))
     owned = SimpleNamespace(record=lambda *a, **kw: events.append("owner"))
@@ -678,7 +686,7 @@ def test_source_probe_is_bounded_host_id_pinned_and_preserves_unknown_outcome(mo
     evidence = bench._source_probe("folder", "token", RUN, "application", HOST_IMAGE_ID, runtime, source, owned)
     assert events == ["owner", "pending", "probe", "confirmed"]
     assert evidence["runtime_sha256"] == "runtime-hash"
-    assert evidence["packaged_history_head"] == "a014" and evidence["target_revision"] == "a010"
+    assert evidence["packaged_history_head"] == "a016" and evidence["target_revision"] == "a010"
     events.clear()
     def timeout(command, **kw):
         if "run" in command:

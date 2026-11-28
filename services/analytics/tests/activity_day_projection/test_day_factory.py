@@ -37,8 +37,12 @@ def env(monkeypatch):
             if "to_regclass('analytics.activity_projection_buckets')" in sql: return Result((State.bucket,) * 8)
             if "to_regclass('analytics.activity_projection_day_sources')" in sql: return Result(State.day_schema)
             if "to_regclass('analytics.activity_course_buckets')" in sql: return Result((State.course, State.course))
-            if "to_regclass('analytics.core_snapshot_proofs')" in sql: return Result((False,) * 4)
-            if "pg_catalog.pg_attribute" in sql: return Result((False,) * 3)
+            if "to_regclass('analytics.core_snapshot_proofs')" in sql: return Result((State.core_proof,) * 4)
+            if "pg_catalog.pg_attribute" in sql: return Result((State.core_schema,) * 3)
+            if sql.startswith("SELECT subject_ref FROM analytics.core_transfer_projection") and not State.core_read:
+                raise PermissionError("Core projection unavailable")
+            if sql.startswith("SELECT * FROM analytics.activity_projection_day") and not State.day_read:
+                raise PermissionError("Day projection unavailable")
             if "lock_activity_projection_run" in sql:
                 if self.role == "processor": raise PermissionError("query-only function")
                 return Result(State.run)
@@ -52,6 +56,12 @@ def env(monkeypatch):
         run = True
         day_complete = False
         course = True
+        core_proof = False
+        core_schema = False
+        core_read = True
+        day_read = True
+        checkouts = 0
+        query_readiness_transactions = 0
         grants = True
         privacy_ready = True
         capability = True
@@ -65,19 +75,33 @@ def env(monkeypatch):
             self.role = State.role
         @asynccontextmanager
         async def transaction(self):
+            State.checkouts += 1
             session = Session(self.role)
             if self.transaction_guard:
                 await self.transaction_guard(session)
             yield session
         @asynccontextmanager
-        async def begin(self): yield Session(self.role)
+        async def query_readiness_transaction(self):
+            State.query_readiness_transactions += 1
+            async with self.transaction() as session:
+                yield session
+        @asynccontextmanager
+        async def begin(self):
+            State.checkouts += 1
+            yield Session(self.role)
         async def close(self): pass
         def pool_snapshot(self): return None
     class Privacy:
-        def __init__(self, *args, **kwargs): pass
+        def __init__(self, client, database, **kwargs): self.database = database
         def start(self): pass
         async def stop(self): pass
-        async def is_ready(self): return State.privacy_ready
+        async def is_ready(self):
+            async with self.database.sessions.begin() as session:
+                return State.privacy_ready
+        async def check_readiness_in_transaction(self, session):
+            State.statements.append((session.role, "privacy_readiness"))
+            if not State.privacy_ready:
+                raise RuntimeError("privacy unavailable")
         async def check_in_transaction(self, session):
             State.statements.append((session.role, "privacy_guard"))
             if not State.privacy_ready: raise RuntimeError("privacy unavailable")
@@ -104,18 +128,64 @@ def settings(**flags):
 
 
 def test_query_day_requires_complete_schema_run_and_privileges(env):
-    app = create_app("query", settings(activity_day_query_enabled=True))
+    app = create_app("query", settings(activity_day_query_enabled=True, activity_course_query_enabled=True))
     with TestClient(app) as client:
         assert app.state.activity_reports.day_projection_enabled
         assert client.get("/ready").status_code == 503
         env.day_complete = True
+        env.statements.clear()
+        env.checkouts = env.query_readiness_transactions = 0
         assert client.get("/ready").status_code == 200
+        checks = [sql for _, sql in env.statements]
+        assert env.checkouts == env.query_readiness_transactions == 1
+        assert checks.count("privacy_guard") == 1
+        assert checks.count("privacy_readiness") == 1
+        assert sum("to_regclass('analytics.activity_projection_buckets')" in sql for sql in checks) == 1
+        assert sum(sql.startswith("SELECT analytics.lock_activity_projection_run") for sql in checks) == 1
+        env.day_read = False
+        assert client.get("/ready").status_code == 503
+        env.day_read = True
+        env.privacy_ready = False
+        assert client.get("/ready").status_code == 503
+        env.privacy_ready = True
         env.day_schema = (True, False, True)
         assert client.get("/ready").status_code == 503
         env.day_schema = (True, True, True)
+        env.bucket = False
+        assert client.get("/ready").status_code == 503
+        env.bucket = True
+        env.course = False
+        assert client.get("/ready").status_code == 503
+        env.course = True
         env.run = False
         assert client.get("/ready").status_code == 503
         assert any("SELECT analytics.lock_activity_projection_run" in sql for role, sql in env.statements if role == "query")
+
+
+@pytest.mark.parametrize("day_enabled", [False, True])
+def test_query_projection_preserves_core_readiness(env, day_enabled):
+    app = create_app("query", settings(activity_day_query_enabled=day_enabled, core_transfer_enabled=True,
+                                      core_transfer_namespace="core", core_transfer_proof_enabled=True))
+    env.day_complete = True
+    with TestClient(app) as client:
+        assert client.get("/ready").status_code == 503
+        env.core_schema = True
+        assert client.get("/ready").status_code == 503
+        env.core_proof = True
+        env.core_read = False
+        assert client.get("/ready").status_code == 503
+        env.core_read = True
+        env.statements.clear()
+        env.checkouts = env.query_readiness_transactions = 0
+        assert client.get("/ready").status_code == 200
+        checks = [sql for _, sql in env.statements]
+        assert env.checkouts == (3 if day_enabled else 4)
+        assert env.query_readiness_transactions == int(day_enabled)
+        assert checks.count("privacy_guard") == 2
+        assert sum(sql.startswith("SELECT analytics.lock_activity_projection_run") for sql in checks) == 1
+        assert any(sql.startswith("SELECT * FROM analytics.activity_projection_day") for sql in checks) is day_enabled
+        env.run = False
+        assert client.get("/ready").status_code == 503
 
 
 def test_day_worker_isolated_from_bucket_and_generic_probes(env):

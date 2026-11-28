@@ -127,9 +127,15 @@ spec:
             - name: ANALYTICS_{{ upper $role }}_DATABASE_URL
               valueFrom:
                 secretKeyRef: {name: {{ $cfg.secretName }}, key: DATABASE_URL}
+{{- if and (eq $role "processor") $.Values.studentWindows.proofSecretName }}
+            - {name: ANALYTICS_WINDOWS_RECONCILIATION_PROOF_FILE, value: "/var/run/analytics-windows-proof/coverage.json"}
+{{- end }}
             - {name: FORWARDED_ALLOW_IPS, value: ""}
-{{- if or $.Values.authorityClientTLS.secretName (eq $.Values.runtime.mode "production") $.Values.analyticsDatabaseTLS.enabled }}
+{{- if or $.Values.authorityClientTLS.secretName (eq $.Values.runtime.mode "production") $.Values.analyticsDatabaseTLS.enabled (and (eq $role "processor") $.Values.studentWindows.proofSecretName) }}
           volumeMounts:
+{{- if and (eq $role "processor") $.Values.studentWindows.proofSecretName }}
+            - {name: student-windows-proof, mountPath: /var/run/analytics-windows-proof, readOnly: true}
+{{- end }}
 {{- if $.Values.analyticsDatabaseTLS.enabled }}
             - {name: analytics-db-ca, mountPath: /var/run/analytics-db-ca, readOnly: true}
 {{- end }}
@@ -166,8 +172,15 @@ spec:
           livenessProbe: {httpGet: {path: /live, port: http}, periodSeconds: 10, timeoutSeconds: 3}
           readinessProbe: {httpGet: {path: /ready, port: http}, periodSeconds: 5, timeoutSeconds: 6}
 {{- end }}
-{{- if or $.Values.authorityClientTLS.secretName (eq $.Values.runtime.mode "production") $.Values.analyticsDatabaseTLS.enabled }}
+{{- if or $.Values.authorityClientTLS.secretName (eq $.Values.runtime.mode "production") $.Values.analyticsDatabaseTLS.enabled (and (eq $role "processor") $.Values.studentWindows.proofSecretName) }}
       volumes:
+{{- if and (eq $role "processor") $.Values.studentWindows.proofSecretName }}
+        - name: student-windows-proof
+          secret:
+            secretName: {{ $.Values.studentWindows.proofSecretName | quote }}
+            items:
+              - {key: {{ $.Values.studentWindows.proofSecretKey | quote }}, path: coverage.json}
+{{- end }}
 {{- if $.Values.analyticsDatabaseTLS.enabled }}
         - name: analytics-db-ca
           secret: {secretName: {{ $.Values.analyticsDatabaseTLS.caSecretName | quote }}, items: [{key: ca.crt, path: ca.crt}]}

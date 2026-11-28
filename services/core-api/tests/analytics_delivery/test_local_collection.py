@@ -145,49 +145,62 @@ def test_source_rejects_disabled_or_modified_deletion_trigger():
                     bodies[name] = sql.split(" AS $$", 1)[1].split("$$ LANGUAGE", 1)[0]
     trigger = bodies["pymentor_capture_account_deletion_trigger()"]
     capture = bodies["pymentor_capture_account_deletion(p_user_id integer)"]
-    class Result:
-        def __init__(self, value): self.value = value
-        def all(self): return self.value
-        def scalar_one(self): return self.value
-    class Connection:
-        enabled, kind, body = "O", 11, trigger
-        def execute(self, sql):
-            query = str(sql)
-            if "pg_attribute a JOIN" in query:
-                return Result([("lifecycle_id", "character varying(36)", True), ("user_id", "integer", True),
-                               ("deleted_at", "timestamp with time zone", True)])
-            if "array_agg" in query: return Result(["lifecycle_id"])
-            return Result([(self.enabled, self.kind, self.body, capture)])
-    conn = Connection()
-    assert local._schema_ok(conn)
-    conn.enabled = "D"
-    assert not local._schema_ok(conn)
-    conn.enabled, conn.body = "O", trigger + " RAISE EXCEPTION 'modified';"
-    assert not local._schema_ok(conn)
+    columns = [["lifecycle_id", "character varying(36)", True], ["user_id", "integer", True],
+               ["deleted_at", "timestamp with time zone", True]]
+    pk = ["lifecycle_id"]
+    assert local._schema_ok(columns, pk, [["O", 11, trigger, capture]])
+    assert not local._schema_ok(columns, pk, [["D", 11, trigger, capture]])
+    assert not local._schema_ok(columns, pk, [["O", 11, trigger + " RAISE EXCEPTION 'modified';", capture]])
+
+
+@pytest.fixture
+def snapshot_db(monkeypatch):
+    from unittest.mock import MagicMock, Mock
+
+    engine = MagicMock()
+    connection = engine.connect.return_value.__enter__.return_value
+    engine.connect.return_value.execution_options.return_value = engine.connect.return_value
+    state = SimpleNamespace(replica=False, rows=[], schema_ok=True)
+    factory = Mock(return_value=engine)
+    monkeypatch.setattr(local, "create_engine", factory)
+    schema = Mock(side_effect=lambda *facts: state.schema_ok)
+    monkeypatch.setattr(local, "_schema_ok", schema)
+
+    def execute(statement, parameters=None):
+        sql = str(statement)
+        result = Mock()
+        if "snapshot preflight" in sql:
+            result.one.return_value = ("core_db", state.replica, "reader", [], [], [], True, datetime.now(timezone.utc))
+        elif "current_database" in sql:
+            result.one.return_value = ("core_db", state.replica, "reader")
+        elif "SELECT lifecycle_id" in sql:
+            result.all.return_value = list(state.rows)
+        return result
+
+    connection.execute.side_effect = execute
+    return state, factory, engine, schema
 
 
 @pytest.mark.parametrize("replica, count", [(True, 0), (False, 1025)])
-def test_source_rejects_replica_and_overflow(monkeypatch, replica, count):
-    class Result:
-        def __init__(self, value): self.value = value
-        def one(self): return self.value
-        def all(self): return self.value
-        def scalar_one(self): return self.value
-    class Connection:
-        def __enter__(self): return self
-        def __exit__(self, *args): pass
-        def execution_options(self, **kwargs): return self
-        def begin(self): return self
-        def execute(self, sql):
-            query = str(sql)
-            if "current_database" in query: return Result(("core_db", replica))
-            if "clock_timestamp" in query: return Result(datetime.now(timezone.utc))
-            if "SELECT lifecycle_id" in query: return Result([(INSTANCE, datetime.now(timezone.utc))] * count)
-            return Result(None)
-    class Engine:
-        def connect(self): return Connection()
-        def dispose(self): pass
-    monkeypatch.setattr(local, "create_engine", lambda *args, **kwargs: Engine())
-    monkeypatch.setattr(local, "_schema_ok", lambda conn: True)
-    with pytest.raises(ValueError):
+def test_source_rejects_replica_and_overflow(snapshot_db, replica, count):
+    state, _, _, _ = snapshot_db
+    state.replica = replica
+    state.rows = [(INSTANCE, datetime.now(timezone.utc))] * count
+    with pytest.raises(ValueError, match="source unavailable" if replica else "source overflow"):
         local.read_snapshot(config())
+
+
+def test_snapshot_reuses_engine_but_rereads_deletions_and_schema(snapshot_db):
+    state, factory, engine, schema = snapshot_db
+    source = config()
+    assert local.read_snapshot(source)[1] == []
+    state.rows = [(INSTANCE, datetime.now(timezone.utc))]
+    assert [event["subject_ref"] for event in local.read_snapshot(source)[1]] == [INSTANCE]
+    state.schema_ok = False
+    with pytest.raises(ValueError, match="source unavailable"):
+        local.read_snapshot(source)
+
+    assert schema.call_count == 3
+    assert factory.call_count == 1
+    assert engine.connect.call_count == 3
+    engine.dispose.assert_not_called()

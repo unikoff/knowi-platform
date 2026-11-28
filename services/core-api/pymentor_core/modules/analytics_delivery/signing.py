@@ -91,6 +91,33 @@ class Signer:
             raise ValueError("grant too large")
         return token
 
+    def window_token(self, claims):
+        if self._purpose != "grant" or claims["aud"] not in {"analytics-windows", "analytics-windows-gateway"}:
+            raise ValueError("incorrect window signing purpose")
+        token = self._encode(claims)
+        if len(token) > 16 * 1024:
+            raise ValueError("window token too large")
+        return token
+
+    def verify_window_token(self, token):
+        import jwt
+
+        header = jwt.get_unverified_header(token)
+        if self._purpose != "grant" or header != {"alg": "EdDSA", "kid": self.kid, "typ": "JWT"}:
+            raise ValueError("invalid window token header")
+        return jwt.decode(token, self._key.public_key(), algorithms=["EdDSA"], audience="analytics-windows",
+                          issuer=self.issuer, options={"strict_aud": True,
+                          "require": ["sub", "exp", "iat", "nbf", "iss", "aud"]})
+
+    def attest_windows_request(self, *, subject, body_sha256, grant_sha256, rejected):
+        issued = int(time.time())
+        return self.window_token({
+            "iss": self.issuer, "aud": "analytics-windows-gateway", "sub": subject,
+            "iat": issued, "nbf": issued, "exp": issued + 15,
+            "scope": "windows:forward", "body_sha256": body_sha256,
+            "grant_sha256": grant_sha256, "rejected": rejected,
+        })
+
     def producer(self, producer_id: str, *, now: int | None = None) -> str:
         if self._purpose != "producer" or not _IDENTIFIER.fullmatch(producer_id):
             raise ValueError("invalid producer")

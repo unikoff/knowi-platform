@@ -9,6 +9,8 @@ import time
 from pymentor_analytics.contracts.work_v1 import SYNTHETIC_SUBSCRIPTIONS
 
 OUTCOMES = ("accepted", "duplicate", "conflict", "rejected", "pending")
+WINDOW_OUTCOMES = ("committed", "duplicate", "stale", "conflict", "rejected", "pending")
+WINDOW_HTTP_STATUSES = (200, 400, 401, 403, 404, 413, 429, 503)
 REQUESTS = ("ok", "invalid", "unauthorized", "forbidden", "overloaded", "unavailable", "server_error", "other")
 MAX_ACK_BYTES = 64 * 1024
 
@@ -35,6 +37,11 @@ class Telemetry:
         self.events = dict.fromkeys(OUTCOMES, 0)
         self.requests = dict.fromkeys(REQUESTS, 0)
         self.instrumentation_errors = 0
+        self.windows_outcomes = dict.fromkeys(WINDOW_OUTCOMES, 0)
+        self.windows_requests = dict.fromkeys(WINDOW_HTTP_STATUSES, 0)
+        self.windows_ack_seconds = 0.0
+        self.windows_transactions = 0
+        self.windows_transaction_seconds = 0.0
 
     def response(self, status, body):
         request = {200: "ok", 400: "invalid", 401: "unauthorized", 403: "forbidden", 413: "invalid",
@@ -55,6 +62,19 @@ class Telemetry:
                     self.events[key] += counts[key]
             except (ValueError, TypeError, KeyError, UnicodeError, RecursionError):
                 self.instrumentation_errors += 1
+
+    def window_response(self, status, elapsed, body):
+        with self._lock:
+            self.windows_requests[status] += 1
+            self.windows_ack_seconds += elapsed
+            if status == 200:
+                for item in json.loads(body)["items"]:
+                    self.windows_outcomes[item["status"]] += 1
+
+    def window_transaction(self, elapsed):
+        with self._lock:
+            self.windows_transactions += 1
+            self.windows_transaction_seconds += elapsed
 
     def render(self, role, ready, diagnostics=None, pool=None):
         if role not in {"collector", "processor", "query", "privacy"}:
@@ -79,6 +99,14 @@ class Telemetry:
                 lines.extend(f'analytics_collector_ack_events_total{{outcome="{key}"}} {self.events[key]}' for key in OUTCOMES)
                 lines.extend(f'analytics_collector_requests_total{{outcome="{key}"}} {self.requests[key]}' for key in REQUESTS)
                 lines.append(f"analytics_instrumentation_errors_total {self.instrumentation_errors}")
+                lines.extend(f'analytics_windows_ack_items_total{{outcome="{key}"}} {self.windows_outcomes[key]}'
+                             for key in WINDOW_OUTCOMES)
+                lines.extend(f'analytics_windows_http_requests_total{{status="{key}"}} {self.windows_requests[key]}'
+                             for key in WINDOW_HTTP_STATUSES)
+                lines.append(f"analytics_windows_ack_seconds_sum {self.windows_ack_seconds:.6f}")
+                lines.append(f"analytics_windows_ack_seconds_count {sum(self.windows_requests.values())}")
+                lines.append(f"analytics_windows_transaction_seconds_sum {self.windows_transaction_seconds:.6f}")
+                lines.append(f"analytics_windows_transaction_seconds_count {self.windows_transactions}")
         if role == "processor":
             lines.append(f"analytics_diagnostics_available {int(diagnostics is not None)}")
             if diagnostics is not None:

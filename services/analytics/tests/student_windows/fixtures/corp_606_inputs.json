@@ -1,0 +1,109 @@
+{
+  "fixture_revision": "corp-606-a-r1",
+  "window_cases": [
+    {
+      "id": "quarter_boundary",
+      "student_id": "60600000-0000-4000-8000-000000000001",
+      "v2": [
+        {"event_id": "60000000-0000-4000-8000-000000000001", "started_at": "2026-11-27T15:14:50+03:00", "ended_at": "2026-11-27T15:15:20+03:00", "course_id": "backend", "lesson_id": "71", "section": "theory"}
+      ]
+    },
+    {
+      "id": "moscow_midnight",
+      "student_id": "60600000-0000-4000-8000-000000000002",
+      "v2": [
+        {"event_id": "60000000-0000-4000-8000-000000000002", "started_at": "2026-11-27T23:59:50+03:00", "ended_at": "2026-11-28T00:00:20+03:00", "course_id": "backend", "lesson_id": "72", "section": "practice"}
+      ]
+    },
+    {
+      "id": "all_course_overlap",
+      "student_id": "60600000-0000-4000-8000-000000000003",
+      "v2": [
+        {"event_id": "60000000-0000-4000-8000-000000000006", "started_at": "2026-11-27T10:00:00+03:00", "ended_at": "2026-11-27T10:00:15+03:00", "course_id": "backend", "lesson_id": "71", "section": "theory"},
+        {"event_id": "60000000-0000-4000-8000-000000000004", "started_at": "2026-11-27T10:00:05+03:00", "ended_at": "2026-11-27T10:00:10+03:00", "course_id": "backend_copy", "lesson_id": "80", "section": "theory"},
+        {"event_id": "60000000-0000-4000-8000-000000000005", "started_at": "2026-11-27T10:00:05+03:00", "ended_at": "2026-11-27T10:00:10+03:00", "course_id": "backend_copy", "lesson_id": "81", "section": "practice"},
+        {"event_id": "60000000-0000-4000-8000-000000000003", "started_at": "2026-11-27T10:00:15+03:00", "ended_at": "2026-11-27T10:00:20+03:00", "course_id": "backend", "lesson_id": "71", "section": "theory"},
+        {"event_id": "60000000-0000-4000-8000-000000000007", "type": "course_opened", "started_at": "2026-11-27T10:00:42+03:00", "ended_at": "2026-11-27T10:00:42+03:00", "course_id": "backend_copy", "lesson_id": null, "section": null}
+      ]
+    },
+    {
+      "id": "global_tool",
+      "student_id": "60600000-0000-4000-8000-000000000004",
+      "v2": [
+        {"event_id": "60000000-0000-4000-8000-000000000008", "type": "tool_segment", "started_at": "2026-11-27T10:00:00+03:00", "ended_at": "2026-11-27T10:00:30+03:00", "course_id": "platform-tools", "lesson_id": null, "section": null, "tool_id": "catalog"}
+      ]
+    }
+  ],
+  "coverage_cases": [
+    {
+      "id": "missing_and_extra",
+      "student_id": "60600000-0000-4000-8000-000000000011",
+      "cohort_t0": "2026-11-27T10:00:00+03:00",
+      "client_mode": "shadow",
+      "manifest": {
+        "range_start": "2026-11-27T10:00:00+03:00",
+        "range_end": "2026-11-27T10:30:00+03:00",
+        "complete": true,
+        "v2_source_complete": true,
+        "activities": [
+          {"started_at": "2026-11-27T10:00:00+03:00", "ended_at": "2026-11-27T10:00:10+03:00", "tool_id": "theory", "course_id": "backend", "lesson_id": "71"}
+        ]
+      },
+      "v2": [
+        {"event_id": "60000000-0000-4000-8000-000000000011", "started_at": "2026-11-27T10:00:00+03:00", "ended_at": "2026-11-27T10:00:10+03:00", "course_id": "backend", "lesson_id": "71", "section": "theory"}
+      ],
+      "v3": [
+        {"activity_date": "2026-11-27", "slot_no": 42, "revision": 1, "stats": [{"tool_id": "theory", "course_id": "backend", "lesson_id": "71", "active_ms": 20000}]}
+      ]
+    },
+    {
+      "id": "v3_only_after_reload",
+      "student_id": "60600000-0000-4000-8000-000000000012",
+      "cohort_t0": "2026-11-27T10:00:00+03:00",
+      "client_mode": "shadow",
+      "known_delivery_gap": "v2_memory_queue_lost_on_reload",
+      "manifest": null,
+      "v2": [],
+      "v3": [
+        {"activity_date": "2026-11-27", "slot_no": 41, "revision": 1, "stats": [{"tool_id": "practice", "course_id": "backend", "lesson_id": "72", "active_ms": 20000}]}
+      ]
+    },
+    {
+      "id": "both_lost_with_manifest",
+      "student_id": "60600000-0000-4000-8000-000000000013",
+      "cohort_t0": "2026-11-27T10:00:00+03:00",
+      "client_mode": "shadow",
+      "manifest": {
+        "range_start": "2026-11-27T10:00:00+03:00",
+        "range_end": "2026-11-27T10:15:00+03:00",
+        "complete": true,
+        "v2_source_complete": false,
+        "activities": [
+          {"started_at": "2026-11-27T10:00:00+03:00", "ended_at": "2026-11-27T10:00:10+03:00", "tool_id": "theory", "course_id": "backend", "lesson_id": "71"}
+        ]
+      },
+      "v2": [],
+      "v3": []
+    },
+    {
+      "id": "both_lost_without_manifest",
+      "student_id": "60600000-0000-4000-8000-000000000013",
+      "cohort_t0": "2026-11-27T10:00:00+03:00",
+      "client_mode": "shadow",
+      "manifest": null,
+      "v2": [],
+      "v3": []
+    },
+    {
+      "id": "old_web_only",
+      "student_id": "60600000-0000-4000-8000-000000000014",
+      "cohort_t0": "2026-11-27T10:00:00+03:00",
+      "client_mode": "old_web",
+      "manifest": null,
+      "v2": [
+        {"event_id": "60000000-0000-4000-8000-000000000014", "started_at": "2026-11-27T10:00:00+03:00", "ended_at": "2026-11-27T10:00:10+03:00", "course_id": "backend", "lesson_id": "71", "section": "theory"}
+      ],
+      "v3": []
+    }
+  ]
+}

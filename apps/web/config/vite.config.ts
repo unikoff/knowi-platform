@@ -132,6 +132,7 @@ export default defineConfig({
         target: devAnalyticsQueryTarget,
         changeOrigin: false,
       },
+      // Window grants and batches share the browser's Core session.
       "/api": {
         target: devApiTarget,
         // Core verifies Origin against the external Host for unsafe requests.

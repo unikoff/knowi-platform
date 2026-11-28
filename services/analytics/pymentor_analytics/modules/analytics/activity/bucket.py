@@ -25,6 +25,32 @@ class BucketOverflow(ValueError):
     """Bucket cannot be safely normalized without a different bounded strategy."""
 
 
+def iter_winning_segments(segments):
+    """Yield the admitted winner and clipped millisecond bounds of each span."""
+    changes = defaultdict(list)
+    for index, (_, start, end) in enumerate(segments):
+        changes[start].append((True, index))
+        changes[end].append((False, index))
+    ranked = sorted(range(len(segments)), key=lambda i: (
+        _us(segments[i][0].event.started_at), str(segments[i][0].event.event_id), segments[i][0].producer_namespace))
+    ranks = {index: rank for rank, index in enumerate(ranked)}
+    active, heap = set(), []
+    boundaries = sorted(changes)
+    for offset, left in enumerate(boundaries[:-1]):
+        for add, index in changes[left]:
+            if add:
+                active.add(index)
+                heappush(heap, (-ranks[index], index))
+            else:
+                active.discard(index)
+        while heap and heap[0][1] not in active:
+            heappop(heap)
+        if not heap:
+            continue
+        right = boundaries[offset + 1]
+        yield segments[heap[0][1]][0], left, right
+
+
 def normalize_subject_bucket(records, *, subject_ref: UUID, bucket_start: datetime):
     """Return stable lists of winners, all-course presence and compact rollups.
 
@@ -78,28 +104,9 @@ def normalize_subject_bucket(records, *, subject_ref: UUID, bucket_start: dateti
         labels.add((event.course_id, None))
         labels.add((event.course_id, event.lesson_id))
         segments.append((record, start, end))
-    changes = defaultdict(list)
-    for index, (_, start, end) in enumerate(segments):
-        changes[start].append((True, index))
-        changes[end].append((False, index))
-    ranked = sorted(range(len(segments)), key=lambda i: (
-        _us(segments[i][0].event.started_at), str(segments[i][0].event.event_id), segments[i][0].producer_namespace))
-    ranks = {index: rank for rank, index in enumerate(ranked)}
-    active, heap, winners = set(), [], []
-    boundaries = sorted(changes)
-    for offset, left in enumerate(boundaries[:-1]):
-        for add, index in changes[left]:
-            if add:
-                active.add(index)
-                heappush(heap, (-ranks[index], index))
-            else:
-                active.discard(index)
-        while heap and heap[0][1] not in active:
-            heappop(heap)
-        if not heap:
-            continue
-        right = boundaries[offset + 1]
-        event = segments[heap[0][1]][0].event
+    winners = []
+    for record, left, right in iter_winning_segments(segments):
+        event = record.event
         context = (event.course_id, event.lesson_id, event.section)
         if winners and winners[-1]["end_ms"] == left and (winners[-1]["course_id"], winners[-1]["lesson_id"], winners[-1]["section"]) == context:
             winners[-1]["end_ms"] = right

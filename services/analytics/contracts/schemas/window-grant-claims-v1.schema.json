@@ -1,0 +1,136 @@
+{
+  "$defs": {
+    "ToolScope": {
+      "additionalProperties": false,
+      "properties": {
+        "course_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Course Id"
+        },
+        "tool_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Tool Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool_id",
+        "course_id"
+      ],
+      "title": "ToolScope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "aud": {
+      "const": "analytics-windows",
+      "title": "Aud",
+      "type": "string"
+    },
+    "course_ids": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "maxItems": 64,
+      "title": "Course Ids",
+      "type": "array"
+    },
+    "exp": {
+      "maximum": 9007199254740991,
+      "minimum": 0,
+      "title": "Exp",
+      "type": "integer"
+    },
+    "grant_version": {
+      "const": 1,
+      "title": "Grant Version",
+      "type": "integer"
+    },
+    "iat": {
+      "maximum": 9007199254740991,
+      "minimum": 0,
+      "title": "Iat",
+      "type": "integer"
+    },
+    "iss": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Iss",
+      "type": "string"
+    },
+    "nbf": {
+      "maximum": 9007199254740991,
+      "minimum": 0,
+      "title": "Nbf",
+      "type": "integer"
+    },
+    "protocol_version": {
+      "const": 1,
+      "title": "Protocol Version",
+      "type": "integer"
+    },
+    "scope": {
+      "const": "windows:collect",
+      "title": "Scope",
+      "type": "string"
+    },
+    "sub": {
+      "format": "uuid",
+      "title": "Sub",
+      "type": "string"
+    },
+    "tool_scopes": {
+      "items": {
+        "$ref": "#/$defs/ToolScope"
+      },
+      "maxItems": 80,
+      "title": "Tool Scopes",
+      "type": "array"
+    },
+    "writer_generation": {
+      "maximum": 9007199254740991,
+      "minimum": 1,
+      "title": "Writer Generation",
+      "type": "integer"
+    },
+    "writer_id": {
+      "format": "uuid",
+      "title": "Writer Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "writer_id",
+    "writer_generation",
+    "protocol_version",
+    "grant_version",
+    "iss",
+    "aud",
+    "sub",
+    "iat",
+    "nbf",
+    "exp",
+    "scope",
+    "course_ids",
+    "tool_scopes"
+  ],
+  "title": "WindowGrantClaims",
+  "type": "object"
+}

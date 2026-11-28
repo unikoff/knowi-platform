@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "timezone": "Europe/Moscow",
+  "source": "Final 607.C authorization handoff before execution",
+  "scenarios": {
+    "device-first": [
+      {
+        "local_date_offset": 0,
+        "slot_no": 44,
+        "stats": [
+          {
+            "tool_id": "theory",
+            "course_id": "backend",
+            "lesson_id": "lesson-64c9d597a164bbdb4f145d5a",
+            "active_ms": 60000
+          }
+        ]
+      }
+    ],
+    "device-second": [
+      {
+        "local_date_offset": 0,
+        "slot_no": 44,
+        "stats": [
+          {
+            "tool_id": "theory",
+            "course_id": "backend",
+            "lesson_id": "lesson-64c9d597a164bbdb4f145d5a",
+            "active_ms": 60000
+          }
+        ]
+      }
+    ],
+    "account-switch": [
+      {
+        "local_date_offset": 0,
+        "slot_no": 43,
+        "stats": [
+          {
+            "tool_id": "theory",
+            "course_id": "backend",
+            "lesson_id": "lesson-64c9d597a164bbdb4f145d5a",
+            "active_ms": 60000
+          }
+        ]
+      }
+    ]
+  }
+}

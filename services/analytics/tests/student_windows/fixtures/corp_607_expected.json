@@ -1,0 +1,229 @@
+{
+  "fixture_version": 1,
+  "timezone": "Europe/Moscow",
+  "predeclared_at": "2026-11-27",
+  "clock_policy": "Use controlled browser clocks and a common integer date translation only if the model date is outside the admission horizon. Freeze the translated expectation before sending any request.",
+  "subjects": {
+    "first": "60700000-0000-4000-8000-000000000001",
+    "multi": "60700000-0000-4000-8000-000000000002",
+    "lost": "60700000-0000-4000-8000-000000000003",
+    "scope": "60700000-0000-4000-8000-000000000004",
+    "privacy": "60700000-0000-4000-8000-000000000005",
+    "outside_cohort": "60700000-0000-4000-8000-000000000006",
+    "new_lifecycle": "60700000-0000-4000-8000-000000000007"
+  },
+  "contexts": {
+    "theory": {
+      "tool_id": "theory",
+      "course_id": "backend",
+      "lesson_id": "71"
+    },
+    "practice": {
+      "tool_id": "practice",
+      "course_id": "backend",
+      "lesson_id": "71"
+    },
+    "catalog": {
+      "tool_id": "catalog",
+      "course_id": null,
+      "lesson_id": null
+    }
+  },
+  "intervals": [
+    {
+      "subject": "first",
+      "context": "theory",
+      "start": "2026-11-27T10:00:00+03:00",
+      "end": "2026-11-27T10:01:00+03:00"
+    },
+    {
+      "subject": "multi",
+      "context": "theory",
+      "start": "2026-11-27T10:00:00+03:00",
+      "end": "2026-11-27T10:01:00+03:00"
+    },
+    {
+      "subject": "multi",
+      "context": "practice",
+      "start": "2026-11-27T10:01:00+03:00",
+      "end": "2026-11-27T10:02:00+03:00"
+    },
+    {
+      "subject": "multi",
+      "context": "catalog",
+      "start": "2026-11-27T10:02:00+03:00",
+      "end": "2026-11-27T10:02:30+03:00"
+    },
+    {
+      "subject": "multi",
+      "context": "theory",
+      "start": "2026-11-27T10:02:30+03:00",
+      "end": "2026-11-27T10:03:00+03:00"
+    },
+    {
+      "subject": "multi",
+      "context": "practice",
+      "start": "2026-11-27T10:03:00+03:00",
+      "end": "2026-11-27T10:04:00+03:00"
+    },
+    {
+      "subject": "multi",
+      "context": "theory",
+      "start": "2026-11-27T15:14:50+03:00",
+      "end": "2026-11-27T15:15:20+03:00"
+    },
+    {
+      "subject": "multi",
+      "context": "theory",
+      "start": "2026-11-27T23:59:50+03:00",
+      "end": "2026-11-28T00:00:20+03:00"
+    },
+    {
+      "subject": "lost",
+      "context": "theory",
+      "start": "2026-11-27T11:00:00+03:00",
+      "end": "2026-11-27T11:00:40+03:00",
+      "fault": "drop v2 and v3 before commit; discard client outbox"
+    }
+  ],
+  "expected_windows": [
+    {
+      "subject": "first",
+      "date": "2026-11-27",
+      "slot_no": 41,
+      "active_ms": {
+        "theory": 60000
+      },
+      "v2": "accepted/committed",
+      "v3": "committed",
+      "comparison": "match",
+      "present_before_repair": true
+    },
+    {
+      "subject": "multi",
+      "date": "2026-11-27",
+      "slot_no": 41,
+      "active_ms": {
+        "theory": 90000,
+        "practice": 120000,
+        "catalog": 30000
+      },
+      "v2": "accepted/committed",
+      "v3": "committed",
+      "comparison": "match",
+      "present_before_repair": true
+    },
+    {
+      "subject": "multi",
+      "date": "2026-11-27",
+      "slot_no": 61,
+      "active_ms": {
+        "theory": 10000
+      },
+      "v2": "accepted/committed",
+      "v3": "committed",
+      "comparison": "match",
+      "present_before_repair": true
+    },
+    {
+      "subject": "multi",
+      "date": "2026-11-27",
+      "slot_no": 62,
+      "active_ms": {
+        "theory": 20000
+      },
+      "v2": "accepted/committed",
+      "v3": "committed",
+      "comparison": "match",
+      "present_before_repair": true
+    },
+    {
+      "subject": "multi",
+      "date": "2026-11-27",
+      "slot_no": 96,
+      "active_ms": {
+        "theory": 10000
+      },
+      "v2": "accepted/committed",
+      "v3": "committed",
+      "comparison": "match",
+      "present_before_repair": true
+    },
+    {
+      "subject": "multi",
+      "date": "2026-11-28",
+      "slot_no": 1,
+      "active_ms": {
+        "theory": 20000
+      },
+      "v2": "accepted/committed",
+      "v3": "committed",
+      "comparison": "match",
+      "present_before_repair": true
+    },
+    {
+      "subject": "lost",
+      "date": "2026-11-27",
+      "slot_no": 45,
+      "active_ms": {
+        "theory": 40000
+      },
+      "v2": "no durable ack",
+      "v3": "no durable ack",
+      "comparison": "unknown",
+      "present_before_repair": false
+    }
+  ],
+  "expected_counts": {
+    "fixture_subjects_with_intervals": 3,
+    "manifest_keys": 7,
+    "stored_v3_windows": 6,
+    "comparable_keys": 6,
+    "mismatch_before_repair": 0,
+    "unknown": 1,
+    "both_channels_missing": 1,
+    "v3_rows_for_unknown": 0
+  },
+  "first_report": {
+    "path": "/api/user/analytics/statistics?days=7&course_id=backend",
+    "schema_version": 1,
+    "source": "analytics",
+    "scope": {
+      "course_id": "backend",
+      "activity": "platform"
+    },
+    "expected_after_v2_only": {
+      "active_seconds": 60,
+      "theory_seconds": 60,
+      "practice_seconds": null,
+      "completed_lessons_period": 0
+    },
+    "equality_excludes": [
+      "as_of"
+    ],
+    "baseline_mode": "Separate disposable DB for baseline replay, then fresh but identically seeded database for shadow. A duplicate v3 replay on the shadow DB must also preserve v2 within that DB."
+  },
+  "live_first": {
+    "model_lesson_number": 71,
+    "subject_ref": "60700000-0000-4000-8000-000000000001",
+    "activity_date": "2026-11-27",
+    "slot_no": 41,
+    "timezone": "Europe/Moscow",
+    "start": "2026-11-27T10:00:00+03:00",
+    "end": "2026-11-27T10:01:00+03:00",
+    "stats": [
+      {
+        "tool_id": "theory",
+        "course_id": "backend",
+        "lesson_id": "lesson-64c9d597a164bbdb4f145d5a",
+        "active_ms": 60000
+      }
+    ],
+    "provenance": {
+      "catalog_http_status": 200,
+      "lesson_listing_http_status": 200,
+      "lesson_available": true,
+      "catalog_published": true
+    }
+  }
+}

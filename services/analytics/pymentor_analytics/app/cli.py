@@ -40,8 +40,11 @@ def main() -> int:
             print("Analytics migration failed; inspect the database and retry safely.", file=sys.stderr)
             return 2
         return 0
+    transport = {}
+    if args.role == "collector" and getattr(settings, "windows_intake_enabled", False):
+        transport["h11_max_incomplete_event_size"] = 24 * 1024
     uvicorn.run(create_app(args.role, settings), host=args.host, port=args.port,
-                timeout_graceful_shutdown=settings.shutdown_timeout_seconds, access_log=False)
+                timeout_graceful_shutdown=settings.shutdown_timeout_seconds, access_log=False, **transport)
     return 0
 
 

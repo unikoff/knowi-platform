@@ -10,6 +10,7 @@ from math import isfinite
 import time
 from uuid import UUID
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 from pymentor_analytics.contracts.auth_v1 import AuthorizationError
 from pymentor_analytics.contracts.locking_v1 import subject_lock_key
 from pymentor_analytics.contracts.privacy_v1 import PrivacyUnavailable
@@ -20,6 +21,7 @@ from pymentor_analytics.modules.analytics.activity.bucket import BUCKET_MS
 from pymentor_analytics.modules.analytics.activity.calculator import EPOCH, _ms
 from pymentor_analytics.modules.analytics.reports.activity_scope import resolve_scope
 from pymentor_analytics.adapters.postgres.activity_reports import ReportLimitExceeded
+from pymentor_analytics.adapters.postgres.activity_report_batch import READ_SINGLE, SelfReportQueue, SelfReportRead
 
 MAX_SUBJECTS = 100
 # 100 subjects across <=31 days, including a possible partial extra bucket.
@@ -286,12 +288,44 @@ class PostgresProjectionActivityReport:
         self.course_projection_enabled = course_projection_enabled
         self.pending_wait_seconds = pending_wait_seconds
 
+        pool_max = getattr(database, "pool_max", None)
+        self._self_reports = SelfReportQueue(
+            self._read_self_report_batch, concurrency=min(2, pool_max or 1),
+        )
+
     async def read_activity(self, grant, query: ActivityQuery, *, include_breakdown: bool = False,
                             include_history_revisions: bool = False):
         if not isinstance(query, ActivityQuery):
             raise ValueError("validated activity query required")
         return await self._read_with_pending_retry(grant, query, include_breakdown=include_breakdown,
                                                    include_history_revisions=include_history_revisions)
+
+    async def read_batched_activity(self, grant, query: ActivityQuery, *, timeout: float):
+        """Entry point for ordinary self reports after HTTP auth and readiness."""
+        if not isinstance(query, ActivityQuery):
+            raise ValueError("validated activity query required")
+        if (getattr(grant, "role", None) != "user" or grant.scope != "report:read"
+                or query.subject_ref is not None or query.lesson_id is not None
+                or not callable(getattr(self.database, "transaction_exit_guard", None))):
+            return await self.read_activity(grant, query)
+        scope = resolve_scope(grant, query)
+        deadline = asyncio.get_running_loop().time() + timeout
+
+        async def read():
+            if time.time() >= grant.expires_at:
+                raise AuthorizationError()
+            result = await self._self_reports.submit(grant, query, scope, deadline)
+            if result is READ_SINGLE:
+                return await self._read_snapshot(grant, query, include_breakdown=False)
+            if time.time() >= grant.expires_at:
+                raise AuthorizationError()
+            return result
+
+        async with asyncio.timeout_at(deadline):
+            return await self._retry_pending(read)
+
+    async def close_self_reports(self):
+        await self._self_reports.close()
 
     async def read_lifetime_activity(self, grant, query: ActivityLifetimeQuery):
         if not isinstance(query, ActivityLifetimeQuery):
@@ -321,70 +355,243 @@ class PostgresProjectionActivityReport:
     async def _read_snapshot(self, grant, query: ActivityQuery | ActivityLifetimeQuery, *, include_breakdown: bool,
                              include_history_revisions: bool = False):
         scope = resolve_scope(grant, query)
-        include_daily = isinstance(query, ActivityQuery)
         if include_history_revisions:
             from pymentor_analytics.adapters.postgres.activity_history_revisions import whole_days
-            if (not include_daily or include_breakdown or grant.role != "user" or grant.scope != "report:read"
+            if (not isinstance(query, ActivityQuery) or include_breakdown or grant.role != "user" or grant.scope != "report:read"
                     or grant.global_read or grant.subject_refs or query.subject_ref is not None
                     or query.course_id is None or query.lesson_id is not None or not whole_days(query)):
                 raise AuthorizationError()
             from pymentor_analytics.adapters.postgres.activity_history_revisions import with_incarnation
             wrap = with_incarnation
         else:
-            wrap = lambda sql: sql
+            wrap = None
         async with self._guarded_snapshot(
             query.from_time, query.to_time, actor=scope.actor, selected_subject=scope.selected_subject,
             subjects=scope.subjects, expires_at=grant.expires_at, max_subjects=MAX_SUBJECTS,
         ) as (session, args, snapshot):
-            args.update(all_courses=scope.courses is None, courses=list(scope.courses or ()), lesson_id=query.lesson_id,
-                        with_daily=include_daily, with_breakdown=include_breakdown,
-                        breakdown_limit=MAX_BREAKDOWN_ROWS+1, max_breakdown=MAX_BREAKDOWN_ROWS)
-            if self.course_projection_enabled and not include_breakdown and query.lesson_id is None:
-                from pymentor_analytics.adapters.postgres.activity_course_reports import _COURSE_SNAPSHOT
-                # The old reader stays available while existing rows are rebuilt.
-                row = (await session.execute(text(wrap(_COURSE_SNAPSHOT)), args)).mappings().one()
-                if row["error"] == "course_projection_pending":
-                    row = (await session.execute(text(wrap(snapshot)), args)).mappings().one()
-            else:
-                row = (await session.execute(text(wrap(snapshot)), args)).mappings().one()
-            require_valid_projection(row["error"])
-            if time.time()>=grant.expires_at:
-                raise AuthorizationError()
-            try:
-                totals=ActivityValues.model_validate(row["totals"]).model_dump()
-                if totals["active_ms"] and not totals["unique_visitors"]:
-                    raise ValueError("inconsistent activity result")
-                if include_daily:
-                    daily = _validated_daily(row["daily"], totals)
-                    if include_history_revisions:
-                        from pymentor_analytics.adapters.postgres.activity_history_revisions import encode_history_generation, encode_history_revisions
-                        revisions = encode_history_revisions(daily, subject=scope.actor, course=query.course_id,
-                            run_id=self.expected_run_id, started=row["revision_started"], db_oid=row["revision_db_oid"],
-                            db_name=row["revision_db_name"], now=row["revision_now"])
-                        generation = encode_history_generation(subject=scope.actor, course=query.course_id,
-                            run_id=self.expected_run_id, started=row["revision_started"], db_oid=row["revision_db_oid"],
-                            db_name=row["revision_db_name"])
-                elif row["daily"] != []:
-                    raise ValueError("unexpected daily result")
-                if include_breakdown:
-                    if not isinstance(row["breakdown"],list) or len(row["breakdown"])>MAX_BREAKDOWN_ROWS:
-                        raise ValueError("invalid breakdown result")
-                    breakdown=[ActivityBreakdownRow.model_validate(item).model_dump() for item in row["breakdown"]]
-                    if bool(totals["unique_visitors"]) != bool(breakdown):
-                        raise ValueError("inconsistent breakdown result")
-            except (ValueError,TypeError,KeyError):
-                raise ProjectionUnavailable() from None
-            values={"as_of":row["as_of"] if totals["unique_visitors"] else None,
-                    "quality":"unknown","course_id":scope.course_id,
-                    "totals":totals}
-            if include_daily:
-                values.update(daily=daily, lag_seconds=None)
-                if include_history_revisions:
-                    values["history_revisions"] = revisions
-                    values["history_generation"] = generation
-            if include_breakdown:
-                values["breakdown"]=breakdown
+            values = await self._materialize_report(
+                session, args, snapshot, grant, query, scope,
+                include_breakdown=include_breakdown, include_history_revisions=include_history_revisions,
+                wrap=wrap,
+            )
         return values
+
+    async def _materialize_report(self, session, args, snapshot, grant, query, scope, *,
+                                  include_breakdown=False, include_history_revisions=False, wrap=None):
+        include_daily = isinstance(query, ActivityQuery)
+        if wrap is not None:
+            snapshot = wrap(snapshot)
+        args.update(all_courses=scope.courses is None, courses=list(scope.courses or ()), lesson_id=query.lesson_id,
+                    with_daily=include_daily, with_breakdown=include_breakdown,
+                    breakdown_limit=MAX_BREAKDOWN_ROWS+1, max_breakdown=MAX_BREAKDOWN_ROWS)
+        if self.course_projection_enabled and not include_breakdown and query.lesson_id is None:
+            from pymentor_analytics.adapters.postgres.activity_course_reports import _COURSE_SNAPSHOT
+            # The old reader stays available while existing rows are rebuilt.
+            course_snapshot = wrap(_COURSE_SNAPSHOT) if wrap is not None else _COURSE_SNAPSHOT
+            row = (await session.execute(text(course_snapshot), args)).mappings().one()
+            if row["error"] == "course_projection_pending":
+                row = (await session.execute(text(snapshot), args)).mappings().one()
+        else:
+            row = (await session.execute(text(snapshot), args)).mappings().one()
+        require_valid_projection(row["error"])
+        if time.time()>=grant.expires_at:
+            raise AuthorizationError()
+        try:
+            totals=ActivityValues.model_validate(row["totals"]).model_dump()
+            if totals["active_ms"] and not totals["unique_visitors"]:
+                raise ValueError("inconsistent activity result")
+            if include_daily:
+                daily = _validated_daily(row["daily"], totals)
+                if include_history_revisions:
+                    from pymentor_analytics.adapters.postgres.activity_history_revisions import encode_history_generation, encode_history_revisions
+                    revisions = encode_history_revisions(daily, subject=scope.actor, course=query.course_id,
+                        run_id=self.expected_run_id, started=row["revision_started"], db_oid=row["revision_db_oid"],
+                        db_name=row["revision_db_name"], now=row["revision_now"])
+                    generation = encode_history_generation(subject=scope.actor, course=query.course_id,
+                        run_id=self.expected_run_id, started=row["revision_started"], db_oid=row["revision_db_oid"],
+                        db_name=row["revision_db_name"])
+            elif row["daily"] != []:
+                raise ValueError("unexpected daily result")
+            if include_breakdown:
+                if not isinstance(row["breakdown"],list) or len(row["breakdown"])>MAX_BREAKDOWN_ROWS:
+                    raise ValueError("invalid breakdown result")
+                breakdown=[ActivityBreakdownRow.model_validate(item).model_dump() for item in row["breakdown"]]
+                if bool(totals["unique_visitors"]) != bool(breakdown):
+                    raise ValueError("inconsistent breakdown result")
+        except (ValueError,TypeError,KeyError):
+            raise ProjectionUnavailable() from None
+        values={"as_of":row["as_of"] if totals["unique_visitors"] else None,
+                "quality":"unknown","course_id":scope.course_id,
+                "totals":totals}
+        if include_daily:
+            values.update(daily=daily, lag_seconds=None)
+            if include_history_revisions:
+                values["history_revisions"] = revisions
+                values["history_generation"] = generation
+        if include_breakdown:
+            values["breakdown"]=breakdown
+        return values
+
+    def _projection_statements(self):
+        if self.day_projection_enabled:
+            from pymentor_analytics.adapters.postgres.activity_day_reports import _DAY_DISCOVER, _DAY_SNAPSHOT
+            return _DAY_DISCOVER, _DAY_SNAPSHOT
+        return _DISCOVER, _SNAPSHOT
+
+    async def _check_day_schema(self, session):
+        if self.day_projection_enabled:
+            from pymentor_analytics.adapters.postgres.activity_day_projection import has_activity_day_projection_schema
+            try:
+                available = await has_activity_day_projection_schema(session)
+            except Exception:
+                raise ProjectionUnavailable() from None
+            if not available:
+                raise ProjectionUnavailable()
+
+    async def _lock_run(self, session):
+        locked = (await session.execute(text("SELECT analytics.lock_activity_projection_run(:run_id)"),
+                                        {"run_id": self.expected_run_id})).scalar_one()
+        if locked is not True:
+            raise ProjectionUnavailable()
+
+    @staticmethod
+    def _discovery_params(from_time, to_time, subjects, max_subjects):
+        first_ms = (_ms(from_time) // BUCKET_MS) * BUCKET_MS
+        return {
+            "first_bucket": EPOCH + timedelta(milliseconds=first_ms),
+            "from_time": from_time, "to_time": to_time,
+            "scope_subjects": list(subjects or ()), "all_subjects": subjects is None,
+            "limit": max_subjects + 1,
+        }
+
+    def _snapshot_params(self, params, candidates, actor, selected_subject, max_subjects):
+        return {
+            **params,
+            "from_ms": _ms(params["from_time"]), "to_ms": _ms(params["to_time"]),
+            "run_id": self.expected_run_id,
+            "subject_limit": max_subjects + 1, "max_subjects": max_subjects,
+            "locked_subjects": sorted(candidates, key=lambda item: item.int),
+            "actor": actor, "selected_subject": selected_subject,
+            "bucket_limit": MAX_BUCKET_ROWS + 1, "max_buckets": MAX_BUCKET_ROWS,
+            "bucket_ms": BUCKET_MS, "max_full_items": MAX_FULL_ITEMS, "max_edge_items": MAX_EDGE_ITEMS,
+            "max_full_bytes": MAX_FULL_BYTES, "max_edge_bytes": MAX_EDGE_BYTES,
+        }
+
+    @staticmethod
+    def _self_read_interruption(job):
+        if job.future.done() or asyncio.get_running_loop().time() >= job.deadline:
+            return TimeoutError()
+        if time.time() >= job.grant.expires_at:
+            return AuthorizationError()
+        return None
+
+    async def _read_self_report_batch(self, jobs: tuple[SelfReportRead, ...]):
+        if len(jobs) == 1 or not callable(getattr(self.database, "transaction_exit_guard", None)):
+            return (READ_SINGLE,) * len(jobs)
+        results = [self._self_read_interruption(job) for job in jobs]
+        live = [(pos, job) for pos, job in enumerate(jobs) if results[pos] is None]
+        if not live:
+            return results
+        if self.database.transaction_guard is None:
+            raise PrivacyUnavailable()
+        discovery, snapshot = self._projection_statements()
+        actors = {job.scope.actor for _, job in live}
+        window = live[0][1].query
+        async with self.database.transaction() as session:
+            await self._check_day_schema(session)
+            # The discovery predicate only depends on the time window and subject.
+            # Each private result still uses its original singleton scope and candidates.
+            discovery_args = self._discovery_params(window.from_time, window.to_time, sorted(actors), MAX_SUBJECTS)
+            candidates = set((await session.execute(text(discovery), discovery_args)).scalars().all())
+            if not candidates <= actors:
+                raise ProjectionUnavailable()
+            keys = sorted({subject_lock_key(actor) for actor in actors})
+            locks = (await session.execute(text("""SELECT locks.lock_key,
+                pg_try_advisory_xact_lock_shared(locks.lock_key)
+                FROM unnest(CAST(:keys AS bigint[])) AS locks(lock_key)
+                ORDER BY locks.lock_key"""), {"keys": keys})).all()
+            locked = {key for key, acquired in locks if acquired is True}
+            protected = []
+            for pos, job in live:
+                results[pos] = self._self_read_interruption(job)
+                if results[pos] is not None:
+                    continue
+                if subject_lock_key(job.scope.actor) not in locked:
+                    # A deletion or writer for A must not hold up unrelated B.
+                    results[pos] = READ_SINGLE
+                else:
+                    protected.append((pos, job))
+            if protected:
+                await self.database.transaction_guard(session)
+                await self._lock_run(session)
+                await self.database.transaction_guard(session)
+                rows = await self._read_protected_self_reports(
+                    session, (job for _, job in protected), candidates, snapshot,
+                )
+                for (pos, _), row in zip(protected, rows, strict=True):
+                    results[pos] = row
+        # The exit guard and commit must succeed before settling any private result.
+        for pos, job in live:
+            if isinstance(results[pos], dict):
+                results[pos] = self._self_read_interruption(job) or results[pos]
+        return results
+
+    async def _read_protected_self_reports(self, session, jobs, candidates, snapshot):
+        jobs = tuple(jobs)
+
+        async def read_group():
+            return [await self._read_self_report(session, job, candidates, snapshot) for job in jobs]
+
+        results = await self._read_at_savepoint(session, read_group)
+        if not isinstance(results, DBAPIError):
+            return results
+
+        # Do not reuse the failed attempt's rows or its pre-read Privacy proof.
+        await self.database.transaction_guard(session)
+        results = []
+        for job in jobs:
+            interruption = self._self_read_interruption(job)
+            if interruption is not None:
+                results.append(interruption)
+                continue
+            result = await self._read_at_savepoint(
+                session, lambda: self._read_self_report(session, job, candidates, snapshot),
+            )
+            results.append(result)
+        return results
+
+    @staticmethod
+    async def _read_at_savepoint(session, read):
+        statement_error = None
+        try:
+            # Locks belong to the surrounding guarded transaction.
+            async with session.begin_nested():
+                # Force the lazy SAVEPOINT outside the statement-error handler.
+                await session.connection()
+                try:
+                    return await read()
+                except DBAPIError as error:
+                    statement_error = error
+                    raise
+        except DBAPIError as error:
+            # A failure opening, rolling back or releasing the SAVEPOINT is
+            # fatal to the group, even when the connection is still present.
+            if error is not statement_error or error.connection_invalidated:
+                raise
+            return error
+
+    async def _read_self_report(self, session, job, candidates, snapshot):
+        interruption = self._self_read_interruption(job)
+        if interruption is not None:
+            return interruption
+        scope, query = job.scope, job.query
+        params = self._discovery_params(query.from_time, query.to_time, scope.subjects, MAX_SUBJECTS)
+        locked = [scope.actor] if scope.actor in candidates else []
+        args = self._snapshot_params(params, locked, scope.actor, scope.selected_subject, MAX_SUBJECTS)
+        try:
+            return await self._materialize_report(session, args, snapshot, job.grant, query, scope)
+        except (AuthorizationError, ReportLimitExceeded, ProjectionUnavailable) as error:
+            return error
 
     @asynccontextmanager
     async def _guarded_snapshot(
@@ -394,14 +601,8 @@ class PostgresProjectionActivityReport:
         """Hold the validated run and subject fences for a bounded projection read."""
         if self.database.transaction_guard is None:
             raise PrivacyUnavailable()
-        first_ms = (_ms(from_time)//BUCKET_MS)*BUCKET_MS
-        params = {"first_bucket": EPOCH+timedelta(milliseconds=first_ms), "from_time": from_time, "to_time": to_time,
-                  "scope_subjects": list(subjects or ()), "all_subjects": subjects is None,
-                  "limit": max_subjects+1}
-        discovery, snapshot = _DISCOVER, _SNAPSHOT
-        if self.day_projection_enabled:
-            from pymentor_analytics.adapters.postgres.activity_day_reports import _DAY_DISCOVER, _DAY_SNAPSHOT
-            discovery, snapshot = _DAY_DISCOVER, _DAY_SNAPSHOT
+        params = self._discovery_params(from_time, to_time, subjects, max_subjects)
+        discovery, snapshot = self._projection_statements()
         async with self.database.transaction() as session:
             if candidate_query is not None:
                 params.update(candidate_params)
@@ -411,14 +612,7 @@ class PostgresProjectionActivityReport:
                 if len(scope_subjects) > max_subjects:
                     raise ReportLimitExceeded()
                 params.update(scope_subjects=scope_subjects, all_subjects=False)
-            if self.day_projection_enabled:
-                from pymentor_analytics.adapters.postgres.activity_day_projection import has_activity_day_projection_schema
-                try:
-                    available = await has_activity_day_projection_schema(session)
-                except Exception:
-                    raise ProjectionUnavailable() from None
-                if not available:
-                    raise ProjectionUnavailable()
+            await self._check_day_schema(session)
             candidates=(await session.execute(text(discovery),params)).scalars().all()
             if len(candidates)>max_subjects:
                 raise ReportLimitExceeded()
@@ -436,19 +630,11 @@ class PostgresProjectionActivityReport:
                 raise AuthorizationError()
             # A current external deletion barrier must still hold AFTER any lock wait.
             await self.database.transaction_guard(session)
-            locked=(await session.execute(text("SELECT analytics.lock_activity_projection_run(:run_id)"),
-                                          {"run_id":self.expected_run_id})).scalar_one()
-            if locked is not True:
-                raise ProjectionUnavailable()
+            await self._lock_run(session)
             # The shared dataset-generation lock can itself wait; observe a fresh
             # privacy authority barrier again after it before materialization.
             await self.database.transaction_guard(session)
-            args={**params,"from_ms":_ms(from_time),"to_ms":_ms(to_time),"run_id":self.expected_run_id,
-                  "subject_limit":max_subjects+1,"max_subjects":max_subjects,
-                  "locked_subjects":sorted(candidates,key=lambda item:item.int),"actor":actor,
-                  "selected_subject":selected_subject,"bucket_limit":MAX_BUCKET_ROWS+1,"max_buckets":MAX_BUCKET_ROWS,
-                  "bucket_ms":BUCKET_MS,"max_full_items":MAX_FULL_ITEMS,"max_edge_items":MAX_EDGE_ITEMS,
-                  "max_full_bytes":MAX_FULL_BYTES,"max_edge_bytes":MAX_EDGE_BYTES}
+            args = self._snapshot_params(params, candidates, actor, selected_subject, max_subjects)
             yield session, args, snapshot
             if time.time()>=expires_at:
                 raise AuthorizationError()

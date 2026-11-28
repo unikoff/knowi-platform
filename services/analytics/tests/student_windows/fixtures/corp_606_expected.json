@@ -1,0 +1,147 @@
+{
+  "fixture_revision": "corp-606-a-r1",
+  "window_cases": [
+    {
+      "id": "quarter_boundary",
+      "rows": [
+        {
+          "student_id": "60600000-0000-4000-8000-000000000001",
+          "activity_date": "2026-11-27",
+          "slot_no": 61,
+          "stats": [{"tool_id": "theory", "course_id": "backend", "lesson_id": "71", "active_ms": 10000}]
+        },
+        {
+          "student_id": "60600000-0000-4000-8000-000000000001",
+          "activity_date": "2026-11-27",
+          "slot_no": 62,
+          "stats": [{"tool_id": "theory", "course_id": "backend", "lesson_id": "71", "active_ms": 20000}]
+        }
+      ]
+    },
+    {
+      "id": "moscow_midnight",
+      "rows": [
+        {
+          "student_id": "60600000-0000-4000-8000-000000000002",
+          "activity_date": "2026-11-27",
+          "slot_no": 96,
+          "stats": [{"tool_id": "practice", "course_id": "backend", "lesson_id": "72", "active_ms": 10000}]
+        },
+        {
+          "student_id": "60600000-0000-4000-8000-000000000002",
+          "activity_date": "2026-11-28",
+          "slot_no": 1,
+          "stats": [{"tool_id": "practice", "course_id": "backend", "lesson_id": "72", "active_ms": 20000}]
+        }
+      ]
+    },
+    {
+      "id": "all_course_overlap",
+      "rows": [
+        {
+          "student_id": "60600000-0000-4000-8000-000000000003",
+          "activity_date": "2026-11-27",
+          "slot_no": 41,
+          "stats": [
+            {"tool_id": "practice", "course_id": "backend_copy", "lesson_id": "81", "active_ms": 5000},
+            {"tool_id": "theory", "course_id": "backend", "lesson_id": "71", "active_ms": 15000}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "global_tool",
+      "rows": [
+        {
+          "student_id": "60600000-0000-4000-8000-000000000004",
+          "activity_date": "2026-11-27",
+          "slot_no": 41,
+          "stats": [{"tool_id": "catalog", "course_id": null, "lesson_id": null, "active_ms": 30000}]
+        }
+      ]
+    }
+  ],
+  "coverage_cases": [
+    {
+      "id": "missing_and_extra",
+      "denominator": 2,
+      "empty_population_pass": false,
+      "unseen_coverage": "known",
+      "rows": [
+        {
+          "label": "M",
+          "student_id": "60600000-0000-4000-8000-000000000011",
+          "activity_date": "2026-11-27",
+          "slot_no": 41,
+          "outcome": "missing_v3",
+          "expected_stats": [{"tool_id": "theory", "course_id": "backend", "lesson_id": "71", "active_ms": 10000}]
+        },
+        {
+          "label": "L",
+          "student_id": "60600000-0000-4000-8000-000000000011",
+          "activity_date": "2026-11-27",
+          "slot_no": 42,
+          "outcome": "extra_v3",
+          "expected_stats": []
+        }
+      ]
+    },
+    {
+      "id": "v3_only_after_reload",
+      "denominator": 1,
+      "empty_population_pass": false,
+      "unseen_coverage": "unknown",
+      "rows": [
+        {
+          "label": "U",
+          "student_id": "60600000-0000-4000-8000-000000000012",
+          "activity_date": "2026-11-27",
+          "slot_no": 41,
+          "outcome": "unknown",
+          "expected_stats": null,
+          "preserved_observed_stats": [{"tool_id": "practice", "course_id": "backend", "lesson_id": "72", "active_ms": 20000}],
+          "preserved_observed_revision": 1
+        }
+      ]
+    },
+    {
+      "id": "both_lost_with_manifest",
+      "denominator": 1,
+      "empty_population_pass": false,
+      "unseen_coverage": "known",
+      "rows": [
+        {
+          "label": "D",
+          "student_id": "60600000-0000-4000-8000-000000000013",
+          "activity_date": "2026-11-27",
+          "slot_no": 41,
+          "outcome": "both_lost",
+          "expected_stats": [{"tool_id": "theory", "course_id": "backend", "lesson_id": "71", "active_ms": 10000}]
+        }
+      ]
+    },
+    {
+      "id": "both_lost_without_manifest",
+      "denominator": 0,
+      "empty_population_pass": false,
+      "unseen_coverage": "unknown",
+      "rows": []
+    },
+    {
+      "id": "old_web_only",
+      "denominator": 1,
+      "empty_population_pass": false,
+      "unseen_coverage": "unknown",
+      "rows": [
+        {
+          "label": "O",
+          "student_id": "60600000-0000-4000-8000-000000000014",
+          "activity_date": "2026-11-27",
+          "slot_no": 41,
+          "outcome": "old_only",
+          "expected_stats": [{"tool_id": "theory", "course_id": "backend", "lesson_id": "71", "active_ms": 10000}]
+        }
+      ]
+    }
+  ]
+}

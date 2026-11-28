@@ -1,0 +1,338 @@
+{
+  "$defs": {
+    "ConfirmedWindow": {
+      "additionalProperties": false,
+      "description": "Last durable state. Repair may fence an epoch before a writer can resume.",
+      "properties": {
+        "client_final": {
+          "title": "Client Final",
+          "type": "boolean"
+        },
+        "payload_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Payload Hash"
+        },
+        "rebase_at": {
+          "anyOf": [
+            {
+              "description": "Timezone-aware RFC 3339 timestamp",
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Rebase At"
+        },
+        "revision": {
+          "maximum": 9223372036854775807,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "seq": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Seq"
+        },
+        "server_epoch": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "title": "Server Epoch",
+          "type": "integer"
+        },
+        "stats": {
+          "items": {
+            "$ref": "#/$defs/WindowStat"
+          },
+          "maxItems": 32,
+          "title": "Stats",
+          "type": "array"
+        },
+        "writer_generation": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Writer Generation"
+        },
+        "writer_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Writer Id"
+        }
+      },
+      "required": [
+        "writer_id",
+        "writer_generation",
+        "server_epoch",
+        "seq",
+        "payload_hash",
+        "revision",
+        "stats",
+        "client_final",
+        "rebase_at"
+      ],
+      "title": "ConfirmedWindow",
+      "type": "object"
+    },
+    "V2FactReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "format": "uuid",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "producer_namespace": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Producer Namespace",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "accepted",
+            "duplicate"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "producer_namespace",
+        "event_id",
+        "status"
+      ],
+      "title": "V2FactReceipt",
+      "type": "object"
+    },
+    "WindowKey": {
+      "additionalProperties": false,
+      "properties": {
+        "activity_date": {
+          "format": "date",
+          "title": "Activity Date",
+          "type": "string"
+        },
+        "slot_no": {
+          "maximum": 96,
+          "minimum": 1,
+          "title": "Slot No",
+          "type": "integer"
+        },
+        "student_id": {
+          "format": "uuid",
+          "title": "Student Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "activity_date",
+        "slot_no",
+        "student_id"
+      ],
+      "title": "WindowKey",
+      "type": "object"
+    },
+    "WindowStat": {
+      "additionalProperties": false,
+      "properties": {
+        "active_ms": {
+          "maximum": 900000,
+          "minimum": 1,
+          "title": "Active Ms",
+          "type": "integer"
+        },
+        "course_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Course Id"
+        },
+        "lesson_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Lesson Id"
+        },
+        "tool_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Tool Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool_id",
+        "course_id",
+        "lesson_id",
+        "active_ms"
+      ],
+      "title": "WindowStat",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "client_final_seq": {
+      "anyOf": [
+        {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Client Final Seq"
+    },
+    "coverage_reasons": {
+      "items": {
+        "enum": [
+          "absent_both",
+          "old_only",
+          "v3_only",
+          "v2_inflight",
+          "v2_coverage_unknown",
+          "client_final_missing",
+          "v2_unconfirmed",
+          "v3_unconfirmed",
+          "clock_untrusted",
+          "lease_lost",
+          "writer_conflict",
+          "catalog_conflict",
+          "storage_denied",
+          "queue_overflow",
+          "retry_exhausted",
+          "expired",
+          "account_change",
+          "unsupported",
+          "epoch_rebase_required",
+          "v3_disabled",
+          "source_generation_changed"
+        ],
+        "type": "string"
+      },
+      "title": "Coverage Reasons",
+      "type": "array"
+    },
+    "key": {
+      "$ref": "#/$defs/WindowKey"
+    },
+    "protocol_version": {
+      "const": 1,
+      "title": "Protocol Version",
+      "type": "integer"
+    },
+    "reconciled_generation": {
+      "anyOf": [
+        {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Reconciled Generation"
+    },
+    "source_generation": {
+      "maximum": 9007199254740991,
+      "minimum": 0,
+      "title": "Source Generation",
+      "type": "integer"
+    },
+    "state": {
+      "enum": [
+        "accumulating",
+        "pending_reconciliation",
+        "verified",
+        "repaired",
+        "incomplete_coverage"
+      ],
+      "title": "State",
+      "type": "string"
+    },
+    "v2_confirmed": {
+      "items": {
+        "$ref": "#/$defs/V2FactReceipt"
+      },
+      "title": "V2 Confirmed",
+      "type": "array"
+    },
+    "v3_confirmed": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ConfirmedWindow"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "protocol_version",
+    "key",
+    "client_final_seq",
+    "v3_confirmed",
+    "v2_confirmed",
+    "source_generation",
+    "reconciled_generation",
+    "state",
+    "coverage_reasons"
+  ],
+  "title": "WindowDiagnostics",
+  "type": "object"
+}

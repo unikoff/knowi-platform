@@ -47,17 +47,18 @@ export function Workspace({ user, courseId, onUserChange, onLogout, onRequireAut
   const course = useLearningCourse(user, courseId);
   const [calendarMonth, setCalendarMonth] = useState<CalendarMonth>(moscowCalendarMonth);
   const trackerFlag = import.meta.env.VITE_ANALYTICS_TRACKER_ENABLED === "true";
+  const windowsEnabled = import.meta.env.VITE_ANALYTICS_WINDOWS_ENABLED === "true";
   const toolsEnabled = import.meta.env.VITE_ANALYTICS_TOOLS_ENABLED === "true";
   const cutoverFlag = import.meta.env.VITE_ANALYTICS_LEGACY_VISIT_CUTOVER === "true";
   const analyticsBase = import.meta.env.BASE_URL.replace(/\/$/, "");
-  const publishedCatalog = usePublishedCatalog(trackerFlag && user?.role === "user", user ? userKey : null, courseId, analyticsBase, cutoverFlag ? "cutover" : "parallel");
+  const publishedCatalog = usePublishedCatalog((trackerFlag || windowsEnabled) && user?.role === "user", user ? userKey : null, courseId, analyticsBase, cutoverFlag ? "cutover" : "parallel");
   const sources = activitySources(trackerFlag, cutoverFlag, publishedCatalog?.version ?? null, user?.role ?? null);
   useRecordActivityVisit(sources.legacy ? user?.id ?? null : null);
   const canTrackLesson = useCallback((target: LessonTarget) => Boolean(publishedCatalog?.lessons.has(target.lessonId) && isTrackableLesson(target, course, user)),
     [publishedCatalog, course.tracksLoaded, course.tracksError, course.courses, course.materials, user?.id, user?.has_active_subscription]);
-  const analytics = useAnalyticsTrackerIdentity({ enabled: sources.tracker || toolsEnabled, toolsEnabled, identityKey: user ? userKey : null, role: user?.role ?? null,
+  const analytics = useAnalyticsTrackerIdentity({ enabled: sources.tracker || toolsEnabled, windowsEnabled, toolsEnabled, identityKey: user ? userKey : null, role: user?.role ?? null,
     subjectRef: user?.account_ref ?? null,
-    courseId, catalogVersion: sources.tracker ? publishedCatalog?.version ?? null : null, canTrackLesson, baseUrl: analyticsBase });
+    courseId, catalogVersion: sources.tracker || windowsEnabled ? publishedCatalog?.version ?? null : null, canTrackLesson, baseUrl: analyticsBase });
   const [compact, setCompact] = useState(() => window.matchMedia("(max-width: 900px)").matches);
   const [activePanel, setActivePanel] = useState<ActiveWorkspacePanel>();
   const [accountTool, setAccountTool] = useState<ToolId>("account-statistics");

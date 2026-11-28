@@ -138,6 +138,57 @@ class RenderTests(unittest.TestCase):
             with self.subTest(invalid=invalid):
                 self.assertNotEqual(render({**base, "browserCollection.enabled": "true", **invalid}).returncode, 0)
 
+    def test_student_window_flags_and_private_route(self):
+        base = {**PRODUCTION, "migration.revision": "a015", "roles.privacy.enabled": "true",
+                "catalog.enabled": "true", "catalog.namespace": "core", "browserCollection.enabled": "true",
+                "coreTransfer.namespacesConfigMapName": "catalog-map", "activityProjection.enabled": "true",
+                "activityProjection.runId": UUID, "activityDay.enabled": "true", "activityCourse.enabled": "true"}
+        flags = {"studentWindows.intakeEnabled": "true", "studentWindows.cohort": UUID,
+                 "studentWindows.observationStart": "2026-11-27T07:00:00Z"}
+        off = render(base)
+        self.assertEqual(off.returncode, 0, off.stderr)
+        self.assertIn('ANALYTICS_WINDOWS_INTAKE_ENABLED: "0"', off.stdout)
+        self.assertNotIn("location = /api/analytics/windows/batch", off.stdout)
+        on = render({**base, **flags})
+        self.assertEqual(on.returncode, 0, on.stderr)
+        self.assertIn('ANALYTICS_WINDOWS_INTAKE_ENABLED: "1"', on.stdout)
+        self.assertIn('ANALYTICS_WINDOWS_RECONCILIATION_ENABLED: "0"', on.stdout)
+        self.assertIn("location = /api/analytics/windows/batch { client_max_body_size 64k;", on.stdout)
+        self.assertNotIn('Path(`/api/analytics/windows/batch`)', on.stdout)
+        worker = render({**base, **flags, "studentWindows.reconciliationEnabled": "true",
+                         "studentWindows.proofSecretName": "synthetic-window-proof"})
+        self.assertEqual(worker.returncode, 0, worker.stderr)
+        self.assertEqual(worker.stdout.count("ANALYTICS_WINDOWS_RECONCILIATION_PROOF_FILE"), 1)
+        self.assertIn('secretName: "synthetic-window-proof"', worker.stdout)
+        self.assertIn('ANALYTICS_WINDOWS_RECONCILIATION_ENABLED: "1"', worker.stdout)
+        for invalid in ({"migration.revision": "a014"}, {"roles.privacy.enabled": "false"},
+                        {"studentWindows.cohort": "invalid"}, {"studentWindows.observationStart": "2026-11-27"},
+                        {"roles.collector.replicas": "2"}):
+            with self.subTest(invalid=invalid):
+                self.assertNotEqual(render({**base, **flags, **invalid}).returncode, 0)
+
+    def test_all_eligible_requires_a016_and_no_cohort_for_activation(self):
+        base = {**PRODUCTION, "migration.revision": "a016", "roles.privacy.enabled": "true",
+                "catalog.enabled": "true", "catalog.namespace": "core", "browserCollection.enabled": "true",
+                "coreTransfer.namespacesConfigMapName": "catalog-map", "activityProjection.enabled": "true",
+                "activityProjection.runId": UUID, "activityDay.enabled": "true", "activityCourse.enabled": "true",
+                "studentWindows.allEligible": "true", "studentWindows.observationStart": "2026-11-27T07:00:00Z"}
+        staged = render({**base, "migration.revision": "a015"})
+        self.assertEqual(staged.returncode, 0, staged.stderr)
+        self.assertIn('ANALYTICS_WINDOWS_ALL_ELIGIBLE: "1"', staged.stdout)
+        self.assertIn('ANALYTICS_WINDOWS_INTAKE_ENABLED: "0"', staged.stdout)
+        self.assertNotIn("location = /api/analytics/windows/batch", staged.stdout)
+        flags = {"studentWindows.intakeEnabled": "true", "studentWindows.reconciliationEnabled": "true"}
+        active = render({**base, **flags})
+        self.assertEqual(active.returncode, 0, active.stderr)
+        self.assertIn('ANALYTICS_WINDOWS_COHORT: ""', active.stdout)
+        self.assertIn('ANALYTICS_WINDOWS_ALL_ELIGIBLE: "1"', active.stdout)
+        self.assertIn("location = /api/analytics/windows/batch", active.stdout)
+        self.assertNotIn('Path(`/api/analytics/windows/batch`)', active.stdout)
+        for invalid in ({"studentWindows.cohort": UUID}, {"migration.revision": "a015"},
+                        {"studentWindows.observationStart": "2026-11-27"}, {"roles.privacy.enabled": "false"}):
+            self.assertNotEqual(render({**base, **flags, **invalid}).returncode, 0)
+
     def test_defaults_keep_features_off(self):
         result = render()
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -162,7 +213,7 @@ class RenderTests(unittest.TestCase):
 
     def test_invalid_configurations_fail_closed(self):
         cases = [
-            {**BASE, "migration.revision": "a015"},
+            {**BASE, "migration.revision": "a017"},
             {**BASE, "migration.revision": "a009"},
             {**BASE, "migration.revision": "a014", "activityProjection.runId": "bad"},
             {**BASE, "migration.revision": "a014", "trustManifest.configMapName": ""},
@@ -170,7 +221,7 @@ class RenderTests(unittest.TestCase):
             {**BASE, "migration.revision": "a014", "activityDay.enabled": "true"},
             {**BASE, "migration.revision": "a010", "activityDay.enabled": "true", "roles.privacy.enabled": "true"},
             {"migration.enabled": "true", "migration.revision": "a999"},
-            {"migration.revision": "a015"},
+            {"migration.revision": "a017"},
             {**BASE, "migration.revision": "a011", "activityDay.enabled": "true", "roles.privacy.enabled": "true", "activityCourse.enabled": "true"},
             {**BASE, "migration.revision": "a014", "activityCourse.enabled": "true"},
             {**BASE, "migration.revision": "a012", "activityDay.enabled": "true", "roles.privacy.enabled": "true", "activityCourse.enabled": "true", "activityBoundaryCredit.enabled": "true"},

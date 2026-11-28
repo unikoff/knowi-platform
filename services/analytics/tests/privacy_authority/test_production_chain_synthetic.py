@@ -17,12 +17,14 @@ import subprocess
 import sys
 import threading
 import time
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
 import uvicorn
 from psycopg import sql
 from sqlalchemy import text
+from sqlalchemy.engine import Engine
 from fastapi import FastAPI
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -150,7 +152,21 @@ def tls_server(app, ca, cert, key):
             assert not thread.is_alive()
 
 
-def test_protected_dual_delivery_mtls_without_database(owned_path, monkeypatch):
+@pytest.fixture
+def synthetic_core_deletion_source(monkeypatch):
+    engine = Mock(spec=Engine)
+    engine.connect.side_effect = AssertionError('synthetic Core deletion source must not connect to a database')
+    monkeypatch.setattr(local_collection, 'create_engine', lambda *args, **kwargs: engine)
+
+    def configure(app, instance, key):
+        app.state.analytics_local_collection = local_collection.LocalCollection(
+            str(instance), 'fixture', 'postgresql+psycopg://fixture@127.0.0.1:1/fixture', key,
+        )
+
+    return configure
+
+
+def test_protected_dual_delivery_mtls_without_database(owned_path, monkeypatch, synthetic_core_deletion_source):
     """Network-only evidence; this test does not establish local purge."""
     ca, (cert, key), (client_cert, client_key) = _certs(owned_path)
     signer, producer, command = (Ed25519PrivateKey.generate() for _ in range(3))
@@ -166,7 +182,7 @@ def test_protected_dual_delivery_mtls_without_database(owned_path, monkeypatch):
     monkeypatch.setattr(local_collection, 'read_snapshot', lambda _: (local_collection._stamp(datetime.now(timezone.utc)),
                         [{'subject_ref': str(target), 'deleted_at': stamp}]))
     source_app = FastAPI()
-    source_app.state.analytics_local_collection = local_collection.LocalCollection(str(instance), 'fixture', '', source_key)
+    synthetic_core_deletion_source(source_app, instance, source_key)
     source_app.include_router(local_collection.router, prefix='/api')
     with tls_server(authority_app, ca, cert, key) as authority_url, tls_server(source_app, ca, cert, key) as source_url:
         ac = AuthorityConfig.from_json(json.dumps({'url': authority_url, 'authority_id': j.authority_id,
@@ -208,7 +224,7 @@ def test_protected_dual_delivery_mtls_without_database(owned_path, monkeypatch):
         asyncio.run(scenario())
 
 
-def test_protected_dual_delivery_and_purge(owned_path, monkeypatch):
+def test_protected_dual_delivery_and_purge(owned_path, monkeypatch, synthetic_core_deletion_source):
     if os.environ.get('ANALYTICS_RUN_SYNTHETIC_PRIVACY_INTEGRATION') != '1':
         pytest.skip('explicit synthetic integration opt-in required')
     data = config(ROOT / '.local/postgres-connection.json')
@@ -233,7 +249,7 @@ def test_protected_dual_delivery_and_purge(owned_path, monkeypatch):
         monkeypatch.setattr(local_collection, 'read_snapshot', lambda _: (local_collection._stamp(datetime.now(timezone.utc)),
                             [{'subject_ref': str(target), 'deleted_at': stamp}]))
         source_app = FastAPI()
-        source_app.state.analytics_local_collection = local_collection.LocalCollection(str(instance), 'fixture', '', source_key)
+        synthetic_core_deletion_source(source_app, instance, source_key)
         source_app.include_router(local_collection.router, prefix='/api')
         with tls_server(authority_app, ca, cert, key) as authority_url, tls_server(source_app, ca, cert, key) as source_url:
             ac = AuthorityConfig.from_json(json.dumps({'url': authority_url, 'authority_id': j.authority_id,

@@ -14,18 +14,21 @@ from pymentor_analytics.contracts.locking_v1 import event_dedup_lock_key, subjec
 from pymentor_analytics.contracts.metadata_v1 import validate_new_record
 from pymentor_analytics.contracts.privacy_v1 import PrivacyUnavailable
 from pymentor_analytics.contracts.v2 import AcceptedEvent, canonical_hash
+from pymentor_analytics.contracts.windows_v1 import WindowKey, WindowV2ChangedPort, split_interval
 from pymentor_analytics.contracts.work_v1 import SYNTHETIC_SUBSCRIPTIONS
 from pymentor_analytics.modules.collector.ports import IntakeForbidden, IntakeUnavailable
 
 
 class PostgresIntake:
-    def __init__(self, database: Database, *, subscriptions=SYNTHETIC_SUBSCRIPTIONS):
+    def __init__(self, database: Database, *, subscriptions=SYNTHETIC_SUBSCRIPTIONS,
+                 windows_changed: WindowV2ChangedPort | None = None):
         if (not isinstance(subscriptions, tuple) or len(set(subscriptions)) != len(subscriptions)
                 or not set(subscriptions) <= set(SYNTHETIC_SUBSCRIPTIONS)):
             raise ValueError("invalid intake subscriptions")
         self.database = database
         self.subscriptions = subscriptions
         self.backpressure = PostgresBackpressure()
+        self.windows_changed = windows_changed
 
     async def _after_fact(self):
         """Internal test seam: subclasses may inject faults inside the transaction."""
@@ -82,6 +85,14 @@ class PostgresIntake:
                             # Any race rolls back quota and is reconciled by the same ID.
                             if await ActivityStorage(session).insert(record) != "inserted":
                                 raise IntakeUnavailable("concurrent writer; reconcile using the same identity")
+                            if self.windows_changed is not None:
+                                event = record.event
+                                keys = {WindowKey(student_id=record.subject_ref, **coordinate.model_dump())
+                                        for coordinate, _ in split_interval(event.started_at, event.ended_at)}
+                                if keys:
+                                    await self.windows_changed.mark_v2_changed(
+                                        session, keys, received_at=record.received_at,
+                                    )
                             await self._after_fact()
                         for subscription in subscriptions:
                             await session.execute(text("""

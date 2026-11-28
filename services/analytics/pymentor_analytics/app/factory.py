@@ -1,6 +1,8 @@
 """Isolated health apps; no runtime database work or processing at import."""
 from contextlib import asynccontextmanager
 import asyncio
+import logging
+from uuid import UUID
 
 from fastapi import FastAPI, Response, status
 from sqlalchemy import text
@@ -19,7 +21,31 @@ from pymentor_analytics.modules.analytics.api.activity_router import router as a
 from pymentor_analytics.contracts.v2 import WireBatch
 
 
-def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = None, *, intake=None, catalog=None, fence=None, processor_store=None, diagnostics=None, activity_reports=None) -> FastAPI:
+logger = logging.getLogger(__name__)
+
+
+async def configured_student_window_store(database, settings):
+    from pymentor_analytics.adapters.postgres.student_windows import PostgresStudentWindows, has_student_windows_schema
+
+    if database.transaction_guard is None:
+        return None
+    # Read only schema metadata while the Privacy gate is closed at startup.
+    try:
+        async with asyncio.timeout(settings.db_timeout_seconds):
+            async with database.sessions() as session:
+                schema_ready = await has_student_windows_schema(session)
+    except Exception:
+        return None
+    if schema_ready is not True:
+        return None
+    return PostgresStudentWindows(
+        database, cohort=map(UUID, settings.windows_cohort),
+        observation_start=settings.windows_t0, all_eligible=settings.windows_all_eligible,
+    )
+
+
+def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = None, *, intake=None, catalog=None, fence=None, processor_store=None, diagnostics=None, activity_reports=None,
+               windows_store=None, windows_readiness=None) -> FastAPI:
     if role not in {"collector", "processor", "query", "privacy"}:
         raise ValueError("unknown HTTP role")
     if role == "processor" and (settings.pool_size > 2 or settings.pool_overflow != 0):
@@ -29,6 +55,9 @@ def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = 
             raise ValueError("production browser collection requires configured collector storage and guards")
     if settings.real_collection and role == "collector" and intake is not None:
         raise ValueError("real collection requires its configured intake")
+    if any(port is not None for port in (windows_store, windows_readiness)) and (
+            role != "collector" or settings.real_collection or not settings.windows_intake_enabled):
+        raise ValueError("window ports can only be injected for a synthetic enabled Collector")
     if diagnostics is not None and role != "processor":
         raise ValueError("diagnostics belong to processor")
     if activity_reports is not None and role != "query":
@@ -63,6 +92,7 @@ def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = 
         deletion_relay = None
         privacy_runtime = None
         query_readiness = None
+        windows_runtime = None
         try:
             if role == "collector" and settings.fixture_catalog_json is not None:
                 if catalog is not None:
@@ -70,8 +100,14 @@ def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = 
                 from pymentor_analytics.adapters.catalog.fixture import FixtureCatalog
                 app.state.catalog = FixtureCatalog(settings.fixture_catalog_json.get_secret_value())
             database = Database(settings)
+            if role == "query" and settings.privacy_authority_json is not None:
+                database.transaction_admission = asyncio.Semaphore(settings.pool_size + settings.pool_overflow)
             app.state.database = database
             app.state.diagnostics = diagnostics
+            if role == "collector" and settings.windows_intake_enabled:
+                from pymentor_analytics.modules.collector.api.windows_router import WindowBudget
+                app.state.windows_store = windows_store
+                app.state.windows_budget = WindowBudget(min(settings.concurrency, max(1, settings.pool_size - 1), 4))
             if role == "processor" and diagnostics is None:
                 from pymentor_analytics.adapters.postgres.quality import PostgresDiagnostics
                 app.state.diagnostics = PostgresDiagnostics(database)
@@ -304,12 +340,14 @@ def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = 
                         except Exception:
                             return False
                 app.state.activity_projection_probe = ActivityProjectionReadiness()
-                previous_probe = app.state.probe
-                class ProjectionCombinedReadiness:
-                    async def is_ready(self):
-                        return (await previous_probe.is_ready() is True
-                                and await app.state.activity_projection_probe.is_ready() is True)
-                app.state.probe = ProjectionCombinedReadiness()
+                # Day readiness includes the same base schema and run lock checks.
+                if role != "query" or not settings.activity_day_query_enabled:
+                    previous_probe = app.state.probe
+                    class ProjectionCombinedReadiness:
+                        async def is_ready(self):
+                            return (await previous_probe.is_ready() is True
+                                    and await app.state.activity_projection_probe.is_ready() is True)
+                    app.state.probe = ProjectionCombinedReadiness()
                 if role == "processor" and settings.processor_bucket_worker_enabled:
                     from pymentor_analytics.adapters.postgres.activity_projection import PostgresActivityProjection
                     from .activity_projection_runtime import ActivityProjectionRuntime
@@ -328,11 +366,13 @@ def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = 
                 from pymentor_analytics.adapters.postgres.activity_day_projection import has_activity_day_projection_schema
                 class ActivityDayReadiness:
                     async def is_ready(self):
-                        if role != "processor" and await privacy_runtime.is_ready() is not True:
-                            return False
                         try:
-                            async with database.transaction() as session:
-                                if role == "processor":
+                            transaction = (database.query_readiness_transaction if role == "query"
+                                           else database.transaction)
+                            async with transaction() as session:
+                                if role == "query":
+                                    await privacy_runtime.check_readiness_in_transaction(session)
+                                else:
                                     await session.execute(text("""SELECT
                                         (SELECT 1 FROM analytics.activity_facts LIMIT 0),
                                         (SELECT 1 FROM analytics.subject_fences LIMIT 0)"""))
@@ -384,10 +424,12 @@ def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = 
                         except Exception:
                             return False
                 app.state.activity_day_probe = ActivityDayReadiness()
-                if (role == "query" or (role == "processor"
+                prior_day_probe = app.state.probe
+                if role == "query" and prior_day_probe is privacy_runtime:
+                    app.state.probe = app.state.activity_day_probe
+                elif (role == "query" or (role == "processor"
                         and not settings.processor_bucket_worker_enabled
                         and not settings.processor_generic_worker_enabled)):
-                    prior_day_probe = app.state.probe
                     class DayCombinedReadiness:
                         async def is_ready(self):
                             return (await prior_day_probe.is_ready() is True
@@ -432,7 +474,16 @@ def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = 
                 processor_runtime = ProcessorRuntime(store, app.state.probe, settings)
                 app.state.processor_runtime = processor_runtime
                 processor_runtime.start()
-            if local_source is not None and role in ({"collector", "processor", "query"} if settings.issuer_mode == "production" else {"collector", "query"}):
+            # A successful catalog or projection probe already checks the local
+            # deletion source inside a guarded transaction.
+            source_checked_by_role_probe = (
+                (role == "collector" and catalog_options is not None)
+                or (role == "query" and activity_options is not None)
+            )
+            local_readiness_roles = (
+                {"collector", "processor", "query"} if settings.issuer_mode == "production" else {"collector", "query"}
+            )
+            if local_source is not None and role in local_readiness_roles and not source_checked_by_role_probe:
                 previous_local_probe = app.state.probe
                 class LocalDeletionReadiness:
                     async def is_ready(self):
@@ -448,11 +499,49 @@ def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = 
             if role == "query" and activity_options is not None:
                 query_readiness = SingleflightReadiness(app.state.probe, settings.db_timeout_seconds)
                 app.state.probe = query_readiness
+            if role == "collector" and settings.windows_intake_enabled:
+                app.state.windows_probe = windows_readiness if windows_readiness is not None else app.state.probe
+            if (role == "collector" and (settings.windows_cohort or settings.windows_all_eligible)
+                    and settings.windows_t0 is not None and windows_store is None):
+                window_store = await configured_student_window_store(database, settings)
+                app.state.windows_store = window_store
+                if window_store is not None and intake is None:
+                    # Retain v2 observation through intake off/on for the same audience.
+                    options = {"subscriptions": ()} if settings.real_collection else {}
+                    app.state.intake = PostgresIntake(database, windows_changed=window_store, **options)
+            if role == "processor" and settings.windows_reconciliation_enabled:
+                window_store = await configured_student_window_store(database, settings)
+                if window_store is None:
+                    logger.warning("Student window reconciliation requires expanded schema and configured Privacy")
+                else:
+                    from .student_windows_runtime import StudentWindowsReconciliationRuntime
+                    from pymentor_analytics.modules.analytics.activity.student_windows_worker import WindowReconcileWorker
+                    proof = {}
+                    try:
+                        if settings.windows_reconciliation_proof_file is not None:
+                            from pymentor_analytics.modules.analytics.activity.student_windows_evidence import load_trusted_evidence
+                            proof = load_trusted_evidence(
+                                settings.windows_reconciliation_proof_file,
+                                cohort=None if settings.windows_all_eligible else tuple(map(UUID, settings.windows_cohort)),
+                                cohort_t0=settings.windows_t0,
+                            )
+                    except (OSError, ValueError):
+                        logger.warning("Student window reconciliation proof configuration is unavailable")
+                    else:
+                        worker = WindowReconcileWorker(window_store, cohort_t0=settings.windows_t0)
+                        windows_runtime = StudentWindowsReconciliationRuntime(
+                            worker=worker, readiness=app.state.probe, enabled=True, trusted_evidence=proof)
+                        app.state.windows_runtime = windows_runtime
+                        windows_runtime.start()
             yield
         finally:
             try:
+                if windows_runtime is not None:
+                    await windows_runtime.stop()
                 if query_readiness is not None:
                     await query_readiness.close()
+                if role == "query" and activity_options is not None and hasattr(app.state, "activity_reports"):
+                    await app.state.activity_reports.close_self_reports()
                 if deletion_relay is not None:
                     await deletion_relay.stop()
                 if hasattr(app.state, "core_deletion_relay"):
@@ -512,6 +601,9 @@ def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = 
                     del app.state.diagnostics
                 if hasattr(app.state, "activity_reports"):
                     del app.state.activity_reports
+                for attribute in ("windows_probe", "windows_budget", "windows_store", "windows_runtime"):
+                    if hasattr(app.state, attribute):
+                        delattr(app.state, attribute)
 
     app = FastAPI(title=f"Analytics {role}", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     class StateProxy:
@@ -532,6 +624,9 @@ def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = 
         app.add_middleware(IntakeTelemetryMiddleware, telemetry=telemetry)
         if settings.issuer_mode != "production" or settings.real_collection:
             app.include_router(collector_router)
+        if settings.windows_intake_enabled:
+            from pymentor_analytics.modules.collector.api.windows_router import router as windows_router
+            app.include_router(windows_router)
         if core_options is not None:
             from pymentor_analytics.modules.analytics.core_transfer.api.router import create_router
             app.include_router(create_router(service=StateProxy("core_transfer_service"),
@@ -551,7 +646,11 @@ def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = 
             schema = default_openapi()
             components = schema.setdefault("components", {})
             if role == "collector":
-                components.setdefault("schemas", {})["WireBatch"] = WireBatch.model_json_schema()
+                definitions = components.setdefault("schemas", {})
+                definitions["WireBatch"] = WireBatch.model_json_schema()
+                if settings.windows_intake_enabled:
+                    from pymentor_analytics.contracts.windows_v1 import WindowWireBatch
+                    definitions["WindowWireBatch"] = WindowWireBatch.model_json_schema()
             components.setdefault("securitySchemes", {})["AnalyticsGrant"] = {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
             return schema
         app.openapi = collector_openapi
@@ -598,6 +697,13 @@ def create_app(role: str, settings: Settings, readiness: ReadinessPort | None = 
             except (ValueError, TypeError, AttributeError):
                 output = telemetry.render(role, ready_value, None, pool)
             if role == "processor":
+                window_runtime = getattr(app.state, "windows_runtime", None)
+                output += f"analytics_windows_reconciliation_enabled {int(window_runtime is not None)}\n"
+                if window_runtime is not None:
+                    window_metrics = window_runtime.metrics
+                    for name in ("keys", "coverage_unknown", "mismatch_before", "mismatch_after", "repairs", "failures"):
+                        output += f"analytics_windows_reconciliation_{name}_total {getattr(window_metrics, name)}\n"
+                    output += f"analytics_windows_reconciliation_pending_age_seconds {window_metrics.pending_age_ms / 1000:.3f}\n"
                 for lane, attribute in (("bucket", "activity_projection_runtime"), ("day", "activity_day_runtime")):
                     worker = getattr(app.state, attribute, None)
                     if lane == "bucket" and worker is not None:

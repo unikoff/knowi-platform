@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from pydantic import TypeAdapter
 
-from pymentor_analytics.contracts import v2
+from pymentor_analytics.contracts import v2, windows_v1
 from pymentor_analytics.app.config import Settings
 from pymentor_analytics.app.factory import create_app
 
@@ -23,6 +23,13 @@ MODELS = {
     "report-request-v1": v2.ReportRequest,
     "report-response-v1": v2.ReportResponse,
     "error-v1": v2.ErrorResponse,
+    "window-batch-v1": windows_v1.WindowBatch,
+    "window-batch-ack-v1": windows_v1.WindowBatchAck,
+    "window-grant-request-v1": windows_v1.WindowGrantRequest,
+    "window-grant-claims-v1": windows_v1.WindowGrantClaims,
+    "window-grant-response-v1": windows_v1.WindowGrantResponse,
+    "window-error-v1": windows_v1.WindowError,
+    "window-diagnostics-v1": windows_v1.WindowDiagnostics,
 }
 
 
@@ -79,7 +86,7 @@ def main():
         if check:
             if not path.exists() or path.read_text(encoding="utf-8") != content:
                 bad.append(str(path))
-        else:
+        elif not path.exists() or path.read_text(encoding="utf-8") != content:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content, encoding="utf-8", newline="\n")
     if bad:

@@ -47,6 +47,14 @@ catalog:
   namespace: ""
 browserCollection:
   enabled: false # Prepared only; enable after restore quarantine verification.
+studentWindows:
+  intakeEnabled: false
+  reconciliationEnabled: false
+  allEligible: false
+  cohort: ""
+  observationStart: ""
+  proofSecretName: ""
+  proofSecretKey: coverage.json
 activityProjection:
   enabled: false
   runId: "" # Stable per dataset generation, shared by Processor and Query.

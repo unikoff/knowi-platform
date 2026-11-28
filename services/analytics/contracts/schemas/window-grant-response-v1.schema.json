@@ -1,0 +1,55 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "expires_at": {
+      "description": "Timezone-aware RFC 3339 timestamp",
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "grant": {
+      "maxLength": 16384,
+      "minLength": 1,
+      "title": "Grant",
+      "type": "string"
+    },
+    "protocol_version": {
+      "const": 1,
+      "title": "Protocol Version",
+      "type": "integer"
+    },
+    "server_time": {
+      "description": "Timezone-aware RFC 3339 timestamp",
+      "format": "date-time",
+      "title": "Server Time",
+      "type": "string"
+    },
+    "subject_ref": {
+      "format": "uuid",
+      "title": "Subject Ref",
+      "type": "string"
+    },
+    "writer_generation": {
+      "maximum": 9007199254740991,
+      "minimum": 1,
+      "title": "Writer Generation",
+      "type": "integer"
+    },
+    "writer_id": {
+      "format": "uuid",
+      "title": "Writer Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "writer_id",
+    "writer_generation",
+    "protocol_version",
+    "grant",
+    "subject_ref",
+    "server_time",
+    "expires_at"
+  ],
+  "title": "WindowGrantResponse",
+  "type": "object"
+}

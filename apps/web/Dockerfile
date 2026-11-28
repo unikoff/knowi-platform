@@ -8,6 +8,7 @@ RUN npm audit --audit-level=critical
 COPY apps/web/ ./
 COPY courses/ /app/courses/
 ARG VITE_ANALYTICS_TRACKER_ENABLED=false
+ARG VITE_ANALYTICS_WINDOWS_ENABLED=false
 ARG VITE_ANALYTICS_REPORTS_ENABLED=false
 ARG VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED=false
 RUN node tools/course-registry.mjs \

@@ -1,0 +1,307 @@
+{
+  "$defs": {
+    "ConfirmedWindow": {
+      "additionalProperties": false,
+      "description": "Last durable state. Repair may fence an epoch before a writer can resume.",
+      "properties": {
+        "client_final": {
+          "title": "Client Final",
+          "type": "boolean"
+        },
+        "payload_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Payload Hash"
+        },
+        "rebase_at": {
+          "anyOf": [
+            {
+              "description": "Timezone-aware RFC 3339 timestamp",
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Rebase At"
+        },
+        "revision": {
+          "maximum": 9223372036854775807,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "seq": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Seq"
+        },
+        "server_epoch": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "title": "Server Epoch",
+          "type": "integer"
+        },
+        "stats": {
+          "items": {
+            "$ref": "#/$defs/WindowStat"
+          },
+          "maxItems": 32,
+          "title": "Stats",
+          "type": "array"
+        },
+        "writer_generation": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Writer Generation"
+        },
+        "writer_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Writer Id"
+        }
+      },
+      "required": [
+        "writer_id",
+        "writer_generation",
+        "server_epoch",
+        "seq",
+        "payload_hash",
+        "revision",
+        "stats",
+        "client_final",
+        "rebase_at"
+      ],
+      "title": "ConfirmedWindow",
+      "type": "object"
+    },
+    "WindowItemAck": {
+      "additionalProperties": false,
+      "properties": {
+        "activity_date": {
+          "format": "date",
+          "title": "Activity Date",
+          "type": "string"
+        },
+        "code": {
+          "enum": [
+            "committed",
+            "same_payload",
+            "stale_seq",
+            "stale_epoch",
+            "finalized",
+            "payload_conflict",
+            "non_monotonic",
+            "ownership_conflict",
+            "invalid_snapshot",
+            "subject_forbidden",
+            "writer_forbidden",
+            "course_forbidden",
+            "tool_forbidden",
+            "invalid_active_ms",
+            "window_budget_exceeded",
+            "catalog_conflict",
+            "too_large",
+            "future_clock",
+            "too_late",
+            "privacy_forbidden"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "confirmed": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConfirmedWindow"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "index": {
+          "exclusiveMaximum": 16,
+          "minimum": 0,
+          "title": "Index",
+          "type": "integer"
+        },
+        "payload_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Payload Hash"
+        },
+        "seq": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "server_epoch": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "title": "Server Epoch",
+          "type": "integer"
+        },
+        "slot_no": {
+          "maximum": 96,
+          "minimum": 1,
+          "title": "Slot No",
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "committed",
+            "duplicate",
+            "stale",
+            "conflict",
+            "pending",
+            "rejected"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "writer_generation": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "title": "Writer Generation",
+          "type": "integer"
+        },
+        "writer_id": {
+          "format": "uuid",
+          "title": "Writer Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "writer_id",
+        "writer_generation",
+        "activity_date",
+        "slot_no",
+        "server_epoch",
+        "seq",
+        "index",
+        "payload_hash",
+        "status",
+        "code",
+        "confirmed"
+      ],
+      "title": "WindowItemAck",
+      "type": "object"
+    },
+    "WindowStat": {
+      "additionalProperties": false,
+      "properties": {
+        "active_ms": {
+          "maximum": 900000,
+          "minimum": 1,
+          "title": "Active Ms",
+          "type": "integer"
+        },
+        "course_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Course Id"
+        },
+        "lesson_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Lesson Id"
+        },
+        "tool_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Tool Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool_id",
+        "course_id",
+        "lesson_id",
+        "active_ms"
+      ],
+      "title": "WindowStat",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "items": {
+      "items": {
+        "$ref": "#/$defs/WindowItemAck"
+      },
+      "maxItems": 16,
+      "minItems": 1,
+      "title": "Items",
+      "type": "array"
+    },
+    "protocol_version": {
+      "const": 1,
+      "title": "Protocol Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "protocol_version",
+    "items"
+  ],
+  "title": "WindowBatchAck",
+  "type": "object"
+}

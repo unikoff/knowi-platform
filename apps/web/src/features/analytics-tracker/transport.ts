@@ -41,6 +41,12 @@ export class ServerClock implements Clock {
     const now = this.source.now(), elapsed = now.mono - this.anchor.mono;
     return elapsed >= 0 && elapsed < this.anchor.validFor && Math.abs((now.wall - this.anchor.localWall) - elapsed) <= 1000;
   }
+  projectSample(sample: Sample): number | null {
+    if (!this.anchor || !this.isValid()) return null;
+    const now = this.source.now(), elapsed = now.mono - sample.mono;
+    if (elapsed < 0 || Math.abs(now.wall - sample.wall - elapsed) > 1000) return null;
+    return Math.floor(this.anchor.wall + sample.mono - this.anchor.mono);
+  }
   projectEventTime(event: BrowserEvent, endMono: number): BrowserEvent | null {
     if (!this.anchor || !this.isValid()) return null;
     const localEnd = Date.parse(event.ended_at), sample = this.source.now();

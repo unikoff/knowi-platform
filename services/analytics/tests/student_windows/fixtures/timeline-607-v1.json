@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "timezone": "Europe/Moscow",
+  "source": "CORP-604.A/B independent timing and CORP-607 authorized lesson identity",
+  "scenarios": {
+    "five": [
+      {
+        "local_date_offset": 0,
+        "slot_no": 41,
+        "stats": [
+          {
+            "tool_id": "theory",
+            "course_id": "backend",
+            "lesson_id": "lesson-64c9d597a164bbdb4f145d5a",
+            "active_ms": 90000
+          },
+          {
+            "tool_id": "practice",
+            "course_id": "backend",
+            "lesson_id": "lesson-64c9d597a164bbdb4f145d5a",
+            "active_ms": 120000
+          },
+          {
+            "tool_id": "catalog",
+            "course_id": null,
+            "lesson_id": null,
+            "active_ms": 30000
+          }
+        ]
+      }
+    ],
+    "quarter": [
+      {
+        "local_date_offset": 0,
+        "slot_no": 61,
+        "stats": [
+          {
+            "tool_id": "theory",
+            "course_id": "backend",
+            "lesson_id": "lesson-64c9d597a164bbdb4f145d5a",
+            "active_ms": 10000
+          }
+        ]
+      },
+      {
+        "local_date_offset": 0,
+        "slot_no": 62,
+        "stats": [
+          {
+            "tool_id": "theory",
+            "course_id": "backend",
+            "lesson_id": "lesson-64c9d597a164bbdb4f145d5a",
+            "active_ms": 20000
+          }
+        ]
+      }
+    ],
+    "midnight": [
+      {
+        "local_date_offset": 0,
+        "slot_no": 96,
+        "stats": [
+          {
+            "tool_id": "theory",
+            "course_id": "backend",
+            "lesson_id": "lesson-64c9d597a164bbdb4f145d5a",
+            "active_ms": 10000
+          }
+        ]
+      },
+      {
+        "local_date_offset": 1,
+        "slot_no": 1,
+        "stats": [
+          {
+            "tool_id": "theory",
+            "course_id": "backend",
+            "lesson_id": "lesson-64c9d597a164bbdb4f145d5a",
+            "active_ms": 20000
+          }
+        ]
+      }
+    ],
+    "reload": [
+      {
+        "local_date_offset": 0,
+        "slot_no": 41,
+        "stats": [
+          {
+            "tool_id": "theory",
+            "course_id": "backend",
+            "lesson_id": "lesson-64c9d597a164bbdb4f145d5a",
+            "active_ms": 480000
+          }
+        ]
+      }
+    ],
+    "first": [
+      {
+        "local_date_offset": 0,
+        "slot_no": 41,
+        "stats": [
+          {
+            "tool_id": "theory",
+            "course_id": "backend",
+            "lesson_id": "lesson-64c9d597a164bbdb4f145d5a",
+            "active_ms": 60000
+          }
+        ]
+      }
+    ],
+    "both-lost": [
+      {
+        "slot_no": 45,
+        "local_date_offset": 0,
+        "stats": [
+          {
+            "tool_id": "theory",
+            "active_ms": 40000,
+            "lesson_id": "lesson-64c9d597a164bbdb4f145d5a",
+            "course_id": "backend"
+          }
+        ]
+      }
+    ]
+  }
+}

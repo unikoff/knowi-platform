@@ -17,6 +17,11 @@ data:
   ANALYTICS_PROCESSOR_BUCKET_WORKER_ENABLED: {{ .Values.activityProjection.enabled | quote }}
   ANALYTICS_PROCESSOR_GENERIC_WORKER_ENABLED: "false"
 {{- end }}
+  ANALYTICS_WINDOWS_INTAKE_ENABLED: {{ ternary "1" "0" .Values.studentWindows.intakeEnabled | quote }}
+  ANALYTICS_WINDOWS_RECONCILIATION_ENABLED: {{ ternary "1" "0" .Values.studentWindows.reconciliationEnabled | quote }}
+  ANALYTICS_WINDOWS_ALL_ELIGIBLE: {{ ternary "1" "0" .Values.studentWindows.allEligible | quote }}
+  ANALYTICS_WINDOWS_COHORT: {{ .Values.studentWindows.cohort | quote }}
+  ANALYTICS_WINDOWS_T0: {{ .Values.studentWindows.observationStart | quote }}
   ANALYTICS_MIGRATE_POOL_SIZE: {{ .Values.migration.poolSize | quote }}
   ANALYTICS_MIGRATE_POOL_OVERFLOW: {{ .Values.migration.poolOverflow | quote }}
   ANALYTICS_MIGRATE_ISSUER_MODE: {{ .Values.runtime.mode | quote }}

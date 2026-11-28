@@ -1,5 +1,5 @@
 """Bounded per-process engine and per-operation async transactions."""
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, nullcontext
 import asyncio
 
 from sqlalchemy import text
@@ -9,6 +9,8 @@ from pymentor_analytics.app.config import Settings
 
 
 class Database:
+    transaction_admission = nullcontext()
+
     def __init__(self, settings: Settings):
         self.timeout = settings.db_timeout_seconds
         self.pool_max = settings.pool_size + settings.pool_overflow if settings.pool_size > 0 and settings.pool_overflow >= 0 else None
@@ -36,10 +38,18 @@ class Database:
         except Exception:
             return None
 
+    def transaction(self):
+        # Hold workload admission until the session has returned its connection.
+        return self._guarded_transaction(self.transaction_admission)
+
+    def query_readiness_transaction(self):
+        """Use the same pool and guards for the singleflight Query readiness check."""
+        return self._guarded_transaction(nullcontext())
+
     @asynccontextmanager
-    async def transaction(self):
+    async def _guarded_transaction(self, admission):
         # SQLAlchemy rolls back on BaseException, including cancellation.
-        async with asyncio.timeout(self.timeout):
+        async with asyncio.timeout(self.timeout), admission:
             async with self.sessions.begin() as session:
                 if self.transaction_guard is not None:
                     await self.transaction_guard(session)

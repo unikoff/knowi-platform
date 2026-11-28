@@ -1,5 +1,7 @@
 """Strict, independent process settings; never log connection strings."""
+from datetime import datetime, timedelta
 import os
+from pathlib import Path
 import json
 import re
 from typing import Mapping
@@ -41,6 +43,12 @@ class Settings(BaseModel):
     core_transfer_roster_json: SecretStr | None = None
     catalog_enabled: bool = False
     catalog_namespace: str | None = None
+    windows_intake_enabled: bool = False
+    windows_reconciliation_enabled: bool = False
+    windows_reconciliation_proof_file: Path | None = None
+    windows_all_eligible: bool = False
+    windows_cohort: frozenset[str] = frozenset()
+    windows_t0: datetime | None = None
     activity_projection_enabled: bool = False
     activity_projection_run_id: UUID | None = None
     activity_day_worker_enabled: bool = False
@@ -56,6 +64,33 @@ class Settings(BaseModel):
     processor_poll_max_seconds: float = Field(default=5, ge=0.1, le=30, allow_inf_nan=False)
     processor_job_timeout_seconds: float = Field(default=10, ge=0.1, le=60, allow_inf_nan=False)
     processor_consumers: str = "synthetic.activity,synthetic.independent"
+
+    @field_validator("windows_cohort", mode="before")
+    @classmethod
+    def safe_windows_cohort(cls, value):
+        entries = value.split(",") if isinstance(value, str) and value else value or ()
+        if (len(entries) > 1000 or len(entries) != len(set(entries))
+                or any(str(UUID(entry)) != entry for entry in entries)):
+            raise ValueError("invalid windows cohort")
+        return frozenset(entries)
+
+    @field_validator("windows_reconciliation_proof_file")
+    @classmethod
+    def safe_windows_proof_path(cls, value):
+        if value is not None and not value.is_absolute():
+            raise ValueError("window reconciliation proof requires an absolute operator path")
+        return value
+
+    @model_validator(mode="after")
+    def safe_windows_flags(self):
+        if self.windows_all_eligible and self.windows_cohort:
+            raise ValueError("windows require exactly one audience")
+        if (self.windows_intake_enabled or self.windows_reconciliation_enabled
+                or self.windows_all_eligible or self.windows_cohort or self.windows_t0 is not None):
+            if (not (self.windows_all_eligible or self.windows_cohort)
+                    or self.windows_t0 is None or self.windows_t0.utcoffset() != timedelta()):
+                raise ValueError("windows require an audience and UTC observation start")
+        return self
 
     @field_validator("processor_consumers")
     @classmethod
@@ -310,6 +345,19 @@ def load_settings(role: str, environ: Mapping[str, str] | None = None) -> Settin
         key = prefix + (name.removeprefix("processor_") if role == "processor" else name).upper()
         if key in env:
             fields[name] = env[key]
+    for name in ("windows_intake_enabled", "windows_reconciliation_enabled",
+                 "windows_all_eligible", "windows_cohort", "windows_t0"):
+        if prefix + name.upper() in env:
+            raise ValueError("windows configuration must be shared")
+        key = "ANALYTICS_" + name.upper()
+        if key in env and (name != "windows_t0" or env[key]):
+            if (name.endswith("_enabled") or name == "windows_all_eligible") and env[key] not in {"0", "1"}:
+                raise ValueError("invalid windows feature flag")
+            fields[name] = env[key]
+    if "ANALYTICS_WINDOWS_RECONCILIATION_PROOF_FILE" in env:
+        if role != "processor":
+            raise ValueError("window reconciliation proof belongs only to the processor")
+        fields["windows_reconciliation_proof_file"] = env["ANALYTICS_WINDOWS_RECONCILIATION_PROOF_FILE"]
     # One deployment-wide source identity; credentials are never exposed in errors.
     if prefix + "CORE_DELETION_SOURCE_JSON" in env:
         raise ValueError("Core deletion source configuration must be shared")

@@ -1,12 +1,14 @@
-import { AnalyticsTracker, isToolId, type ToolId, type Context } from './tracker';
-import { BrowserLifecycle } from './browser';
+import { AnalyticsTracker, isToolId, type Clock, type ToolId, type Context } from './tracker';
+import { BrowserLifecycle, type TrackerSignals } from './browser';
 import { BrowserTransport, ServerClock } from './transport';
 
 export type Panel = { id: string; kind?: 'theory' | 'practice'; target?: { trackId: string; lessonId: string } };
 export type Course = { courseId: string; catalogVersion: string | null };
 export type ControllerOptions = {
   identityKey: string; subjectRef: string; role: string; toolsEnabled?: boolean; win?: Window; doc?: Document; fetcher?: typeof fetch; baseUrl?: string;
-  timeSource?: { now(): { mono: number; wall: number }; uuid(): string; random(): number };
+  timeSource?: Clock;
+  v2Enabled?: boolean;
+  createWindows?(source: Clock): TrackerSignals;
   canTrackLesson(target: { trackId: string; lessonId: string }): boolean;
 };
 
@@ -21,8 +23,10 @@ export class BrowserTrackerController {
   private tool: ToolId | undefined;
   constructor(private readonly options: ControllerOptions) {
     const win = options.win ?? window, doc = options.doc ?? document;
-    const source = options.timeSource ?? { now: () => ({ mono: win.performance.now(), wall: Date.now() }),
+    const baseTime = options.timeSource ?? { now: () => ({ mono: win.performance.now(), wall: Date.now() }),
       uuid: () => win.crypto.randomUUID(), random: () => Math.random() };
+    let signalTime: ReturnType<Clock['now']> | undefined;
+    const source = options.createWindows ? { ...baseTime, now: () => signalTime ?? baseTime.now() } : baseTime;
     const clock = new ServerClock(source);
     const expectedSubject = options.subjectRef.toLowerCase();
     const transport = new BrowserTransport(clock, subject => {
@@ -34,8 +38,12 @@ export class BrowserTrackerController {
     this.tracker = new AnalyticsTracker({ clock: source,
       grant: (identity, signal, course) => transport.grant(identity, signal, course),
       projectEventTime: (event, endMono) => clock.projectEventTime(event, endMono),
-      send: (grant, body, signal) => transport.send(grant, body, signal) }, true);
-    this.lifecycle = new BrowserLifecycle(this.tracker, win, doc);
+      send: (grant, body, signal) => transport.send(grant, body, signal) }, options.v2Enabled !== false);
+    const windows = options.createWindows?.(source);
+    this.lifecycle = new BrowserLifecycle(this.tracker, win, doc, windows, windows ? run => {
+      signalTime = baseTime.now();
+      try { run(); } finally { signalTime = undefined; }
+    } : undefined);
   }
   start() {
     if (this.running || this.options.role !== 'user' || !this.options.identityKey || !this.options.subjectRef) return;

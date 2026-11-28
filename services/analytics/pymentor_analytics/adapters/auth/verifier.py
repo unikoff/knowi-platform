@@ -121,6 +121,22 @@ class GrantVerifier(_LocalVerifier):
         except (ValueError, TypeError, ValidationError):
             raise AuthenticationError() from None
 
+    def verify_windows(self, token: str):
+        from pymentor_analytics.contracts.windows_v1 import WindowGrantClaims
+
+        try:
+            return WindowGrantClaims.model_validate_json(self._verify(token, audience="analytics-windows"))
+        except ValidationError:
+            raise AuthenticationError() from None
+
+    def verify_window_forward(self, token: str):
+        from pymentor_analytics.contracts.windows_gateway import WindowForwardClaims
+
+        try:
+            return WindowForwardClaims.model_validate_json(self._verify(token, audience="analytics-windows-gateway"))
+        except ValidationError:
+            raise AuthenticationError() from None
+
     def verify_course_visitors(self, token: str):
         from pymentor_analytics.contracts.course_visitors import CourseVisitorGrant
 

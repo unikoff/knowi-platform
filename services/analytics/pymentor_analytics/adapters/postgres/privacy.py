@@ -11,6 +11,7 @@ from pymentor_analytics.adapters.postgres.core_transfer import has_core_schema, 
 from pymentor_analytics.adapters.postgres.activity_projection import has_activity_projection_schema
 from pymentor_analytics.adapters.postgres.activity_course_projection import has_activity_course_projection_schema
 from pymentor_analytics.adapters.postgres.activity_day_projection import has_activity_day_projection_schema
+from pymentor_analytics.adapters.postgres.student_windows import has_student_windows_schema
 from pymentor_analytics.contracts.locking_v1 import subject_lock_key
 from pymentor_analytics.contracts.privacy_control_v1 import JournalEntry, deletion_hash
 from pymentor_analytics.contracts.privacy_storage_v1 import (
@@ -114,6 +115,9 @@ class PostgresPrivacyStore:
             activity_schema = await has_activity_projection_schema(session)
             day_schema = await has_activity_day_projection_schema(session)
             course_schema = await has_activity_course_projection_schema(session)
+            student_windows_schema = await has_student_windows_schema(session)
+            historical_purge = (await session.execute(text("""SELECT
+                to_regprocedure('analytics.purge_window_backfill_page(uuid,integer)') IS NOT NULL"""))).scalar_one()
             tables = [
                 ("facts", "activity_facts", "producer_namespace,event_id"),
                 ("results", "processing_results", "consumer,consumer_version"),
@@ -142,6 +146,18 @@ class PostgresPrivacyStore:
                     SELECT ctid FROM analytics.{table} WHERE subject_ref=:subject ORDER BY {ordering} LIMIT :limit)
                     RETURNING subject_ref"""), {**args, "limit": limit})
                 removed[label] = len(result.all())
+            if student_windows_schema:
+                # student_id carries the existing subject_ref lifecycle. The
+                # business row follows the control key through its FK.
+                await session.execute(text("""DELETE FROM analytics.student_activity_window_control WHERE ctid IN (
+                    SELECT ctid FROM analytics.student_activity_window_control WHERE student_id=:subject
+                    ORDER BY activity_date,slot_no LIMIT :limit)
+                """), {**args, "limit": limit})
+            historical_remaining = False
+            if historical_purge:
+                historical_remaining = (await session.execute(text("""SELECT
+                    analytics.purge_window_backfill_page(:subject,:limit)"""),
+                    {**args, "limit": min(limit, 1000)})).scalar_one()
             # a005 validates subject-coherent FK ownership; fact deletion cascades
             # jobs/receipts. Explicit existence checks fail closed on any remainder.
             core_schema = await has_core_schema(session)
@@ -158,6 +174,9 @@ class PostgresPrivacyStore:
             if course_schema:
                 extra_checks += (" OR EXISTS(SELECT 1 FROM analytics.activity_course_buckets WHERE subject_ref=:subject)"
                                  " OR EXISTS(SELECT 1 FROM analytics.activity_course_days WHERE subject_ref=:subject)")
+            if student_windows_schema:
+                extra_checks += (" OR EXISTS(SELECT 1 FROM analytics.student_activity_window_control WHERE student_id=:subject)"
+                                 " OR EXISTS(SELECT 1 FROM analytics.student_activity_windows WHERE student_id=:subject)")
             remaining = (await session.execute(text("""SELECT
                 EXISTS(SELECT 1 FROM analytics.activity_facts WHERE subject_ref=:subject)
                 OR EXISTS(SELECT 1 FROM analytics.processing_jobs WHERE subject_ref=:subject)
@@ -167,6 +186,7 @@ class PostgresPrivacyStore:
                 OR EXISTS(SELECT 1 FROM analytics.processing_replays WHERE subject_ref=:subject)
                 OR EXISTS(SELECT 1 FROM analytics.admission_subject_windows WHERE subject_ref=:subject)
             """ + extra_checks), args)).scalar_one()
+            remaining = remaining or historical_remaining
             applied = state.applied_through
             if not remaining:
                 await session.execute(text("UPDATE analytics.privacy_receipts SET phase='complete' WHERE seq=:seq"), args)

@@ -171,8 +171,11 @@ async def activity_report(request: Request, response: Response, from_time: datet
         timeout = state.settings.db_timeout_seconds
         if not await asyncio.wait_for(probe.is_ready(), timeout=timeout):
             return _report_unavailable("query_not_ready")
+        read_batched = getattr(store, "read_batched_activity", None)
         if history_revisions and getattr(store, "supports_history_revisions", False) is True:
             call = store.read_activity(grant, query, include_history_revisions=True)
+        elif not history_revisions and callable(read_batched):
+            call = read_batched(grant, query, timeout=timeout)
         else:
             call = store.read_activity(grant, query)
         snapshot = await asyncio.wait_for(call, timeout=timeout)

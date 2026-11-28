@@ -1,0 +1,163 @@
+{
+  "$defs": {
+    "WindowSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "activity_date": {
+          "format": "date",
+          "title": "Activity Date",
+          "type": "string"
+        },
+        "catalog_versions": {
+          "maxProperties": 32,
+          "patternProperties": {
+            "^[A-Za-z0-9][A-Za-z0-9._:-]*$": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            }
+          },
+          "propertyNames": {
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "title": "Catalog Versions",
+          "type": "object"
+        },
+        "client_final": {
+          "title": "Client Final",
+          "type": "boolean"
+        },
+        "seq": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "server_epoch": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "title": "Server Epoch",
+          "type": "integer"
+        },
+        "slot_no": {
+          "maximum": 96,
+          "minimum": 1,
+          "title": "Slot No",
+          "type": "integer"
+        },
+        "stats": {
+          "items": {
+            "$ref": "#/$defs/WindowStat"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "title": "Stats",
+          "type": "array"
+        },
+        "writer_generation": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "title": "Writer Generation",
+          "type": "integer"
+        },
+        "writer_id": {
+          "format": "uuid",
+          "title": "Writer Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "writer_id",
+        "writer_generation",
+        "activity_date",
+        "slot_no",
+        "server_epoch",
+        "seq",
+        "stats",
+        "catalog_versions",
+        "client_final"
+      ],
+      "title": "WindowSnapshot",
+      "type": "object"
+    },
+    "WindowStat": {
+      "additionalProperties": false,
+      "properties": {
+        "active_ms": {
+          "maximum": 900000,
+          "minimum": 1,
+          "title": "Active Ms",
+          "type": "integer"
+        },
+        "course_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Course Id"
+        },
+        "lesson_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Lesson Id"
+        },
+        "tool_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Tool Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool_id",
+        "course_id",
+        "lesson_id",
+        "active_ms"
+      ],
+      "title": "WindowStat",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "protocol_version": {
+      "const": 1,
+      "title": "Protocol Version",
+      "type": "integer"
+    },
+    "windows": {
+      "items": {
+        "$ref": "#/$defs/WindowSnapshot"
+      },
+      "maxItems": 16,
+      "minItems": 1,
+      "title": "Windows",
+      "type": "array"
+    }
+  },
+  "required": [
+    "protocol_version",
+    "windows"
+  ],
+  "title": "WindowBatch",
+  "type": "object"
+}

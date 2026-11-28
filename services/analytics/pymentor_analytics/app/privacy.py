@@ -66,9 +66,16 @@ class PrivacyRuntime:
         # would deadlock with privacy's subject→state progress transaction.
         async with asyncio.timeout(self.database.timeout):
             async with self.database.sessions.begin() as session:
-                await session.execute(text("SELECT 1 FROM analytics.activity_facts LIMIT 1"))
-                await session.execute(text("SELECT 1 FROM analytics.subject_fences LIMIT 1"))
-                row = (await session.execute(text("SELECT authority_id,applied_through FROM analytics.privacy_state WHERE singleton=true"))).one_or_none()
+                row = await self._read_cursor_row(session)
+        return self._validate_cursor_row(row)
+
+    @staticmethod
+    async def _read_cursor_row(session):
+        await session.execute(text("SELECT 1 FROM analytics.activity_facts LIMIT 1"))
+        await session.execute(text("SELECT 1 FROM analytics.subject_fences LIMIT 1"))
+        return (await session.execute(text("SELECT authority_id,applied_through FROM analytics.privacy_state WHERE singleton=true"))).one_or_none()
+
+    def _validate_cursor_row(self, row):
         if row is None:
             return None
         if row.authority_id != self.authority_id or type(row.applied_through) is not int or row.applied_through < 0:
@@ -164,6 +171,14 @@ class PrivacyRuntime:
         if row is None or row.authority_id != self.authority_id:
             raise PrivacyUnavailable()
         self._proof(row.applied_through)
+
+    async def check_readiness_in_transaction(self, session):
+        """Check readiness on an existing guarded transaction's connection."""
+        self._check_recovery_permit()
+        applied = self._validate_cursor_row(await self._read_cursor_row(session))
+        if applied is None:
+            raise PrivacyUnavailable()
+        self._proof(applied)
 
     async def is_ready(self):
         try:

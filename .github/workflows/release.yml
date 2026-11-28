@@ -302,6 +302,7 @@ jobs:
           BUILD_TARGET: ${{ matrix.target }}
           # Change these tracked values in a new commit to change the Web image.
           VITE_ANALYTICS_TRACKER_ENABLED: 'true'
+          VITE_ANALYTICS_WINDOWS_ENABLED: 'true'
           VITE_ANALYTICS_REPORTS_ENABLED: 'true'
           VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED: 'true'
           PLAN: ${{ needs.plan.outputs.plan }}
@@ -319,6 +320,7 @@ jobs:
             fi
             if [[ "$IMAGE_NAME" == frontend ]]; then
               [[ "$VITE_ANALYTICS_TRACKER_ENABLED" =~ ^(true|false)$ ]]
+              [[ "$VITE_ANALYTICS_WINDOWS_ENABLED" =~ ^(true|false)$ ]]
               [[ "$VITE_ANALYTICS_REPORTS_ENABLED" =~ ^(true|false)$ ]]
               [[ "$VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED" =~ ^(true|false)$ ]]
               if [[ "$VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED" == true && "$VITE_ANALYTICS_REPORTS_ENABLED" != true ]]; then
@@ -327,6 +329,7 @@ jobs:
               fi
               args+=(--build-arg "BUILD_SOURCE_SHA=$GITHUB_SHA"
                      --build-arg "VITE_ANALYTICS_TRACKER_ENABLED=$VITE_ANALYTICS_TRACKER_ENABLED"
+                     --build-arg "VITE_ANALYTICS_WINDOWS_ENABLED=$VITE_ANALYTICS_WINDOWS_ENABLED"
                      --build-arg "VITE_ANALYTICS_REPORTS_ENABLED=$VITE_ANALYTICS_REPORTS_ENABLED"
                      --build-arg "VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED=$VITE_ANALYTICS_PERSONAL_MEASUREMENTS_ENABLED")
             fi

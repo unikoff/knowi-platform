@@ -15,8 +15,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import create_engine, text
-from sqlalchemy.engine import make_url
-from sqlalchemy.pool import NullPool
+from sqlalchemy.engine import Engine, make_url
 from starlette.concurrency import run_in_threadpool
 
 REQUEST_DOMAIN = b"pymentor:analytics:core-deletions:request:v1\0"
@@ -48,6 +47,16 @@ class LocalCollection:
     key: bytes = field(repr=False)
     catalog_binding: object = field(default=None, repr=False)
     expected_user: str | None = None
+    engine: Engine = field(init=False, repr=False, compare=False)
+
+    def __post_init__(self):
+        # Only connections are reused. Every signed response reads a new transaction.
+        engine = create_engine(
+            self.database_url, pool_size=2, max_overflow=0, pool_timeout=1,
+            pool_pre_ping=True, isolation_level="READ COMMITTED", hide_parameters=True,
+            connect_args={"connect_timeout": 3, "options": "-c statement_timeout=3000 -c lock_timeout=1000"},
+        )
+        object.__setattr__(self, "engine", engine)
 
 
 def configure(env, database_url):
@@ -93,83 +102,87 @@ def _stamp(value):
     return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
 
-def _schema_ok(connection):
-    columns = connection.execute(text("""SELECT a.attname,format_type(a.atttypid,a.atttypmod),a.attnotnull
-        FROM pg_catalog.pg_attribute a JOIN pg_catalog.pg_class c ON c.oid=a.attrelid
+_SOURCE_IDENTITY = text("SELECT current_database(),pg_is_in_recovery(),current_user")
+_SOURCE_PREFLIGHT = text("""/* Core deletion snapshot preflight */
+    WITH event_table AS (
+        SELECT c.oid,c.relowner FROM pg_catalog.pg_class c
         JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
         WHERE n.nspname='public' AND c.relname='account_deletion_events' AND c.relkind='r'
-          AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum""")).all()
-    if [tuple(x) for x in columns] != [("lifecycle_id", "character varying(36)", True),
-        ("user_id", "integer", True), ("deleted_at", "timestamp with time zone", True)]:
+    )
+    SELECT current_database(),pg_is_in_recovery(),current_user,
+        (SELECT jsonb_agg(jsonb_build_array(a.attname::text,format_type(a.atttypid,a.atttypmod),a.attnotnull)
+                          ORDER BY a.attnum)
+            FROM event_table c JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid
+            WHERE a.attnum>0 AND NOT a.attisdropped),
+        (SELECT array_agg(a.attname::text ORDER BY u.ord)
+            FROM event_table c JOIN pg_catalog.pg_constraint k ON k.conrelid=c.oid
+            CROSS JOIN LATERAL unnest(k.conkey) WITH ORDINALITY u(attnum,ord)
+            JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid AND a.attnum=u.attnum
+            WHERE k.contype='p'),
+        (SELECT jsonb_agg(jsonb_build_array(t.tgenabled::text,t.tgtype,p.prosrc,q.prosrc))
+            FROM pg_catalog.pg_trigger t JOIN pg_catalog.pg_class c ON c.oid=t.tgrelid
+            JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+            JOIN pg_catalog.pg_proc p ON p.oid=t.tgfoid
+            JOIN pg_catalog.pg_namespace pn ON pn.oid=p.pronamespace
+            JOIN pg_catalog.pg_proc q ON q.proname='pymentor_capture_account_deletion'
+                 AND q.pronamespace=pn.oid AND q.pronargs=1 AND q.proargtypes='23'::oidvector
+            WHERE n.nspname='public' AND c.relname='users' AND t.tgname='pymentor_account_deletion_event_v1'
+              AND NOT t.tgisinternal AND t.tgqual IS NULL AND t.tgnargs=0
+              AND pn.nspname='public' AND p.proname='pymentor_capture_account_deletion_trigger'
+              AND p.pronargs=0),
+        CASE WHEN :private_reader THEN (
+            SELECT NOT r.rolsuper AND NOT r.rolbypassrls AND NOT r.rolcreaterole AND NOT r.rolcreatedb
+                AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m WHERE m.member=r.oid)
+                AND NOT pg_has_role(current_user, c.relowner, 'MEMBER')
+                AND has_column_privilege('public.account_deletion_events', 'lifecycle_id', 'SELECT')
+                AND has_column_privilege('public.account_deletion_events', 'deleted_at', 'SELECT')
+                AND NOT has_column_privilege('public.account_deletion_events', 'user_id', 'SELECT')
+                AND NOT has_table_privilege('public.account_deletion_events', 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+                AND NOT has_any_column_privilege('public.account_deletion_events', 'INSERT,UPDATE,REFERENCES')
+            FROM event_table c CROSS JOIN pg_catalog.pg_roles r
+            WHERE r.rolname=current_user
+        ) ELSE TRUE END,
+        clock_timestamp()
+""")
+
+
+def _schema_ok(columns, pk, triggers):
+    if columns != [["lifecycle_id", "character varying(36)", True],
+                   ["user_id", "integer", True], ["deleted_at", "timestamp with time zone", True]]:
         return False
-    pk = connection.execute(text("""SELECT array_agg(a.attname ORDER BY u.ord) FROM pg_catalog.pg_constraint k
-        JOIN pg_catalog.pg_class c ON c.oid=k.conrelid JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
-        CROSS JOIN LATERAL unnest(k.conkey) WITH ORDINALITY u(attnum,ord)
-        JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid AND a.attnum=u.attnum
-        WHERE n.nspname='public' AND c.relname='account_deletion_events' AND k.contype='p'""")).scalar_one()
-    if list(pk or []) != ["lifecycle_id"]:
+    if pk != ["lifecycle_id"] or not triggers or len(triggers) != 1:
         return False
-    rows = connection.execute(text("""SELECT t.tgenabled,t.tgtype,p.prosrc,q.prosrc
-        FROM pg_catalog.pg_trigger t JOIN pg_catalog.pg_class c ON c.oid=t.tgrelid
-        JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
-        JOIN pg_catalog.pg_proc p ON p.oid=t.tgfoid
-        JOIN pg_catalog.pg_namespace pn ON pn.oid=p.pronamespace
-        JOIN pg_catalog.pg_proc q ON q.proname='pymentor_capture_account_deletion'
-             AND q.pronamespace=pn.oid AND q.pronargs=1 AND q.proargtypes='23'::oidvector
-        WHERE n.nspname='public' AND c.relname='users' AND t.tgname='pymentor_account_deletion_event_v1'
-          AND NOT t.tgisinternal AND t.tgqual IS NULL AND t.tgnargs=0
-          AND pn.nspname='public' AND p.proname='pymentor_capture_account_deletion_trigger'
-          AND p.pronargs=0""")).all()
-    if len(rows) != 1:
-        return False
-    enabled, kind, trigger_body, capture_body = rows[0]
+    enabled, kind, trigger_body, capture_body = triggers[0]
     digest = lambda value: sha256(" ".join(value.split()).encode("utf-8")).hexdigest()
     return enabled in {"O", "A"} and kind == 11 and digest(trigger_body) == _TRIGGER_HASH and digest(capture_body) == _BODY_HASH
 
 
-def _private_reader_ok(connection):
-    """Require the dedicated production identity to be a narrow event reader."""
-    row = connection.execute(text("""SELECT
-        NOT r.rolsuper AND NOT r.rolbypassrls AND NOT r.rolcreaterole AND NOT r.rolcreatedb,
-        NOT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m WHERE m.member=r.oid),
-        NOT pg_has_role(current_user, c.relowner, 'MEMBER'),
-        has_column_privilege('public.account_deletion_events', 'lifecycle_id', 'SELECT'),
-        has_column_privilege('public.account_deletion_events', 'deleted_at', 'SELECT'),
-        NOT has_column_privilege('public.account_deletion_events', 'user_id', 'SELECT'),
-        NOT has_table_privilege('public.account_deletion_events', 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'),
-        NOT has_any_column_privilege('public.account_deletion_events', 'INSERT,UPDATE,REFERENCES')
-        FROM pg_catalog.pg_roles r JOIN pg_catalog.pg_class c ON c.oid='public.account_deletion_events'::regclass
-        WHERE r.rolname=current_user""")).one()
-    return all(row)
+def _source_identity_ok(config, identity):
+    database, recovery, user = identity
+    return database == config.database and not recovery and (config.expected_user is None or user == config.expected_user)
 
 
 def read_snapshot(config):
-    engine = create_engine(config.database_url, poolclass=NullPool,
-        connect_args={"connect_timeout": 3, "options": "-c statement_timeout=3000 -c lock_timeout=1000"})
-    try:
-        with engine.connect().execution_options(isolation_level="READ COMMITTED") as connection:
-            with connection.begin():
-                connection.execute(text("SET TRANSACTION READ ONLY"))
-                identity = lambda: connection.execute(text("SELECT current_database(),pg_is_in_recovery(),current_user" )).one()
-                def identity_ok():
-                    database, recovery, user = identity()
-                    return database == config.database and not recovery and (config.expected_user is None or user == config.expected_user)
-                if (not identity_ok() or not _schema_ok(connection)
-                        or (config.expected_user is not None and not _private_reader_ok(connection))):
-                    raise ValueError("source unavailable")
-                # The timestamp precedes the READ COMMITTED statement snapshot;
-                # it must never claim observations later than that snapshot.
-                as_of = _stamp(connection.execute(text("SELECT clock_timestamp()" )).scalar_one())
-                rows = connection.execute(text("""SELECT lifecycle_id,deleted_at FROM public.account_deletion_events
-                    ORDER BY lifecycle_id COLLATE \"C\" LIMIT 1025""")).all()
-                if len(rows) > 1024:
-                    raise ValueError("source overflow")
-                events = [{"subject_ref": _uuid(row[0]), "deleted_at": _stamp(row[1])} for row in rows]
-                if not identity_ok():
-                    raise ValueError("source changed")
-                return as_of, events
-    finally:
-        engine.dispose()
+    with config.engine.connect() as connection:
+        with connection.begin():
+            connection.execute(text("SET TRANSACTION READ ONLY"))
+            database, recovery, user, columns, pk, triggers, reader_ok, timestamp = connection.execute(
+                _SOURCE_PREFLIGHT, {"private_reader": config.expected_user is not None},
+            ).one()
+            if (not _source_identity_ok(config, (database, recovery, user))
+                    or reader_ok is not True or not _schema_ok(columns, pk, triggers)):
+                raise ValueError("source unavailable")
+            # Preflight finishes before the separate READ COMMITTED event
+            # statement takes its snapshot, so this clock cannot overstate it.
+            as_of = _stamp(timestamp)
+            rows = connection.execute(text("""SELECT lifecycle_id,deleted_at FROM public.account_deletion_events
+                ORDER BY lifecycle_id COLLATE "C" LIMIT 1025""")).all()
+            if len(rows) > 1024:
+                raise ValueError("source overflow")
+            events = [{"subject_ref": _uuid(row[0]), "deleted_at": _stamp(row[1])} for row in rows]
+            if not _source_identity_ok(config, connection.execute(_SOURCE_IDENTITY).one()):
+                raise ValueError("source changed")
+            return as_of, events
 
 
 @router.get("/internal/analytics/deletions", include_in_schema=False)

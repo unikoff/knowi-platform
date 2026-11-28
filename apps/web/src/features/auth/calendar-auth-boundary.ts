@@ -1,5 +1,6 @@
 import type { CalendarSessionIdentity } from "../account/calendar-cache";
 import { announceAuthChange } from "./session-coordination";
+import { WINDOWS_AUTH_BOUNDARY } from "../analytics-tracker/windows";
 
 const LOCK_NAME = "knowi:calendar:session:v1";
 const SIGNAL_KEY = "knowi:calendar:auth-signal:v1";
@@ -58,6 +59,10 @@ async function confirmSession(): Promise<CalendarSessionIdentity | null> {
 /** Serialize managed cookie changes with calendar operations. An uncertain
  * mutation leaves both the durable boundary and the shared signal blocked. */
 export async function runCalendarAuthTransition<T>(change: () => Promise<T>): Promise<T> {
+  if (import.meta.env.VITE_ANALYTICS_WINDOWS_ENABLED === "true" && typeof window !== "undefined") {
+    window.dispatchEvent(new Event(WINDOWS_AUTH_BOUNDARY));
+    if (import.meta.env.VITE_ANALYTICS_CALENDAR_CACHE_ENABLED !== "true") announceAuthChange();
+  }
   if (import.meta.env.VITE_ANALYTICS_CALENDAR_CACHE_ENABLED !== "true") return change();
   const nonce = globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   const blocked = `blocked:${nonce}`;

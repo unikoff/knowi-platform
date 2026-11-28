@@ -66,6 +66,7 @@ function PlatformToolTracking({ tool, courseId }: { tool: ToolId; courseId: stri
   const actor = initialized && !checking && user?.role === "user" ? user : null;
   const { onActiveTool } = useAnalyticsTrackerIdentity({
     enabled: Boolean(actor), toolsEnabled: true,
+    windowsEnabled: import.meta.env.VITE_ANALYTICS_WINDOWS_ENABLED === "true",
     identityKey: actor ? `${actor.id}:${revision}` : null,
     subjectRef: actor?.account_ref ?? null,
     role: actor?.role ?? null,

@@ -69,6 +69,8 @@ def create_app(profile=None, *, laboratory=False):
                 finally:
                     application.state.startup_complete = False
         finally:
+            if application.state.analytics_local_collection is not None:
+                application.state.analytics_local_collection.engine.dispose()
             engine.dispose()
 
     app = FastAPI(lifespan=application_lifespan)
@@ -207,6 +209,18 @@ def create_app(profile=None, *, laboratory=False):
             raise RuntimeError("Analytics browser gateway requires grant signing")
         from pymentor_core.app.analytics_browser_gateway import router as analytics_browser_gateway_router
         app.include_router(analytics_browser_gateway_router)
+    from pymentor_core.app.analytics_windows_gateway import (
+        configure as configure_windows_gateway,
+        disabled_router as analytics_windows_disabled_router,
+        router as analytics_windows_gateway_router,
+    )
+    app.state.analytics_windows_gateway = configure_windows_gateway(os.environ)
+    if app.state.analytics_windows_gateway is None:
+        app.include_router(analytics_windows_disabled_router)
+    else:
+        if not hasattr(app.state, "analytics_grant_signer"):
+            raise RuntimeError("Analytics windows gateway requires grant signing")
+        app.include_router(analytics_windows_gateway_router)
     from pymentor_core.app.analytics_browser_query_gateway import configure as configure_browser_query_gateway
     app.state.analytics_browser_query_gateway = configure_browser_query_gateway(os.environ)
     if app.state.analytics_browser_query_gateway is not None:

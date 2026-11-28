@@ -11,7 +11,7 @@
 {{- if or (ne .Release.Namespace "knowi-analytics") (ne .Values.runtime.mode "production") (not .Values.runtime.hostBootRecoveryGate) (not .Values.authorityServer.enabled) (not .Values.privateCoreSource.enabled) (not .Values.roles.privacy.enabled) (not .Values.image.repository) (not .Values.network.databaseCIDR) -}}
 {{- fail "knowi01 staged profile requires production guards, authority, private source, privacy, image repository and exact Analytics DB address" -}}
 {{- end -}}
-{{- if or .Values.migration.enabled .Values.ingress.enabled .Values.browserCollection.enabled .Values.coreTransfer.enabled .Values.catalog.enabled .Values.activityProjection.enabled .Values.activityDay.enabled .Values.activityCourse.enabled .Values.activityBoundaryCredit.enabled -}}
+{{- if or .Values.migration.enabled .Values.ingress.enabled .Values.browserCollection.enabled .Values.coreTransfer.enabled .Values.catalog.enabled .Values.activityProjection.enabled .Values.activityDay.enabled .Values.activityCourse.enabled .Values.activityBoundaryCredit.enabled .Values.studentWindows.intakeEnabled .Values.studentWindows.reconciliationEnabled -}}
 {{- fail "knowi01 staged profile must keep migration, public and user-facing paths disabled" -}}
 {{- end -}}
 {{- end -}}
@@ -78,9 +78,9 @@
 {{- fail "Use a distinct database Secret for each Analytics role" -}}
 {{- end -}}
 {{- $feature := or .Values.coreTransfer.enabled .Values.catalog.enabled .Values.activityProjection.enabled -}}
-{{- $knownRevisions := list "a001" "a002" "a003" "a004" "a005" "a006" "a007" "a008" "a009" "a010" "a011" "a012" "a013" "a014" -}}
+{{- $knownRevisions := list "a001" "a002" "a003" "a004" "a005" "a006" "a007" "a008" "a009" "a010" "a011" "a012" "a013" "a014" "a015" "a016" -}}
 {{- if not (has .Values.migration.revision $knownRevisions) -}}
-{{- fail "Analytics requires a known schema revision (a001 through a014)" -}}
+{{- fail "Analytics requires a known schema revision (a001 through a016)" -}}
 {{- end -}}
 {{- if and .Values.coreTransfer.proofEnabled (not .Values.coreTransfer.enabled) -}}
 {{- fail "Transfer proof requires transfer" -}}
@@ -92,6 +92,29 @@
 {{- fail "Feature rollout requires explicit schema revision" -}}
 {{- end -}}
 {{- $rev := atoi (trimPrefix "a" .Values.migration.revision) -}}
+{{- if not (and (kindIs "bool" .Values.studentWindows.intakeEnabled) (kindIs "bool" .Values.studentWindows.reconciliationEnabled) (kindIs "bool" .Values.studentWindows.allEligible)) -}}
+{{- fail "Student windows feature flags must be boolean" -}}
+{{- end -}}
+{{- if and .Values.studentWindows.allEligible .Values.studentWindows.cohort -}}
+{{- fail "Student windows require exactly one audience" -}}
+{{- end -}}
+{{- if or .Values.studentWindows.intakeEnabled .Values.studentWindows.reconciliationEnabled .Values.studentWindows.allEligible .Values.studentWindows.cohort .Values.studentWindows.observationStart -}}
+{{- if or (lt $rev 15) (not .Values.roles.privacy.enabled) (not .Values.privacyAuthority.secretName) (not .Values.browserCollection.enabled) -}}
+{{- fail "Student windows require a015, Privacy and the private browser Collector" -}}
+{{- end -}}
+{{- if and .Values.studentWindows.allEligible (lt $rev 16) (or .Values.studentWindows.intakeEnabled .Values.studentWindows.reconciliationEnabled) -}}
+{{- fail "Opening student windows for all eligible students requires a016" -}}
+{{- end -}}
+{{- if or (not (or .Values.studentWindows.allEligible (regexMatch "^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}(,[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12})*$" .Values.studentWindows.cohort))) (not (regexMatch "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?(Z|[+]00:00)$" .Values.studentWindows.observationStart)) -}}
+{{- fail "Student windows require an audience and UTC observation start" -}}
+{{- end -}}
+{{- end -}}
+{{- if and .Values.studentWindows.proofSecretName (or (not .Values.studentWindows.reconciliationEnabled) (not (regexMatch "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$" .Values.studentWindows.proofSecretName)) (not .Values.studentWindows.proofSecretKey)) -}}
+{{- fail "Student window proof Secret must name a key and requires reconciliation" -}}
+{{- end -}}
+{{- if and .Values.studentWindows.intakeEnabled (or (not .Values.internalTLS.enabled) (ne (int .Values.roles.collector.replicas) 1)) -}}
+{{- fail "Window intake requires private mTLS and a single Collector for its per-lifecycle request budget" -}}
+{{- end -}}
 {{- if and .Values.coreTransfer.enabled (or (lt $rev 7) (not .Values.coreTransfer.statusSecretName) (not .Values.coreTransfer.namespacesConfigMapName) (not .Values.coreTransfer.queryNamespace)) -}}
 {{- fail "Transfer requires a007, distinct status Secret, namespace map and query namespace" -}}
 {{- end -}}
@@ -104,8 +127,8 @@
 {{- if and .Values.catalog.enabled (or (lt $rev 8) (not .Values.catalog.namespace) (not .Values.coreTransfer.namespacesConfigMapName) .Values.fixtureCatalog.configMapName) -}}
 {{- fail "Catalog requires a008, namespace map and exclusive catalog storage" -}}
 {{- end -}}
-{{- if and .Values.activityProjection.enabled (or (not (has .Values.migration.revision (list "a010" "a011" "a012" "a013" "a014"))) (not (regexMatch "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" .Values.activityProjection.runId))) -}}
-{{- fail "Projection requires a010 through a014 and one canonical dataset UUID" -}}
+{{- if and .Values.activityProjection.enabled (or (not (has .Values.migration.revision (list "a010" "a011" "a012" "a013" "a014" "a015" "a016"))) (not (regexMatch "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" .Values.activityProjection.runId))) -}}
+{{- fail "Projection requires a010 through a016 and one canonical dataset UUID" -}}
 {{- end -}}
 {{- $pollMs := toString .Values.activityProjection.processorPollMs -}}
 {{- if or (not (regexMatch "^[0-9]{2,3}$" $pollMs)) (lt (atoi $pollMs) 50) (gt (atoi $pollMs) 500) -}}
@@ -114,20 +137,20 @@
 {{- if not (kindIs "bool" .Values.activityDay.enabled) -}}
 {{- fail "activityDay.enabled must be boolean" -}}
 {{- end -}}
-{{- if and .Values.activityDay.enabled (or (not (has .Values.migration.revision (list "a011" "a012" "a013" "a014"))) (not .Values.activityProjection.enabled) (not .Values.roles.privacy.enabled) (not .Values.privacyAuthority.secretName)) -}}
-{{- fail "Day projection requires a011 through a014, activity projection and Privacy" -}}
+{{- if and .Values.activityDay.enabled (or (not (has .Values.migration.revision (list "a011" "a012" "a013" "a014" "a015" "a016"))) (not .Values.activityProjection.enabled) (not .Values.roles.privacy.enabled) (not .Values.privacyAuthority.secretName)) -}}
+{{- fail "Day projection requires a011 through a016, activity projection and Privacy" -}}
 {{- end -}}
 {{- if not (kindIs "bool" .Values.activityCourse.enabled) -}}
 {{- fail "activityCourse.enabled must be boolean" -}}
 {{- end -}}
-{{- if and .Values.activityCourse.enabled (or (not (has .Values.migration.revision (list "a012" "a013" "a014"))) (not .Values.activityDay.enabled)) -}}
-{{- fail "Course projection requires a012 through a014 and day projection" -}}
+{{- if and .Values.activityCourse.enabled (or (not (has .Values.migration.revision (list "a012" "a013" "a014" "a015" "a016"))) (not .Values.activityDay.enabled)) -}}
+{{- fail "Course projection requires a012 through a016 and day projection" -}}
 {{- end -}}
 {{- if not (kindIs "bool" .Values.activityBoundaryCredit.enabled) -}}
 {{- fail "activityBoundaryCredit.enabled must be boolean" -}}
 {{- end -}}
-{{- if and .Values.activityBoundaryCredit.enabled (or (not (has .Values.migration.revision (list "a013" "a014"))) (not .Values.activityCourse.enabled)) -}}
-{{- fail "Boundary credit requires a013 or a014 and course projection" -}}
+{{- if and .Values.activityBoundaryCredit.enabled (or (not (has .Values.migration.revision (list "a013" "a014" "a015" "a016"))) (not .Values.activityCourse.enabled)) -}}
+{{- fail "Boundary credit requires a013 through a016 and course projection" -}}
 {{- end -}}
 {{- if .Values.authorityServer.enabled -}}
 {{- $a := .Values.authorityServer -}}

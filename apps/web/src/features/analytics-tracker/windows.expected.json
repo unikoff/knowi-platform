@@ -1,0 +1,119 @@
+{
+  "source": "CORP-604 revision 3, scenario 604-А/Б transcribed before Web v3",
+  "time_zone": "Europe/Moscow",
+  "five_tabs": {
+    "case": "604-А",
+    "start": "2026-11-27T10:00:00+03:00",
+    "steps": [
+      {
+        "tab": 1,
+        "start_offset_ms": 0,
+        "duration_ms": 60000,
+        "tool_id": "theory",
+        "course_id": "backend",
+        "lesson_id": "71"
+      },
+      {
+        "tab": 2,
+        "start_offset_ms": 60000,
+        "duration_ms": 60000,
+        "tool_id": "practice",
+        "course_id": "backend",
+        "lesson_id": "71"
+      },
+      {
+        "tab": 3,
+        "start_offset_ms": 120000,
+        "duration_ms": 30000,
+        "tool_id": "catalog",
+        "course_id": null,
+        "lesson_id": null
+      },
+      {
+        "tab": 4,
+        "start_offset_ms": 150000,
+        "duration_ms": 30000,
+        "tool_id": "theory",
+        "course_id": "backend",
+        "lesson_id": "71"
+      },
+      {
+        "tab": 5,
+        "start_offset_ms": 180000,
+        "duration_ms": 60000,
+        "tool_id": "practice",
+        "course_id": "backend",
+        "lesson_id": "71"
+      }
+    ],
+    "leave_focus_at": "2026-11-27T10:04:00+03:00",
+    "windows": [
+      {
+        "activity_date": "2026-11-27",
+        "slot_no": 41,
+        "stats": [
+          {
+            "tool_id": "theory",
+            "course_id": "backend",
+            "lesson_id": "71",
+            "active_ms": 90000
+          },
+          {
+            "tool_id": "practice",
+            "course_id": "backend",
+            "lesson_id": "71",
+            "active_ms": 120000
+          },
+          {
+            "tool_id": "catalog",
+            "course_id": null,
+            "lesson_id": null,
+            "active_ms": 30000
+          }
+        ],
+        "total_ms": 240000
+      }
+    ]
+  },
+  "boundaries": {
+    "case": "604-Б",
+    "context": {
+      "tool_id": "theory",
+      "course_id": "backend",
+      "lesson_id": "71"
+    },
+    "intervals": [
+      {
+        "start": "2026-11-27T15:14:50+03:00",
+        "end": "2026-11-27T15:15:20+03:00"
+      },
+      {
+        "start": "2026-11-27T23:59:50+03:00",
+        "end": "2026-11-28T00:00:20+03:00"
+      }
+    ],
+    "windows": [
+      {
+        "activity_date": "2026-11-27",
+        "slot_no": 61,
+        "active_ms": 10000
+      },
+      {
+        "activity_date": "2026-11-27",
+        "slot_no": 62,
+        "active_ms": 20000
+      },
+      {
+        "activity_date": "2026-11-27",
+        "slot_no": 96,
+        "active_ms": 10000
+      },
+      {
+        "activity_date": "2026-11-28",
+        "slot_no": 1,
+        "active_ms": 20000
+      }
+    ],
+    "total_ms": 60000
+  }
+}

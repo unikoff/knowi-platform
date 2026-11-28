@@ -1,0 +1,1012 @@
+{
+  "fixture_version": 1,
+  "student_id": "c3333333-3333-4333-8333-333333333333",
+  "other_lifecycle": "d4444444-4444-4444-8444-444444444444",
+  "clock": "2026-11-27T12:10:00Z",
+  "grants": {
+    "A": {
+      "protocol_version": 1,
+      "grant_version": 1,
+      "iss": "core-test",
+      "aud": "analytics-windows",
+      "sub": "c3333333-3333-4333-8333-333333333333",
+      "iat": 1795781280,
+      "nbf": 1795781280,
+      "exp": 1795781580,
+      "scope": "windows:collect",
+      "writer_id": "a1111111-1111-4111-8111-111111111111",
+      "writer_generation": 1,
+      "course_ids": [
+        "backend"
+      ],
+      "tool_scopes": [
+        {
+          "tool_id": "catalog",
+          "course_id": null
+        }
+      ]
+    },
+    "B": {
+      "protocol_version": 1,
+      "grant_version": 1,
+      "iss": "core-test",
+      "aud": "analytics-windows",
+      "sub": "c3333333-3333-4333-8333-333333333333",
+      "iat": 1795781280,
+      "nbf": 1795781280,
+      "exp": 1795781580,
+      "scope": "windows:collect",
+      "writer_id": "b2222222-2222-4222-8222-222222222222",
+      "writer_generation": 1,
+      "course_ids": [
+        "backend"
+      ],
+      "tool_scopes": []
+    },
+    "A_without_tools": {
+      "protocol_version": 1,
+      "grant_version": 1,
+      "iss": "core-test",
+      "aud": "analytics-windows",
+      "sub": "c3333333-3333-4333-8333-333333333333",
+      "iat": 1795781280,
+      "nbf": 1795781280,
+      "exp": 1795781580,
+      "scope": "windows:collect",
+      "writer_id": "a1111111-1111-4111-8111-111111111111",
+      "writer_generation": 1,
+      "course_ids": [
+        "backend"
+      ],
+      "tool_scopes": []
+    }
+  },
+  "catalog": {
+    "backend": {
+      "version": "backend-v1",
+      "lesson_ids": [
+        "71"
+      ]
+    },
+    "sql": {
+      "version": "sql-v1",
+      "lesson_ids": [
+        "1"
+      ]
+    }
+  },
+  "cases": {
+    "602-А": {
+      "batch": {
+        "protocol_version": 1,
+        "windows": [
+          {
+            "activity_date": "2026-11-27",
+            "slot_no": 61,
+            "writer_id": "a1111111-1111-4111-8111-111111111111",
+            "writer_generation": 1,
+            "server_epoch": 1,
+            "seq": 1,
+            "stats": [
+              {
+                "tool_id": "theory",
+                "course_id": "backend",
+                "lesson_id": "71",
+                "active_ms": 240000
+              },
+              {
+                "tool_id": "practice",
+                "course_id": "backend",
+                "lesson_id": "71",
+                "active_ms": 360000
+              }
+            ],
+            "catalog_versions": {
+              "backend": "backend-v1"
+            },
+            "client_final": false
+          }
+        ]
+      },
+      "expected": {
+        "stats": [
+          {
+            "tool_id": "practice",
+            "course_id": "backend",
+            "lesson_id": "71",
+            "active_ms": 360000
+          },
+          {
+            "tool_id": "theory",
+            "course_id": "backend",
+            "lesson_id": "71",
+            "active_ms": 240000
+          }
+        ],
+        "total_ms": 600000,
+        "digest": "107e3ba83bc3edcaa63249733c952ae657ecd3322b73faf9f45bdabce455cb27",
+        "revision": 1,
+        "key": [
+          "2026-11-27",
+          61
+        ]
+      }
+    },
+    "602-Б": {
+      "intervals": [
+        [
+          "2026-11-27T15:14:50+03:00",
+          "2026-11-27T15:15:20+03:00"
+        ],
+        [
+          "2026-11-27T23:59:50+03:00",
+          "2026-11-28T00:00:20+03:00"
+        ]
+      ],
+      "expected": [
+        [
+          "2026-11-27",
+          61,
+          10000
+        ],
+        [
+          "2026-11-27",
+          62,
+          20000
+        ],
+        [
+          "2026-11-27",
+          96,
+          10000
+        ],
+        [
+          "2026-11-28",
+          1,
+          20000
+        ]
+      ]
+    },
+    "602-В": {
+      "steps": [
+        {
+          "snapshot": {
+            "activity_date": "2026-11-27",
+            "slot_no": 61,
+            "writer_id": "a1111111-1111-4111-8111-111111111111",
+            "writer_generation": 1,
+            "server_epoch": 1,
+            "seq": 4,
+            "stats": [
+              {
+                "tool_id": "theory",
+                "course_id": "backend",
+                "lesson_id": "71",
+                "active_ms": 480000
+              }
+            ],
+            "catalog_versions": {
+              "backend": "backend-v1"
+            },
+            "client_final": false
+          },
+          "grant": "A",
+          "expected": [
+            "committed",
+            "committed",
+            1
+          ]
+        },
+        {
+          "snapshot": {
+            "activity_date": "2026-11-27",
+            "slot_no": 61,
+            "writer_id": "a1111111-1111-4111-8111-111111111111",
+            "writer_generation": 1,
+            "server_epoch": 1,
+            "seq": 3,
+            "stats": [
+              {
+                "tool_id": "theory",
+                "course_id": "backend",
+                "lesson_id": "71",
+                "active_ms": 360000
+              }
+            ],
+            "catalog_versions": {
+              "backend": "backend-v1"
+            },
+            "client_final": false
+          },
+          "grant": "A",
+          "expected": [
+            "stale",
+            "stale_seq",
+            1
+          ]
+        },
+        {
+          "snapshot": {
+            "activity_date": "2026-11-27",
+            "slot_no": 61,
+            "writer_id": "a1111111-1111-4111-8111-111111111111",
+            "writer_generation": 1,
+            "server_epoch": 1,
+            "seq": 4,
+            "stats": [
+              {
+                "tool_id": "theory",
+                "course_id": "backend",
+                "lesson_id": "71",
+                "active_ms": 480000
+              }
+            ],
+            "catalog_versions": {
+              "backend": "backend-v1"
+            },
+            "client_final": false
+          },
+          "grant": "A",
+          "expected": [
+            "duplicate",
+            "same_payload",
+            1
+          ]
+        },
+        {
+          "snapshot": {
+            "activity_date": "2026-11-27",
+            "slot_no": 61,
+            "writer_id": "a1111111-1111-4111-8111-111111111111",
+            "writer_generation": 1,
+            "server_epoch": 1,
+            "seq": 4,
+            "stats": [
+              {
+                "tool_id": "theory",
+                "course_id": "backend",
+                "lesson_id": "71",
+                "active_ms": 500000
+              }
+            ],
+            "catalog_versions": {
+              "backend": "backend-v1"
+            },
+            "client_final": false
+          },
+          "grant": "A",
+          "expected": [
+            "conflict",
+            "payload_conflict",
+            1
+          ]
+        },
+        {
+          "snapshot": {
+            "activity_date": "2026-11-27",
+            "slot_no": 61,
+            "writer_id": "b2222222-2222-4222-8222-222222222222",
+            "writer_generation": 1,
+            "server_epoch": 1,
+            "seq": 100,
+            "stats": [
+              {
+                "tool_id": "theory",
+                "course_id": "backend",
+                "lesson_id": "71",
+                "active_ms": 490000
+              }
+            ],
+            "catalog_versions": {
+              "backend": "backend-v1"
+            },
+            "client_final": false
+          },
+          "grant": "B",
+          "expected": [
+            "pending",
+            "ownership_conflict",
+            1
+          ]
+        }
+      ],
+      "expected": {
+        "writer_id": "a1111111-1111-4111-8111-111111111111",
+        "server_epoch": 1,
+        "seq": 4,
+        "total_ms": 480000,
+        "revision": 1,
+        "state": "pending_reconciliation"
+      }
+    },
+    "602-Г": {
+      "checks": [
+        {
+          "snapshot": {
+            "activity_date": "2026-11-27",
+            "slot_no": 61,
+            "writer_id": "a1111111-1111-4111-8111-111111111111",
+            "writer_generation": 1,
+            "server_epoch": 1,
+            "seq": 4,
+            "stats": [
+              {
+                "tool_id": "theory",
+                "course_id": "backend",
+                "lesson_id": "71",
+                "active_ms": 480000
+              }
+            ],
+            "catalog_versions": {
+              "backend": "backend-v1"
+            },
+            "client_final": false,
+            "subject_ref": "d4444444-4444-4444-8444-444444444444"
+          },
+          "grant": "A",
+          "expected": "subject_forbidden"
+        },
+        {
+          "snapshot": {
+            "activity_date": "2026-11-27",
+            "slot_no": 61,
+            "writer_id": "a1111111-1111-4111-8111-111111111111",
+            "writer_generation": 1,
+            "server_epoch": 1,
+            "seq": 4,
+            "stats": [
+              {
+                "tool_id": "theory",
+                "course_id": "backend",
+                "lesson_id": "71",
+                "active_ms": 30000
+              },
+              {
+                "tool_id": "practice",
+                "course_id": "sql",
+                "lesson_id": "1",
+                "active_ms": 30000
+              }
+            ],
+            "catalog_versions": {
+              "backend": "backend-v1",
+              "sql": "sql-v1"
+            },
+            "client_final": false
+          },
+          "grant": "A",
+          "expected": "course_forbidden"
+        },
+        {
+          "snapshot": {
+            "activity_date": "2026-11-27",
+            "slot_no": 61,
+            "writer_id": "a1111111-1111-4111-8111-111111111111",
+            "writer_generation": 1,
+            "server_epoch": 1,
+            "seq": 4,
+            "stats": [
+              {
+                "tool_id": "theory",
+                "course_id": "backend",
+                "lesson_id": "71",
+                "active_ms": 0
+              }
+            ],
+            "catalog_versions": {
+              "backend": "backend-v1"
+            },
+            "client_final": false
+          },
+          "grant": "A",
+          "expected": "invalid_active_ms"
+        },
+        {
+          "snapshot": {
+            "activity_date": "2026-11-27",
+            "slot_no": 61,
+            "writer_id": "a1111111-1111-4111-8111-111111111111",
+            "writer_generation": 1,
+            "server_epoch": 1,
+            "seq": 4,
+            "stats": [
+              {
+                "tool_id": "theory",
+                "course_id": "backend",
+                "lesson_id": "71",
+                "active_ms": -1
+              }
+            ],
+            "catalog_versions": {
+              "backend": "backend-v1"
+            },
+            "client_final": false
+          },
+          "grant": "A",
+          "expected": "invalid_active_ms"
+        },
+        {
+          "snapshot": {
+            "activity_date": "2026-11-27",
+            "slot_no": 61,
+            "writer_id": "a1111111-1111-4111-8111-111111111111",
+            "writer_generation": 1,
+            "server_epoch": 1,
+            "seq": 4,
+            "stats": [
+              {
+                "tool_id": "theory",
+                "course_id": "backend",
+                "lesson_id": "71",
+                "active_ms": 600001
+              },
+              {
+                "tool_id": "practice",
+                "course_id": "backend",
+                "lesson_id": "71",
+                "active_ms": 300000
+              }
+            ],
+            "catalog_versions": {
+              "backend": "backend-v1"
+            },
+            "client_final": false
+          },
+          "grant": "A",
+          "expected": "window_budget_exceeded"
+        },
+        {
+          "snapshot": {
+            "activity_date": "2026-11-27",
+            "slot_no": 61,
+            "writer_id": "a1111111-1111-4111-8111-111111111111",
+            "writer_generation": 1,
+            "server_epoch": 1,
+            "seq": 4,
+            "stats": [
+              {
+                "tool_id": "theory",
+                "course_id": "backend",
+                "lesson_id": "71",
+                "active_ms": 30000
+              }
+            ],
+            "catalog_versions": {
+              "backend": "backend-other"
+            },
+            "client_final": false
+          },
+          "grant": "A",
+          "expected": "catalog_conflict"
+        },
+        {
+          "snapshot": {
+            "activity_date": "2026-11-27",
+            "slot_no": 61,
+            "writer_id": "a1111111-1111-4111-8111-111111111111",
+            "writer_generation": 1,
+            "server_epoch": 1,
+            "seq": 4,
+            "stats": [
+              {
+                "tool_id": "catalog",
+                "course_id": null,
+                "lesson_id": null,
+                "active_ms": 30000
+              }
+            ],
+            "catalog_versions": {},
+            "client_final": false
+          },
+          "grant": "A",
+          "expected": null
+        },
+        {
+          "snapshot": {
+            "activity_date": "2026-11-27",
+            "slot_no": 61,
+            "writer_id": "a1111111-1111-4111-8111-111111111111",
+            "writer_generation": 1,
+            "server_epoch": 1,
+            "seq": 4,
+            "stats": [
+              {
+                "tool_id": "catalog",
+                "course_id": null,
+                "lesson_id": null,
+                "active_ms": 30000
+              }
+            ],
+            "catalog_versions": {},
+            "client_final": false
+          },
+          "grant": "A_without_tools",
+          "expected": "tool_forbidden"
+        }
+      ],
+      "expected_allowed": {
+        "stats": [
+          {
+            "tool_id": "catalog",
+            "course_id": null,
+            "lesson_id": null,
+            "active_ms": 30000
+          }
+        ],
+        "revision": 1
+      }
+    },
+    "602-Д": {
+      "snapshot": {
+        "activity_date": "2026-11-27",
+        "slot_no": 61,
+        "writer_id": "a1111111-1111-4111-8111-111111111111",
+        "writer_generation": 1,
+        "server_epoch": 1,
+        "seq": 4,
+        "stats": [
+          {
+            "tool_id": "theory",
+            "course_id": "backend",
+            "lesson_id": "71",
+            "active_ms": 480000
+          }
+        ],
+        "catalog_versions": {
+          "backend": "backend-v1"
+        },
+        "client_final": false
+      },
+      "v2_late_fact": {
+        "producer_namespace": "browser-test",
+        "subject_ref": "c3333333-3333-4333-8333-333333333333",
+        "source": "browser",
+        "received_at": "2026-12-03T12:00:00Z",
+        "event": {
+          "schema_version": 2,
+          "event_id": "e5555555-5555-4555-8555-555555555555",
+          "type": "activity_segment",
+          "course_id": "backend",
+          "catalog_version": "backend-v1",
+          "lesson_id": "71",
+          "section": "theory",
+          "session_id": "f6666666-6666-4666-8666-666666666666",
+          "started_at": "2026-11-27T12:08:00Z",
+          "ended_at": "2026-11-27T12:08:10Z",
+          "last_action_at": "2026-11-27T12:08:00Z",
+          "visible": true,
+          "focused": true,
+          "active_ms": 10000,
+          "payload": {}
+        }
+      },
+      "v2_distinctions": [
+        {
+          "source": {
+            "producer_namespace": "browser-test",
+            "subject_ref": "c3333333-3333-4333-8333-333333333333",
+            "source": "browser",
+            "received_at": "2026-12-03T12:00:00Z",
+            "event": {
+              "schema_version": 2,
+              "event_id": "e5555555-5555-4555-8555-555555555555",
+              "type": "tool_segment",
+              "course_id": "platform-tools",
+              "catalog_version": "platform-tools-v1",
+              "lesson_id": null,
+              "section": null,
+              "session_id": "f6666666-6666-4666-8666-666666666666",
+              "started_at": "2026-11-27T12:08:00Z",
+              "ended_at": "2026-11-27T12:08:10Z",
+              "last_action_at": "2026-11-27T12:08:00Z",
+              "visible": true,
+              "focused": true,
+              "active_ms": 10000,
+              "payload": {
+                "tool_id": "catalog"
+              }
+            }
+          },
+          "expected": [
+            "catalog",
+            null,
+            null
+          ]
+        },
+        {
+          "source": {
+            "producer_namespace": "browser-test",
+            "subject_ref": "c3333333-3333-4333-8333-333333333333",
+            "source": "browser",
+            "received_at": "2026-12-03T12:00:00Z",
+            "event": {
+              "schema_version": 2,
+              "event_id": "e5555555-5555-4555-8555-555555555555",
+              "type": "tool_segment",
+              "course_id": "backend",
+              "catalog_version": "platform-tools-v1",
+              "lesson_id": null,
+              "section": null,
+              "session_id": "f6666666-6666-4666-8666-666666666666",
+              "started_at": "2026-11-27T12:08:00Z",
+              "ended_at": "2026-11-27T12:08:10Z",
+              "last_action_at": "2026-11-27T12:08:00Z",
+              "visible": true,
+              "focused": true,
+              "active_ms": 10000,
+              "payload": {
+                "tool_id": "theory"
+              }
+            }
+          },
+          "expected": [
+            "theory",
+            "backend",
+            null
+          ]
+        },
+        {
+          "source": {
+            "producer_namespace": "browser-test",
+            "subject_ref": "c3333333-3333-4333-8333-333333333333",
+            "source": "browser",
+            "received_at": "2026-12-03T12:00:00Z",
+            "event": {
+              "schema_version": 2,
+              "event_id": "e5555555-5555-4555-8555-555555555555",
+              "type": "course_opened",
+              "course_id": "backend",
+              "catalog_version": "backend-v1",
+              "lesson_id": null,
+              "section": null,
+              "session_id": "f6666666-6666-4666-8666-666666666666",
+              "started_at": "2026-11-27T12:08:00Z",
+              "ended_at": "2026-11-27T12:08:00Z",
+              "last_action_at": "2026-11-27T12:08:00Z",
+              "visible": true,
+              "focused": true,
+              "active_ms": 0,
+              "payload": {}
+            }
+          },
+          "expected": null
+        }
+      ],
+      "expected": {
+        "inflight_state": "incomplete_coverage",
+        "after_commit_state": "pending_reconciliation",
+        "source_before": 0,
+        "source_after": 1,
+        "unchanged_ms": 480000,
+        "expected_after_late_ms": 490000,
+        "deadline": "2026-12-04T12:16:00+00:00"
+      },
+      "v2_baseline_facts": [
+        {
+          "producer_namespace": "browser-test",
+          "subject_ref": "c3333333-3333-4333-8333-333333333333",
+          "source": "browser",
+          "received_at": "2026-11-27T12:10:00Z",
+          "event": {
+            "schema_version": 2,
+            "event_id": "a0000000-0000-4000-8000-000000000001",
+            "type": "activity_segment",
+            "course_id": "backend",
+            "catalog_version": "backend-v1",
+            "lesson_id": "71",
+            "section": "theory",
+            "session_id": "f6666666-6666-4666-8666-666666666666",
+            "started_at": "2026-11-27T12:00:00Z",
+            "ended_at": "2026-11-27T12:01:00Z",
+            "last_action_at": "2026-11-27T12:00:00Z",
+            "visible": true,
+            "focused": true,
+            "active_ms": 60000,
+            "payload": {}
+          }
+        },
+        {
+          "producer_namespace": "browser-test",
+          "subject_ref": "c3333333-3333-4333-8333-333333333333",
+          "source": "browser",
+          "received_at": "2026-11-27T12:10:00Z",
+          "event": {
+            "schema_version": 2,
+            "event_id": "a0000000-0000-4000-8000-000000000002",
+            "type": "activity_segment",
+            "course_id": "backend",
+            "catalog_version": "backend-v1",
+            "lesson_id": "71",
+            "section": "theory",
+            "session_id": "f6666666-6666-4666-8666-666666666666",
+            "started_at": "2026-11-27T12:01:00Z",
+            "ended_at": "2026-11-27T12:02:00Z",
+            "last_action_at": "2026-11-27T12:01:00Z",
+            "visible": true,
+            "focused": true,
+            "active_ms": 60000,
+            "payload": {}
+          }
+        },
+        {
+          "producer_namespace": "browser-test",
+          "subject_ref": "c3333333-3333-4333-8333-333333333333",
+          "source": "browser",
+          "received_at": "2026-11-27T12:10:00Z",
+          "event": {
+            "schema_version": 2,
+            "event_id": "a0000000-0000-4000-8000-000000000003",
+            "type": "activity_segment",
+            "course_id": "backend",
+            "catalog_version": "backend-v1",
+            "lesson_id": "71",
+            "section": "theory",
+            "session_id": "f6666666-6666-4666-8666-666666666666",
+            "started_at": "2026-11-27T12:02:00Z",
+            "ended_at": "2026-11-27T12:03:00Z",
+            "last_action_at": "2026-11-27T12:02:00Z",
+            "visible": true,
+            "focused": true,
+            "active_ms": 60000,
+            "payload": {}
+          }
+        },
+        {
+          "producer_namespace": "browser-test",
+          "subject_ref": "c3333333-3333-4333-8333-333333333333",
+          "source": "browser",
+          "received_at": "2026-11-27T12:10:00Z",
+          "event": {
+            "schema_version": 2,
+            "event_id": "a0000000-0000-4000-8000-000000000004",
+            "type": "activity_segment",
+            "course_id": "backend",
+            "catalog_version": "backend-v1",
+            "lesson_id": "71",
+            "section": "theory",
+            "session_id": "f6666666-6666-4666-8666-666666666666",
+            "started_at": "2026-11-27T12:03:00Z",
+            "ended_at": "2026-11-27T12:04:00Z",
+            "last_action_at": "2026-11-27T12:03:00Z",
+            "visible": true,
+            "focused": true,
+            "active_ms": 60000,
+            "payload": {}
+          }
+        },
+        {
+          "producer_namespace": "browser-test",
+          "subject_ref": "c3333333-3333-4333-8333-333333333333",
+          "source": "browser",
+          "received_at": "2026-11-27T12:10:00Z",
+          "event": {
+            "schema_version": 2,
+            "event_id": "a0000000-0000-4000-8000-000000000005",
+            "type": "activity_segment",
+            "course_id": "backend",
+            "catalog_version": "backend-v1",
+            "lesson_id": "71",
+            "section": "theory",
+            "session_id": "f6666666-6666-4666-8666-666666666666",
+            "started_at": "2026-11-27T12:04:00Z",
+            "ended_at": "2026-11-27T12:05:00Z",
+            "last_action_at": "2026-11-27T12:04:00Z",
+            "visible": true,
+            "focused": true,
+            "active_ms": 60000,
+            "payload": {}
+          }
+        },
+        {
+          "producer_namespace": "browser-test",
+          "subject_ref": "c3333333-3333-4333-8333-333333333333",
+          "source": "browser",
+          "received_at": "2026-11-27T12:10:00Z",
+          "event": {
+            "schema_version": 2,
+            "event_id": "a0000000-0000-4000-8000-000000000006",
+            "type": "activity_segment",
+            "course_id": "backend",
+            "catalog_version": "backend-v1",
+            "lesson_id": "71",
+            "section": "theory",
+            "session_id": "f6666666-6666-4666-8666-666666666666",
+            "started_at": "2026-11-27T12:05:00Z",
+            "ended_at": "2026-11-27T12:06:00Z",
+            "last_action_at": "2026-11-27T12:05:00Z",
+            "visible": true,
+            "focused": true,
+            "active_ms": 60000,
+            "payload": {}
+          }
+        },
+        {
+          "producer_namespace": "browser-test",
+          "subject_ref": "c3333333-3333-4333-8333-333333333333",
+          "source": "browser",
+          "received_at": "2026-11-27T12:10:00Z",
+          "event": {
+            "schema_version": 2,
+            "event_id": "a0000000-0000-4000-8000-000000000007",
+            "type": "activity_segment",
+            "course_id": "backend",
+            "catalog_version": "backend-v1",
+            "lesson_id": "71",
+            "section": "theory",
+            "session_id": "f6666666-6666-4666-8666-666666666666",
+            "started_at": "2026-11-27T12:06:00Z",
+            "ended_at": "2026-11-27T12:07:00Z",
+            "last_action_at": "2026-11-27T12:06:00Z",
+            "visible": true,
+            "focused": true,
+            "active_ms": 60000,
+            "payload": {}
+          }
+        },
+        {
+          "producer_namespace": "browser-test",
+          "subject_ref": "c3333333-3333-4333-8333-333333333333",
+          "source": "browser",
+          "received_at": "2026-11-27T12:10:00Z",
+          "event": {
+            "schema_version": 2,
+            "event_id": "a0000000-0000-4000-8000-000000000008",
+            "type": "activity_segment",
+            "course_id": "backend",
+            "catalog_version": "backend-v1",
+            "lesson_id": "71",
+            "section": "theory",
+            "session_id": "f6666666-6666-4666-8666-666666666666",
+            "started_at": "2026-11-27T12:07:00Z",
+            "ended_at": "2026-11-27T12:08:00Z",
+            "last_action_at": "2026-11-27T12:07:00Z",
+            "visible": true,
+            "focused": true,
+            "active_ms": 60000,
+            "payload": {}
+          }
+        }
+      ]
+    },
+    "602-Е": {
+      "offline_body": {
+        "protocol_version": 1,
+        "windows": [
+          {
+            "activity_date": "2026-11-27",
+            "slot_no": 61,
+            "writer_id": "a1111111-1111-4111-8111-111111111111",
+            "writer_generation": 1,
+            "server_epoch": 1,
+            "seq": 4,
+            "stats": [
+              {
+                "tool_id": "theory",
+                "course_id": "backend",
+                "lesson_id": "71",
+                "active_ms": 480000
+              }
+            ],
+            "catalog_versions": {
+              "backend": "backend-v1"
+            },
+            "client_final": false
+          }
+        ]
+      },
+      "correct_ack": {
+        "index": 0,
+        "activity_date": "2026-11-27",
+        "slot_no": 61,
+        "writer_id": "a1111111-1111-4111-8111-111111111111",
+        "writer_generation": 1,
+        "server_epoch": 1,
+        "seq": 4,
+        "payload_hash": "204c0c415f51aae5d355d4f2b4ca6250bb567892f41fede2e3d4b22c618d53c1",
+        "status": "duplicate",
+        "code": "same_payload",
+        "confirmed": {
+          "writer_id": "a1111111-1111-4111-8111-111111111111",
+          "writer_generation": 1,
+          "server_epoch": 1,
+          "seq": 4,
+          "payload_hash": "204c0c415f51aae5d355d4f2b4ca6250bb567892f41fede2e3d4b22c618d53c1",
+          "revision": 1,
+          "stats": [
+            {
+              "tool_id": "theory",
+              "course_id": "backend",
+              "lesson_id": "71",
+              "active_ms": 480000
+            }
+          ],
+          "client_final": false,
+          "rebase_at": null
+        }
+      },
+      "foreign_ack": {
+        "index": 0,
+        "activity_date": "2026-11-27",
+        "slot_no": 62,
+        "writer_id": "a1111111-1111-4111-8111-111111111111",
+        "writer_generation": 1,
+        "server_epoch": 1,
+        "seq": 4,
+        "payload_hash": "204c0c415f51aae5d355d4f2b4ca6250bb567892f41fede2e3d4b22c618d53c1",
+        "status": "duplicate",
+        "code": "same_payload",
+        "confirmed": {
+          "writer_id": "a1111111-1111-4111-8111-111111111111",
+          "writer_generation": 1,
+          "server_epoch": 1,
+          "seq": 4,
+          "payload_hash": "204c0c415f51aae5d355d4f2b4ca6250bb567892f41fede2e3d4b22c618d53c1",
+          "revision": 1,
+          "stats": [
+            {
+              "tool_id": "theory",
+              "course_id": "backend",
+              "lesson_id": "71",
+              "active_ms": 480000
+            }
+          ],
+          "client_final": false,
+          "rebase_at": null
+        }
+      },
+      "pending_ack": {
+        "index": 0,
+        "activity_date": "2026-11-27",
+        "slot_no": 61,
+        "writer_id": "a1111111-1111-4111-8111-111111111111",
+        "writer_generation": 1,
+        "server_epoch": 1,
+        "seq": 4,
+        "payload_hash": "204c0c415f51aae5d355d4f2b4ca6250bb567892f41fede2e3d4b22c618d53c1",
+        "status": "pending",
+        "code": "ownership_conflict",
+        "confirmed": null
+      },
+      "new_login_same_lifecycle": "c3333333-3333-4333-8333-333333333333",
+      "new_lifecycle": "d4444444-4444-4444-8444-444444444444",
+      "repair_stats": [
+        {
+          "tool_id": "theory",
+          "course_id": "backend",
+          "lesson_id": "71",
+          "active_ms": 420000
+        }
+      ],
+      "stale_snapshot": {
+        "activity_date": "2026-11-27",
+        "slot_no": 61,
+        "writer_id": "a1111111-1111-4111-8111-111111111111",
+        "writer_generation": 1,
+        "server_epoch": 1,
+        "seq": 5,
+        "stats": [
+          {
+            "tool_id": "theory",
+            "course_id": "backend",
+            "lesson_id": "71",
+            "active_ms": 540000
+          }
+        ],
+        "catalog_versions": {
+          "backend": "backend-v1"
+        },
+        "client_final": false
+      },
+      "expected": {
+        "offline_ms": 480000,
+        "repaired_ms": 420000,
+        "epoch": 2,
+        "revision": 2,
+        "replay_code": "stale_epoch",
+        "remove_after": [
+          "correct_ack"
+        ],
+        "survives_new_lifecycle": false
+      }
+    }
+  }
+}

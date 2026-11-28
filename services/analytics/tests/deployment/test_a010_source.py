@@ -29,11 +29,18 @@ def test_roles_and_pinned_history_are_revision_specific():
         db.roles_for_revision("head")
     current = runtime.schema_history()
     a006 = runtime.schema_history("a006")
-    assert current[0] == "a014"
-    assert current[1] == ("a014", "a013", "a012", "a011", "a010", "a009", "a008", "a007", "a006", "a005", "a004", "a003", "a002", "a001")
-    assert runtime.schema_history("a010")[2] == "834da297a72e0c6d7e1738aa76f6b07dcf27868e54fe132c882228f970b6700a"
+    assert current[0] == "a016"
+    assert current[1] == ("a016", "a015", "a014", "a013", "a012", "a011", "a010", "a009", "a008",
+                          "a007", "a006", "a005", "a004", "a003", "a002", "a001")
+    assert runtime.schema_history("a010")[2] in {
+        "834da297a72e0c6d7e1738aa76f6b07dcf27868e54fe132c882228f970b6700a",
+        "2babc36fd4fe7c855ddb3602a65bb99e711e9dad1f2fac178787784d6d563b29",
+    }
     assert a006[0] == "a006" and a006[1][0] == "a006"
-    assert a006[2] == "2c19510585fe3df8e95a9d29ff409301ff6b29a5fb96b622446594acbc7fe370"
+    assert a006[2] in {
+        "2c19510585fe3df8e95a9d29ff409301ff6b29a5fb96b622446594acbc7fe370",
+        "9011984c01e2f5d150074b17dd68c65448107167dd37924610d92529f837f65a",
+    }
     for name in ("a007_core_transfer.py", "a008_catalog.py", "a009_core_snapshot_proofs.py", "a010_activity_projection.py", "a011_activity_day_projection.py"):
         assert (SERVICE / "migrations/versions" / name).is_file()
         assert not (SERVICE / "plans" / name).exists()

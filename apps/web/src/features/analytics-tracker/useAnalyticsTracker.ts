@@ -2,10 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ToolId } from './tracker';
 export type { ToolId } from './tracker';
 import { BrowserTrackerController, type Panel } from './controller';
+import { WindowTracker } from './windows-controller';
 
 export type TrackerOptions = {
   /** Pass true only from the explicit VITE feature gate. */
   enabled?: boolean;
+  windowsEnabled?: boolean;
   toolsEnabled?: boolean;
   identityKey: string | null;
   subjectRef: string | null;
@@ -23,10 +25,12 @@ export function useAnalyticsTrackerIdentity(options: TrackerOptions) {
   const tool = useRef<ToolId | undefined>(undefined);
   const panel = useRef<Panel | undefined>(undefined);
   const [restart, setRestart] = useState(0);
-  const { enabled, identityKey, subjectRef, role, courseId, catalogVersion, baseUrl, toolsEnabled } = options;
+  const { enabled, windowsEnabled, identityKey, subjectRef, role, courseId, catalogVersion, baseUrl, toolsEnabled } = options;
   useEffect(() => {
-    if (enabled !== true || !identityKey || !subjectRef || role !== 'user') return;
+    if ((!enabled && !windowsEnabled) || !identityKey || !subjectRef || role !== 'user') return;
     const controller = new BrowserTrackerController({ identityKey, subjectRef, role, baseUrl, toolsEnabled,
+      v2Enabled: enabled === true,
+      createWindows: windowsEnabled ? source => new WindowTracker({ source, subjectRef, baseUrl }) : undefined,
       canTrackLesson: target => latest.current.canTrackLesson(target) });
     active.current = controller;
     controller.start();
@@ -34,7 +38,7 @@ export function useAnalyticsTrackerIdentity(options: TrackerOptions) {
     controller.onActiveTool(tool.current);
     controller.onActivePanel(panel.current);
     return () => { controller.stop(); if (active.current === controller) active.current = null; };
-  }, [enabled, identityKey, subjectRef, role, baseUrl, toolsEnabled, restart]);
+  }, [enabled, windowsEnabled, identityKey, subjectRef, role, baseUrl, toolsEnabled, restart]);
   useEffect(() => {
     active.current?.setCourse(catalogVersion || toolsEnabled ? { courseId, catalogVersion } : null);
     active.current?.onActivePanel(panel.current);

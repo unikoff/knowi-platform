@@ -31,20 +31,31 @@ MEASUREMENT_SECONDS = 900
 REPEATS = 3
 NAMESPACE_PREFIX = "knowi-analytics-bench-"
 IMAGE_REPOSITORY = "docker.io/library/knowi-analytics"
-PACKAGED_HISTORY_HEAD = "a014"
+PACKAGED_HISTORY_HEAD = "a016"
+PACKAGED_HISTORY_REVISIONS = tuple(f"a{number:03d}" for number in range(16, 0, -1))
+BENCHMARK_TARGET_REVISIONS = ("a010", "a011")
 HISTORY_SHA256 = {
     "a010": "834da297a72e0c6d7e1738aa76f6b07dcf27868e54fe132c882228f970b6700a",
     "a011": "8a9e80bd33828e53d737fe1f5803af9bb41dd72f95b073fbffb402b90720aa50",
     "a012": "a92fd75f37789bead5c0b6e87b9b1418f5922844bd786249ca3d9f3eb90f21ab",
     "a013": "d77cc10160169d3e3ee656af1c9d4327b30b6e8ddbbc51cbb2a72b2950c797e1",
     "a014": "7fd0bc65c7ce44cd7166f0ddd409c0966e32e604b6791b855ffc0e6de1a3aa04",
+    "a015": "a0ba675a8ade4f55467f64824993cc6681271648062c6ef4a3931468b8d12271",
+    "a016": "817b9280326eb873d2e9d594ad11eb0bc4e080bd46460cab0bd911c25ef810e2",
 }
-# Histories are fingerprints of raw migration bytes. These additional exact
-# fingerprints correspond to Git's LF checkout; existing local records may
-# contain CRLF or mixed line endings and must retain their original identity.
+# These are exact fingerprints of audited raw, LF and CRLF migration bytes.
+# Keep the historical mixed-byte fingerprints for existing records.
 HISTORY_LF_SHA256 = {
     "a011": "5406da21de62ca42291501579da9ed5cf752c6ee2a558d6aa8a70ac8177c5dc4",
     "a014": "8d81c48940e2dfa9b51d1352ac3f47a5aa62f894bc1259d3e3955e421967e896",
+    "a015": "214a5607f6af623941847b91d7da72c0b4a9db55d2c9251be7b2879efa58769a",
+    "a016": "996c00c5ee01af21b4932f3a91fd8014d6b9e4b4a53028961b527009e8305571",
+}
+HISTORY_CRLF_SHA256 = {
+    "a010": "2babc36fd4fe7c855ddb3602a65bb99e711e9dad1f2fac178787784d6d563b29",
+    "a011": "91955d399c775bf132422cac1d2d6ecb63fb22437428c7e1e81c3c8029e48e09",
+    "a015": "9378043cc37076cf2b1467ff39529c565319f5111d9a51a87612e0d15a15509c",
+    "a016": "9b48b49a8855830e2bad02cf40b4aeaaf96a85592484acdee451106eee80ab62",
 }
 
 
@@ -1170,17 +1181,22 @@ def _host_image_proof(folder, token, run_id, name, host_id, node, runtime, owned
             if process.stdout is not None: process.stdout.close()
 
 
+def _history_hashes(revision):
+    return {hashes[revision] for hashes in (HISTORY_SHA256, HISTORY_LF_SHA256, HISTORY_CRLF_SHA256)
+            if revision in hashes}
+
+
 def verified_histories(runtime, target_revision):
-    """Require the new full image history and the exact requested DB prefix."""
-    if target_revision not in ("a010", "a011"):
+    """Require the full image history and the exact supported historical DB prefix."""
+    if target_revision not in BENCHMARK_TARGET_REVISIONS:
         raise LiveFailure("unsupported database target")
     full = runtime.schema_history()
     target = runtime.schema_history(target_revision)
-    if (full[0] != PACKAGED_HISTORY_HEAD or len(full[1]) != 14
-            or full[2] not in {HISTORY_SHA256[PACKAGED_HISTORY_HEAD], HISTORY_LF_SHA256[PACKAGED_HISTORY_HEAD]}
-            or target[0] != target_revision
-            or target[2] not in {HISTORY_SHA256[target_revision], HISTORY_LF_SHA256.get(target_revision, HISTORY_SHA256[target_revision])}
-            or tuple(full[1][-len(target[1]):]) != tuple(target[1])):
+    target_suffix = PACKAGED_HISTORY_REVISIONS[PACKAGED_HISTORY_REVISIONS.index(target_revision):]
+    if (full[0] != PACKAGED_HISTORY_HEAD or tuple(full[1]) != PACKAGED_HISTORY_REVISIONS
+            or full[2] not in _history_hashes(PACKAGED_HISTORY_HEAD)
+            or target[0] != target_revision or tuple(target[1]) != target_suffix
+            or target[2] not in _history_hashes(target_revision)):
         raise LiveFailure("packaged full history or target prefix mismatch")
     return full, target
 
@@ -1237,7 +1253,7 @@ def _source_probe(folder, token, run_id, name, host_id, runtime, source_tools, o
 
 
 def _database_setup(b, folder, token, run_id, target_revision="a010"):
-    if target_revision not in HISTORY_SHA256:
+    if target_revision not in BENCHMARK_TARGET_REVISIONS:
         raise LiveFailure("unsupported database target")
     owned = b.owned
     intent = _digest({"operation": "fresh-analytics-database", "run_id": str(run_id)})

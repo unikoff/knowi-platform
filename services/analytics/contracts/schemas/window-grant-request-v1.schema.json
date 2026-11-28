@@ -1,0 +1,28 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "protocol_version": {
+      "const": 1,
+      "title": "Protocol Version",
+      "type": "integer"
+    },
+    "writer_generation": {
+      "maximum": 9007199254740991,
+      "minimum": 1,
+      "title": "Writer Generation",
+      "type": "integer"
+    },
+    "writer_id": {
+      "format": "uuid",
+      "title": "Writer Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "writer_id",
+    "writer_generation",
+    "protocol_version"
+  ],
+  "title": "WindowGrantRequest",
+  "type": "object"
+}

@@ -101,6 +101,7 @@ def schemas(monkeypatch, *, day=True, activity=True):
     monkeypatch.setattr(privacy, "has_activity_projection_schema", yes if activity else no)
     monkeypatch.setattr(privacy, "has_activity_day_projection_schema", day_state)
     monkeypatch.setattr(privacy, "has_activity_course_projection_schema", no)
+    monkeypatch.setattr(privacy, "has_student_windows_schema", no)
 
 
 def test_purge_is_bounded_and_retry_after_lost_reply_completes(monkeypatch):
